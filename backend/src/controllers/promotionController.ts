@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
 import { PoolClient } from 'pg';
+import {
+  fetchBusinessStatus,
+  NtsLookupError,
+  rejectionMessage,
+} from '../services/ntsService';
 
 // 정책상 지자체 매칭 할인율의 최대 캡(%) — 정책 변경 시 이 값만 수정
 const GOV_MATCHING_CAP_RATE = 10.0;
@@ -34,27 +39,46 @@ export const createPromotion = async (req: Request, res: Response) => {
 
   const client: PoolClient = await pool.connect();
   try {
-    await client.query('BEGIN');
-
-    // 1. 소상공인 → 소속 지자체 조회 및 인증 여부 확인
+    // 1. 소상공인 조회 후 국세청 상태조회 — 계속사업자(b_stt_cd: 01)만 1:1 매칭 등록
     const merchantResult = await client.query(
-      `SELECT id, municipality_id, is_verified FROM merchants WHERE id = $1`,
+      `SELECT id, municipality_id, is_verified, business_number, business_name
+       FROM merchants WHERE id = $1`,
       [merchant_id]
     );
 
     if (merchantResult.rowCount === 0) {
-      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: '등록된 소상공인 정보를 찾을 수 없습니다.' });
     }
 
     const merchant = merchantResult.rows[0];
-    if (!merchant.is_verified) {
-      await client.query('ROLLBACK');
+    let ntsStatus;
+    try {
+      ntsStatus = await fetchBusinessStatus(merchant.business_number);
+    } catch (err) {
+      if (err instanceof NtsLookupError) {
+        return res.status(err.statusCode).json({ success: false, message: err.message });
+      }
+      throw err;
+    }
+
+    await client.query(
+      `UPDATE merchants SET is_verified = $2 WHERE id = $1`,
+      [merchant_id, ntsStatus.isActive],
+    );
+
+    if (!ntsStatus.isActive) {
       return res.status(403).json({
         success: false,
-        message: '사업자 인증이 완료되지 않은 점포는 프로모션을 등록할 수 없습니다.',
+        message: rejectionMessage(ntsStatus),
+        data: {
+          b_stt: ntsStatus.b_stt,
+          b_stt_cd: ntsStatus.b_stt_cd,
+          tax_type: ntsStatus.tax_type,
+        },
       });
     }
+
+    await client.query('BEGIN');
 
     // 2. 지자체 예산 행에 배타적 잠금(FOR UPDATE) — 동시 등록 요청 간 경쟁 상태(Race Condition) 직렬화
     const municipalityResult = await client.query(

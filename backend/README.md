@@ -11,6 +11,7 @@ backend/
 ├── src/
 │   ├── types/db.ts               # DB 스키마 매핑 타입
 │   ├── db/pool.ts                # PostgreSQL 커넥션 풀
+│   ├── services/ntsService.ts    # 국세청 사업자등록 상태조회
 │   ├── controllers/
 │   │   ├── promotionController.ts  # POST /api/promotions
 │   │   └── couponController.ts     # POST /api/coupons/redeem
@@ -32,7 +33,8 @@ node dist/app.js        # 또는 npm run dev (tsx watch)
 ```
 
 ## 주요 엔드포인트
-- `POST /api/promotions` — 소상공인 할인 등록 + 지자체 1:1 매칭 확정
+- `POST /api/merchants/verify` — 국세청 사업자등록 상태조회 (`b_stt_cd: 01` 계속사업자)
+- `POST /api/promotions` — 소상공인 할인 등록 + 지자체 1:1 매칭 확정 (국세청 계속사업자만)
 - `POST /api/coupons/issue` — 고객 쿠폰 발급(QR 코드) + 잔여 수량 차감
 - `POST /api/coupons/redeem` — QR 쿠폰 사용 처리 + 정산 트랜잭션 기록
 - `GET /api/festivals/nearby` — 주변/소속 지자체 축제 목록 (메인 지도, 할인 등록)

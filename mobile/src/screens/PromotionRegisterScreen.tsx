@@ -7,6 +7,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import { fetchNearbyFestivals } from '../api/festivals';
+import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
 
@@ -29,6 +30,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId: st
   const [quantity, setQuantity] = useState<string>('100');
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>('5000');
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [ntsResult, setNtsResult] = useState<MerchantVerifyResult | null>(null);
   const [resultBadge, setResultBadge] = useState<PromotionResponse | null>(null);
 
   useEffect(() => {
@@ -50,7 +53,16 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId: st
       return;
     }
     setLoading(true);
+    setVerifying(true);
     try {
+      const verified = await verifyMerchant({ merchantId });
+      setNtsResult(verified);
+      if (!verified.success || verified.data?.b_stt_cd !== '01') {
+        Alert.alert('사업자 확인 실패', verified.message);
+        return;
+      }
+      setVerifying(false);
+
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
         merchant_id: merchantId,
         festival_id: selectedFestivalId,
@@ -64,8 +76,13 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId: st
       setResultBadge(res.data);
       Alert.alert('등록 완료', res.data.message);
     } catch (err: any) {
-      Alert.alert('등록 실패', err?.response?.data?.message ?? '서버 오류가 발생했습니다.');
+      if (err?.response?.data) setNtsResult(err.response.data);
+      Alert.alert(
+        '등록 실패',
+        err?.response?.data?.message ?? '서버 오류가 발생했습니다.',
+      );
     } finally {
+      setVerifying(false);
       setLoading(false);
     }
   };
@@ -73,6 +90,16 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId: st
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.header}>🏪 자율 할인 등록</Text>
+
+      {ntsResult?.data && (
+        <View style={[styles.badge, ntsResult.data.verified ? styles.confirmedBadge : styles.rejectBadge]}>
+          <Text style={styles.badgeText}>
+            {ntsResult.data.verified
+              ? `국세청 계속사업자 확인 (${ntsResult.data.b_stt_cd})`
+              : `국세청 확인 실패: ${ntsResult.message}`}
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.label}>연계 축제 선택</Text>
       <View style={styles.pickerWrap}>
@@ -128,7 +155,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId: st
       )}
 
       <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>할인 프로모션 등록하기</Text>}
+        {loading || verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>할인 프로모션 등록하기</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -142,6 +169,7 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#DDD', padding: 12, fontSize: 16 },
   badge: { backgroundColor: '#FFF4E5', borderRadius: 12, padding: 16, marginTop: 20, borderWidth: 1, borderColor: '#FFD08A' },
   confirmedBadge: { backgroundColor: '#E7F7EC', borderColor: '#8BE0A6' },
+  rejectBadge: { backgroundColor: '#FEE2E2', borderColor: '#FECACA' },
   badgeText: { fontSize: 15, fontWeight: '700', color: '#B4530A', lineHeight: 22 },
   badgeNote: { fontSize: 12, color: '#8A6D3B', marginTop: 6 },
   submitBtn: { backgroundColor: '#2D6CDF', borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 24, marginBottom: 40 },

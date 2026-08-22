@@ -42,6 +42,7 @@ webapp/
 - ✅ PostgreSQL 6개 테이블 마이그레이션 SQL (`municipalities`, `festivals`, `merchants`, `discount_promotions`, `user_coupons`, `settlement_transactions`)
 - ✅ 백엔드 스캐폴딩 완료 — `npm install` 및 `tsc --noEmit` 타입체크 **통과 확인**
 - ✅ `POST /api/promotions` — 지자체 예산 `FOR UPDATE` 잠금 → 1:1 매칭 확정(부분 매칭 로직 포함)
+- ✅ `POST /api/merchants/verify` — 국세청 사업자등록 상태조회, 계속사업자(`b_stt_cd: 01`)만 프로모션 등록
 - ✅ `POST /api/coupons/redeem` — 쿠폰 검증 → 할인 계산 → 예산 원자적 차감 → 정산 트랜잭션(PENDING) 기록
 - ✅ 모바일 앱 스캐폴딩 완료 — 사장님 할인 등록 화면, 축제/제휴업소 지도 화면(모달 + QR 발급)
 - ✅ `GET /api/festivals/nearby`, `GET /api/festivals/:id/map`, `POST /api/coupons/issue` — 메인 지도가 사용하는 보조 API
