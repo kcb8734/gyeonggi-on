@@ -20,7 +20,12 @@ const PRESETS = [
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 
 const FORM = `
-<div style="padding:16px 16px 40px;font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;color:#111827;background:#F7F8FA;min-height:100%;box-sizing:border-box">
+<div style="font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;color:#111827;background:#F7F8FA;min-height:100%;box-sizing:border-box">
+  <div style="position:sticky;top:0;z-index:6;background:#fff;border-bottom:1px solid #E5E7EB;padding:10px 12px;display:flex;align-items:center;gap:10px">
+    <button id="exitBtn" type="button" style="border:0;background:#111827;color:#fff;border-radius:10px;padding:8px 12px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">‹ 나가기</button>
+    <strong style="font-size:16px">피드 올리기</strong>
+  </div>
+  <div style="padding:16px 16px 40px">
   <div style="background:#ECFDF5;border:1px solid #6EE7B7;color:#065F46;border-radius:12px;padding:10px;font-size:12px;font-weight:700;margin-bottom:12px">한 줄 소개는 #root 밖 브라우저 기본 입력입니다. ‘화성행궁 야경’을 쳐 보세요.</div>
   <div style="background:#111827;color:#fff;border-radius:16px;padding:14px;margin-bottom:14px"><b style="color:#FDE68A;display:block;font-size:11px">지자체 1:1 매칭 리워드</b>축제 현장 피드 작성 시 지자체 매칭 포인트(또는 지역화폐 쿠폰) 즉시 적립!</div>
   <h1 style="font-size:22px;margin:0 0 8px">축제 피드 올리기</h1>
@@ -36,6 +41,7 @@ const FORM = `
   <label for="caption" style="display:block;font-weight:700;margin:14px 0 6px;font-size:14px">한 줄 소개 (한글 입력)</label>
   <textarea id="caption" lang="ko" placeholder="예: 화성행궁 야경 실화냐" autocomplete="off" autocorrect="off" spellcheck="false" style="width:100%;box-sizing:border-box;border:1px solid #DDD;border-radius:8px;padding:12px;font-size:16px;font-family:inherit;background:#fff;min-height:96px"></textarea>
   <button id="submit" type="button" style="width:100%;border:0;border-radius:10px;padding:14px;font-weight:800;font-size:16px;font-family:inherit;cursor:pointer;background:#111827;color:#fff;margin-top:18px">피드 올리고 1,000P 받기</button>
+  </div>
 </div>
 `;
 
@@ -173,6 +179,7 @@ export default function FeedUploadScreen() {
       navigation.goBack();
     };
 
+    root.querySelector('#exitBtn')?.addEventListener('click', () => navigation.goBack());
     root.querySelector('#cam')?.addEventListener('click', () => { void onPick('camera'); });
     root.querySelector('#gal')?.addEventListener('click', () => { void onPick('gallery'); });
     root.querySelector('#submit')?.addEventListener('click', () => { void onSubmit(); });

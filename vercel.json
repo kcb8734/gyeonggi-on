@@ -1,0 +1,28 @@
+{
+  "framework": null,
+  "installCommand": "npm ci --prefix mobile",
+  "buildCommand": "npm run export:web --prefix mobile",
+  "outputDirectory": "mobile/dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/_expo/static/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
+  "env": {
+    "EXPO_PUBLIC_API_URL": "https://api.gyeonggi-on.kr",
+    "EXPO_PUBLIC_API_BASE_URL": "https://api.gyeonggi-on.kr",
+    "EXPO_PUBLIC_WEB_ORIGIN": "https://kdanji.com"
+  }
+}

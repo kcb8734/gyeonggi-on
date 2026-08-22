@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { loginWithGoogleToken, loginWithKakaoToken } from '../api/auth';
+import { GOOGLE_CLIENT_ID, KAKAO_CLIENT_ID } from '../config';
 import { makeRedirect, startOAuth } from '../utils/oauth';
-
-const KAKAO_CLIENT_ID = process.env.EXPO_PUBLIC_KAKAO_CLIENT_ID ?? '';
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();

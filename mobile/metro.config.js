@@ -62,4 +62,16 @@ config.server.enhanceMiddleware = (metroMiddleware, server) => {
   };
 };
 
+if (process.env.NODE_ENV === 'production') {
+  config.transformer = config.transformer ?? {};
+  config.transformer.minifierConfig = {
+    ...(config.transformer.minifierConfig ?? {}),
+    compress: {
+      ...(config.transformer.minifierConfig?.compress ?? {}),
+      drop_console: true,
+      unused: true,
+    },
+  };
+}
+
 module.exports = config;

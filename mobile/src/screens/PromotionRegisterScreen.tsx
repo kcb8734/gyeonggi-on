@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Switch,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import IsolatedImeField from '../components/ui/IsolatedImeField';
 import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 import { Picker } from '@react-native-picker/picker';
@@ -27,6 +28,7 @@ interface PromotionResponse {
 const GOV_MATCH_CAP = 10;
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
+  const navigation = useNavigation<any>();
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
   const businessNameRef = useRef('');
@@ -118,6 +120,9 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', backgroundColor: '#111827', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 }}>
+        <Text style={{ color: '#fff', fontWeight: '800' }}>‹ 나가기</Text>
+      </TouchableOpacity>
       <Text style={styles.header}>할인 쿠폰 등록</Text>
       <Text style={styles.note}>국세청 계속사업자 확인 후 상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 

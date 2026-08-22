@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
@@ -8,7 +9,12 @@ import type { FestivalPin } from '../types/map';
 import { mountBodyOverlay } from '../utils/nativeImeHost';
 
 const FORM = `
-<div class="wrap" style="padding:20px 20px 48px;font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111827;background:#F7F8FA;min-height:100%;box-sizing:border-box">
+<div class="wrap" style="font-family:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#111827;background:#F7F8FA;min-height:100%;box-sizing:border-box">
+  <div style="position:sticky;top:0;z-index:6;background:#fff;border-bottom:1px solid #E5E7EB;padding:10px 12px;display:flex;align-items:center;gap:10px">
+    <button id="exitBtn" type="button" style="border:0;background:#111827;color:#fff;border-radius:10px;padding:8px 12px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer">‹ 나가기</button>
+    <strong style="font-size:16px">할인 쿠폰 등록</strong>
+  </div>
+  <div style="padding:16px 20px 48px">
   <h1 style="font-size:22px;margin:0 0 8px">할인 쿠폰 등록</h1>
   <div style="background:#ECFDF5;border:1px solid #6EE7B7;color:#065F46;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;margin-bottom:12px">상호명·메뉴·특징은 #root 밖 브라우저 기본 입력입니다. ‘온앤온분식’처럼 치면 자모가 조합됩니다.</div>
   <p style="font-size:12px;color:#6B7280;line-height:18px;margin:0 0 8px">국세청 계속사업자 확인 후 상가 소개를 적고 쿠폰을 등록합니다.</p>
@@ -40,6 +46,7 @@ const FORM = `
   <p style="font-size:12px;color:#6B7280;line-height:18px">끄면 상가가 할인 전액을 부담하고 즉시 쿠폰을 발행합니다. 켜면 관리자 승인 후 매칭률이 붙습니다.</p>
   <div id="preview" style="background:#FFF4E5;border:1px solid #FFD08A;border-radius:12px;padding:16px;margin-top:16px;font-size:14px;font-weight:700;color:#B4530A">상가 자체 할인 10% (지자체 매칭 없음)</div>
   <button id="submitBtn" type="button" disabled style="width:100%;border:0;border-radius:10px;padding:12px;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer;background:#2D6CDF;color:#fff;margin-top:24px;opacity:.45">할인 쿠폰 등록하기</button>
+  </div>
 </div>
 `;
 
@@ -48,6 +55,7 @@ function val(root: HTMLElement, id: string) {
 }
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
+  const navigation = useNavigation<any>();
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const ntsRef = useRef<MerchantVerifyResult | null>(null);
   const festivalsRef = useRef<FestivalPin[]>([]);
@@ -176,6 +184,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       }
     };
 
+    root.querySelector('#exitBtn')?.addEventListener('click', () => navigation.goBack());
     root.querySelector('#verifyBtn')?.addEventListener('click', onVerify);
     root.querySelector('#submitBtn')?.addEventListener('click', onSubmit);
 
@@ -183,7 +192,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       dispose();
       overlayRef.current = null;
     };
-  }, [merchantId]);
+  }, [merchantId, navigation]);
 
   return <View style={styles.host} />;
 }

@@ -3,8 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import HomeScreen from './src/screens/HomeScreen';
 import FestivalMerchantMapScreen from './src/screens/FestivalMerchantMapScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
@@ -18,8 +19,10 @@ import FeedUploadScreen from './src/screens/FeedUploadScreen';
 import FeedViewScreen from './src/screens/FeedViewScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
+import { installImeGuard } from './src/utils/imeGuard';
 
 ensureKoreanWebFont();
+installImeGuard();
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -45,6 +48,15 @@ export type RootStackParamList = {
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function StackBack() {
+  const navigation = useNavigation();
+  return (
+    <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ paddingHorizontal: 4, paddingVertical: 6 }}>
+      <Text style={{ color: '#111827', fontWeight: '800', fontSize: 15 }}>‹ 나가기</Text>
+    </Pressable>
+  );
+}
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   return (
@@ -98,7 +110,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={styles.webPage}>
-      <Text style={styles.liveBanner}>0822 빨간띠 · 한글입력 본체분리 · 할인쿠폰등록</Text>
+      {__DEV__ ? <Text style={styles.liveBanner}>미리보기 · 나가기 버튼 · 한글 IME 가드</Text> : null}
       <View nativeID="onandon-phone" style={styles.phone}>{children}</View>
     </View>
   );
@@ -112,7 +124,10 @@ export default function App() {
         <NavigationContainer>
           <Stack.Navigator>
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-            <Stack.Screen name="PromotionRegister" options={{ title: '할인 쿠폰 등록' }}>
+            <Stack.Screen
+              name="PromotionRegister"
+              options={{ title: '할인 쿠폰 등록', headerBackVisible: false, headerLeft: () => <StackBack /> }}
+            >
               {() => <PromotionRegisterScreen merchantId={DEV_MERCHANT_ID} />}
             </Stack.Screen>
             <Stack.Screen name="TourDetail" options={{ title: '행사 상세' }}>
@@ -127,11 +142,15 @@ export default function App() {
             <Stack.Screen name="Support" options={({ route }) => ({ title: route.params?.topic === 'help' ? '고객센터' : '공지사항' })}>
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
-            <Stack.Screen name="FeedUpload" component={FeedUploadScreen} options={{ title: '피드 올리기' }} />
-            <Stack.Screen name="FeedView" options={{ title: '피드 보기', headerTransparent: true, headerTintColor: '#fff' }}>
+            <Stack.Screen
+              name="FeedUpload"
+              component={FeedUploadScreen}
+              options={{ title: '피드 올리기', headerBackVisible: false, headerLeft: () => <StackBack /> }}
+            />
+            <Stack.Screen name="FeedView" options={{ headerShown: false }}>
               {({ route }) => <FeedViewScreen postId={route.params.postId} />}
             </Stack.Screen>
-            <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인' }} />
+            <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인', headerBackVisible: false, headerLeft: () => <StackBack /> }} />
           </Stack.Navigator>
         </NavigationContainer>
       </AppShell>

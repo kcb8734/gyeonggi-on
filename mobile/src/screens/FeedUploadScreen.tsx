@@ -136,6 +136,9 @@ export default function FeedUploadScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingBottom: 36 }}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', backgroundColor: '#111827', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 }}>
+        <Text style={{ color: '#fff', fontWeight: '800' }}>‹ 나가기</Text>
+      </TouchableOpacity>
       <View style={styles.banner}>
         <Text style={styles.bannerKicker}>지자체 1:1 매칭 리워드</Text>
         <Text style={styles.bannerTitle}>축제 현장 피드 작성 시 지자체 매칭 포인트(또는 지역화폐 쿠폰) 즉시 적립!</Text>
