@@ -100,9 +100,15 @@ function Tabs() {
   );
 }
 
+function isDeployedWeb() {
+  if (typeof window === 'undefined') return !__DEV__;
+  const host = window.location.hostname;
+  return host === 'kdanji.com' || host === 'www.kdanji.com' || host.endsWith('.vercel.app') || !__DEV__;
+}
+
 function AppShell({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
-  const framed = Boolean(__DEV__);
+  const framed = !isDeployedWeb();
   return (
     <View style={framed ? styles.webPage : styles.webPageLive}>
       {framed ? <Text style={styles.liveBanner}>미리보기 · 나가기 버튼 · 한글 IME 가드</Text> : null}

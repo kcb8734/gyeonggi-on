@@ -79,8 +79,8 @@ export async function verifyMerchant(params: {
   };
 
   const urls = [
-    API_BASE_URL ? `${API_BASE_URL}/api/merchants/verify` : '',
     typeof window !== 'undefined' ? `${window.location.origin}/api/merchants/verify` : '',
+    API_BASE_URL ? `${API_BASE_URL}/api/merchants/verify` : '',
     'http://127.0.0.1:4000/api/merchants/verify',
   ].filter((url, index, list) => url && list.indexOf(url) === index);
 

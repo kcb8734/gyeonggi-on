@@ -12,10 +12,17 @@ const apiFromEnv =
  * 개발 미리보기: 같은 출처 `/api` → Metro가 백엔드(4000)로 프록시.
  * 배포: EXPO_PUBLIC_API_URL 또는 기본 API 호스트.
  */
+function productionApi(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return 'https://www.kdanji.com';
+}
+
 const fallbackApi =
   typeof __DEV__ !== 'undefined' && __DEV__
     ? ''
-    : 'https://kdanji.com';
+    : productionApi();
 
 export const API_BASE_URL = (apiFromEnv || fallbackApi).replace(/\/$/, '');
 export const WEB_ORIGIN = (readPublic('EXPO_PUBLIC_WEB_ORIGIN') || 'https://kdanji.com').replace(/\/$/, '');
