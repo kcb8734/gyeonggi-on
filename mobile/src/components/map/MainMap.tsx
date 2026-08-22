@@ -29,6 +29,7 @@ function toSheetFromFestival(festival: FestivalPin): SheetPlace {
     kind: 'festival',
     title: festival.title,
     address: festival.location_name,
+    imageUrl: festival.image_url,
     latitude: festival.latitude,
     longitude: festival.longitude,
     canOpenDetail: true,
@@ -313,13 +314,32 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
               handleIssueCoupon();
             }
           }}
+          onDirections={() => {
+            if (!sheet) return;
+            mapRef.current?.animateToRegion({
+              latitude: sheet.latitude,
+              longitude: sheet.longitude,
+              ...FESTIVAL_FOCUS_DELTA,
+            });
+          }}
           onDetail={() => {
-            if (sheet?.kind === 'place') {
-              navigation.navigate('TourDetail', { contentId: sheet.id });
+            if (!sheet) return;
+            if (sheet.kind === 'place') {
+              navigation.navigate('TourDetail', { contentId: sheet.id, title: sheet.title });
               return;
             }
-            if (sheet?.kind === 'festival') {
-              setSelectedFestivalId(sheet.id);
+            if (sheet.kind === 'festival') {
+              const festival = festivals.find((item) => item.id === sheet.id) ?? selectedFestival;
+              navigation.navigate('TourDetail', {
+                contentId: festival?.contentId ?? sheet.id,
+                contentTypeId: festival?.contentTypeId,
+                tel: festival?.tel,
+                title: festival?.title ?? sheet.title,
+              });
+              return;
+            }
+            if (sheet.kind === 'merchant' && selectedMerchant) {
+              handleIssueCoupon();
             }
           }}
         />

@@ -32,11 +32,7 @@
             enumerable: desc.enumerable,
             get: function () { return desc.get.call(this); },
             set: function (next) {
-              if (composing.has(this)) {
-                var cur = String(desc.get.call(this));
-                var incoming = String(next);
-                if (incoming.length < cur.length && (cur.indexOf(incoming) === 0 || incoming.length === 0)) return;
-              }
+              if (composing.has(this)) return;
               desc.set.call(this, next);
             }
           });
@@ -49,6 +45,15 @@
       html, body { height: 100%; }
       body { overflow: hidden; margin: 0; }
       #root { display: flex; height: 100%; flex: 1; }
+      .app-container {
+        width: 100%;
+        max-width: 100vw;
+        min-height: 100vh;
+        margin: 0 auto;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
     </style>
   </head>
   <body>

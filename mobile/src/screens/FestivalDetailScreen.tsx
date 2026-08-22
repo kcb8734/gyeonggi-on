@@ -12,6 +12,7 @@ import {
 import { fetchTourDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import type { TourDetail } from '../types/tour';
+import { formatTel, telHref } from '../utils/phone';
 
 const EMPTY_COPY = {
   overview: '한국관광공사 TourAPI에서 수집한 행사 정보입니다. 상세 개요가 확인되는 대로 자동 반영됩니다.',
@@ -19,11 +20,6 @@ const EMPTY_COPY = {
   fee: '현장 문의',
   tel: '전화번호 정보 없음',
 };
-
-function telHref(tel?: string) {
-  const digits = String(tel ?? '').replace(/[^\d+]/g, '');
-  return digits ? `tel:${digits}` : null;
-}
 
 function directionsUrl(lat: number, lng: number, title: string) {
   const query = encodeURIComponent(`${lat},${lng}(${title})`);
@@ -35,9 +31,13 @@ function directionsUrl(lat: number, lng: number, title: string) {
 export default function FestivalDetailScreen({
   contentId,
   contentTypeId,
+  fallbackTel,
+  fallbackTitle,
 }: {
   contentId: string;
   contentTypeId?: string;
+  fallbackTel?: string;
+  fallbackTitle?: string;
 }) {
   const [detail, setDetail] = useState<TourDetail | null>(null);
 
@@ -45,14 +45,21 @@ export default function FestivalDetailScreen({
     let cancelled = false;
     fetchTourDetail(contentId, contentTypeId)
       .then((data) => {
-        if (!cancelled) setDetail(data);
+        if (!cancelled) {
+          setDetail({
+            ...data,
+            tel: data.tel || fallbackTel,
+            title: data.title || fallbackTitle || data.title,
+          });
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setDetail({
             contentId,
             contentTypeId: contentTypeId ?? '15',
-            title: '축제 상세',
+            tel: fallbackTel,
+            title: fallbackTitle || '축제 상세',
             overview: EMPTY_COPY.overview,
             address: EMPTY_COPY.address,
             fee: EMPTY_COPY.fee,
@@ -66,7 +73,7 @@ export default function FestivalDetailScreen({
     return () => {
       cancelled = true;
     };
-  }, [contentId, contentTypeId]);
+  }, [contentId, contentTypeId, fallbackTel, fallbackTitle]);
 
   if (!detail) {
     return (
@@ -78,7 +85,9 @@ export default function FestivalDetailScreen({
 
   const hero = detail.images[0]?.originUrl ?? detail.firstImage;
   const hasMap = detail.mapX !== 0 && detail.mapY !== 0;
-  const callUrl = telHref(detail.tel);
+  const resolvedTel = detail.tel || fallbackTel;
+  const callUrl = telHref(resolvedTel);
+  const telLabel = formatTel(resolvedTel) || resolvedTel || EMPTY_COPY.tel;
   const overview = detail.overview?.trim() || EMPTY_COPY.overview;
   const fee = detail.fee?.trim() || EMPTY_COPY.fee;
   const address = detail.address?.trim() || EMPTY_COPY.address;
@@ -130,12 +139,14 @@ export default function FestivalDetailScreen({
 
         <View style={styles.card}>
           <Text style={styles.label}>전화번호</Text>
-          <Text style={styles.value}>{detail.tel || EMPTY_COPY.tel}</Text>
+          <Text style={styles.value}>{telLabel}</Text>
           {callUrl ? (
             <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(callUrl)}>
-              <Text style={styles.callText}>전화 걸기</Text>
+              <Text style={styles.callText}>전화 걸기 {telLabel}</Text>
             </TouchableOpacity>
-          ) : null}
+          ) : (
+            <Text style={[styles.value, { marginTop: 8, color: '#6B7280' }]}>연결 가능한 번호가 없습니다</Text>
+          )}
         </View>
 
         {hasMap ? (

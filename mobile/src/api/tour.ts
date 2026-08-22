@@ -143,8 +143,23 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
   }
 
   const preview = PREVIEW_HOME.festivals.find(
-    (item) => item.contentId === contentId || item.id === contentId || `tour-${item.id}` === contentId,
-  ) ?? PREVIEW_HOME.festivals[0];
+    (item) => item.contentId === contentId || item.id === contentId || `tour-${item.id}` === contentId || `tour-${item.contentId}` === contentId,
+  );
+
+  if (!preview) {
+    return {
+      contentId,
+      contentTypeId: contentTypeId ?? '15',
+      title: '축제 상세',
+      overview: '한국관광공사에서 수집한 행사 정보입니다. 상세 개요가 확인되는 대로 자동 반영됩니다.',
+      address: '주소 확인 중',
+      tel: undefined,
+      mapX: 127.013,
+      mapY: 37.287,
+      fee: '현장 문의',
+      images: [],
+    };
+  }
 
   return {
     contentId,
@@ -158,7 +173,7 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
     mapY: preview.latitude,
     eventStartDate: preview.start_date,
     eventEndDate: preview.end_date,
-    fee: '현장 문의',
+    fee: preview.fee ?? '현장 문의',
     images: preview.image_url ? [{ originUrl: preview.image_url }] : [],
     category: preview.category as TourDetail['category'],
   };

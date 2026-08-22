@@ -14,6 +14,10 @@ export interface WalletCoupon {
   funding_type?: 'MERCHANT_ONLY' | 'MATCHED';
   expires_at?: string;
   status: 'ISSUED' | 'USED';
+  proofImageUrl?: string;
+  shopAddress?: string;
+  municipality_name?: string | null;
+  metro?: string;
 }
 
 export interface ScheduledFestival {
@@ -32,6 +36,7 @@ interface AppState {
   favorites: HomeFestival[];
   points: number;
   localCoupons: LocalCurrencyCoupon[];
+  localPromotions: HomePromotion[];
 }
 
 const KEY = 'gyeonggi-on-app-state';
@@ -48,6 +53,10 @@ const SEEDED_WALLET: WalletCoupon[] = [
     funding_type: 'MATCHED',
     expires_at: '2026-09-21',
     status: 'ISSUED',
+    proofImageUrl: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80',
+    shopAddress: '경기도 수원시 팔달구 정조로 825',
+    municipality_name: '수원시',
+    metro: 'GYEONGGI',
   },
 ];
 
@@ -57,6 +66,7 @@ const INITIAL: AppState = {
   recent: [],
   favorites: [],
   points: 1280,
+  localPromotions: [],
   localCoupons: [
     {
       id: 'lc-seed-1',
@@ -77,6 +87,7 @@ let state: AppState = {
   ...loaded,
   wallet: loaded.wallet ?? INITIAL.wallet,
   localCoupons: loaded.localCoupons ?? INITIAL.localCoupons,
+  localPromotions: loaded.localPromotions ?? INITIAL.localPromotions,
   points: loaded.points ?? INITIAL.points,
 };
 const listeners = new Set<Listener>();
@@ -175,7 +186,17 @@ export function syncRewardBalance(points: number, coupons: LocalCurrencyCoupon[]
   });
 }
 
-export function promotionToWallet(promo: HomePromotion, couponCode: string): WalletCoupon {
+export function addLocalPromotion(promo: HomePromotion) {
+  const exists = state.localPromotions.some((item) => item.id === promo.id);
+  emit({
+    ...state,
+    localPromotions: exists
+      ? state.localPromotions.map((item) => (item.id === promo.id ? promo : item))
+      : [promo, ...state.localPromotions],
+  });
+}
+
+export function promotionToWallet(promo: HomePromotion, couponCode: string, proofImageUrl?: string): WalletCoupon {
   return {
     id: `${promo.id}-${couponCode}`,
     promotion_id: promo.id,
@@ -187,5 +208,9 @@ export function promotionToWallet(promo: HomePromotion, couponCode: string): Wal
     funding_type: promo.funding_type,
     expires_at: '2026-09-30',
     status: 'ISSUED',
+    proofImageUrl: proofImageUrl ?? promo.exterior_image_url ?? undefined,
+    shopAddress: promo.address ?? undefined,
+    municipality_name: promo.municipality_name,
+    metro: promo.metro,
   };
 }

@@ -23,14 +23,15 @@ function webFile(accept: string, capture?: string): Promise<string | null> {
   });
 }
 
-async function nativePick(fromCamera: boolean): Promise<string | null> {
+async function nativePick(fromCamera: boolean, photoOnly = false): Promise<string | null> {
   const permission = fromCamera
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
+  const mediaTypes = photoOnly ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.All;
   const result = fromCamera
-    ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 })
-    : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
+    ? await ImagePicker.launchCameraAsync({ mediaTypes, quality: 0.8 })
+    : await ImagePicker.launchImageLibraryAsync({ mediaTypes, quality: 0.8 });
   if (result.canceled || !result.assets?.[0]?.uri) return null;
   return result.assets[0].uri;
 }
@@ -38,6 +39,11 @@ async function nativePick(fromCamera: boolean): Promise<string | null> {
 export function pickFromGallery(): Promise<string | null> {
   if (Platform.OS === 'web') return webFile('image/*,video/*');
   return nativePick(false);
+}
+
+export function pickPhotoFromGallery(): Promise<string | null> {
+  if (Platform.OS === 'web') return webFile('image/*');
+  return nativePick(false, true);
 }
 
 export function pickFromCamera(): Promise<string | null> {

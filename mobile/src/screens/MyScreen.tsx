@@ -137,7 +137,12 @@ export default function MyScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.row}
-            onPress={() => item.contentId && navigation.navigate('TourDetail', { contentId: item.contentId, contentTypeId: item.contentTypeId })}
+            onPress={() => item.contentId && navigation.navigate('TourDetail', {
+              contentId: item.contentId,
+              contentTypeId: item.contentTypeId,
+              tel: item.tel,
+              title: item.title,
+            })}
           >
             {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.thumb} /> : <View style={styles.thumb} />}
             <View style={{ flex: 1 }}>
@@ -171,6 +176,10 @@ export default function MyScreen() {
       <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Support', { topic: 'help' })}>
         <Text style={styles.menuTitle}>고객센터</Text>
         <Text style={styles.menuMeta}>쿠폰 사용 · 정산 · 가맹 문의</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Support', { topic: 'privacy' })}>
+        <Text style={styles.menuTitle}>개인정보처리방침</Text>
+        <Text style={styles.menuMeta}>수집 항목 · 이용 목적 · 보유 기간</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.menu}
