@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
+import { searchFestivals, toHomeFestival } from '../services/tourApiService';
 import { toNumber } from '../utils/geo';
 
 const READY_METROS = new Set(['GYEONGGI']);
@@ -67,11 +68,27 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       [metro],
     );
 
-    const festivals = festivalResult.rows.map((row) => ({
+    const dbFestivals = festivalResult.rows.map((row) => ({
       ...row,
       latitude: toNumber(row.latitude),
       longitude: toNumber(row.longitude),
+      source: 'db' as const,
     }));
+
+    let festivals = dbFestivals;
+    try {
+      const now = new Date();
+      const tourFestivals = await searchFestivals({
+        areaCode: '31',
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      });
+      if (tourFestivals.length) {
+        festivals = tourFestivals.map(toHomeFestival);
+      }
+    } catch (err) {
+      console.warn('[getHomeFeed] TourAPI fallback to DB festivals:', err);
+    }
 
     const popular = category
       ? festivals.filter((item) => item.category === category)

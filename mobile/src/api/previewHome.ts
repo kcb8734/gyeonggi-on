@@ -7,6 +7,8 @@ export const PREVIEW_HOME: HomeFeed = {
   festivals: [
     {
       id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      contentId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      source: 'tour',
       title: '수원화성문화제',
       location_name: '수원화성 행궁광장',
       latitude: 37.287,
@@ -20,6 +22,8 @@ export const PREVIEW_HOME: HomeFeed = {
     },
     {
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      contentId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      source: 'tour',
       title: '용인 한국민속촌 축제',
       location_name: '한국민속촌',
       latitude: 37.259,
@@ -33,6 +37,8 @@ export const PREVIEW_HOME: HomeFeed = {
     },
     {
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      contentId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      source: 'tour',
       title: '가평 자라섬 재즈페스티벌',
       location_name: '자라섬',
       latitude: 37.823,
@@ -46,6 +52,8 @@ export const PREVIEW_HOME: HomeFeed = {
     },
     {
       id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      contentId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      source: 'tour',
       title: '수원 영동시장 먹거리 축제',
       location_name: '수원 영동시장',
       latitude: 37.2762,
@@ -59,6 +67,8 @@ export const PREVIEW_HOME: HomeFeed = {
     },
     {
       id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      contentId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      source: 'tour',
       title: '용인 플리마켓 위크',
       location_name: '용인 기흥구청 광장',
       latitude: 37.2755,

@@ -11,6 +11,7 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import CouponsScreen from './src/screens/CouponsScreen';
 import MyScreen from './src/screens/MyScreen';
 import PromotionRegisterScreen from './src/screens/PromotionRegisterScreen';
+import TourDetailScreen from './src/screens/TourDetailScreen';
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -26,6 +27,7 @@ export type RootTabParamList = {
 export type RootStackParamList = {
   Tabs: undefined;
   PromotionRegister: undefined;
+  TourDetail: { contentId: string; contentTypeId?: string };
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -79,6 +81,14 @@ export default function App() {
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
             <Stack.Screen name="PromotionRegister" options={{ title: '자율 할인 등록' }}>
               {() => <PromotionRegisterScreen merchantId={DEV_MERCHANT_ID} />}
+            </Stack.Screen>
+            <Stack.Screen name="TourDetail" options={{ title: '상세 보기' }}>
+              {({ route }) => (
+                <TourDetailScreen
+                  contentId={route.params.contentId}
+                  contentTypeId={route.params.contentTypeId}
+                />
+              )}
             </Stack.Screen>
           </Stack.Navigator>
         </NavigationContainer>

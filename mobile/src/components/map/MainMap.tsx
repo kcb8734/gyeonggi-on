@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { issueCoupon } from '../../api/coupons';
 import { FESTIVAL_FOCUS_DELTA, GYEONGGI_DEFAULT_REGION } from '../../constants/map';
 import { useFestivalMap } from '../../hooks/useFestivalMap';
 import type { MapRegion, MerchantPin } from '../../types/map';
+import type { TourPlace } from '../../types/tour';
+import { TOUR_KIND_META } from '../../types/tour';
 import { MapView, Marker, PROVIDER_GOOGLE } from './CompatibleMap';
 import CategoryFilterBar from './CategoryFilterBar';
 import FestivalChipBar from './FestivalChipBar';
@@ -18,6 +21,7 @@ interface MainMapProps {
 
 export default function MainMap({ festivalId, userId }: MainMapProps) {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
   const {
     festivals,
@@ -30,12 +34,15 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     setCategory,
     categories,
     userLocation,
+    tourPlaces,
     loadingFestivals,
     loadingMerchants,
+    loadingTour,
     error,
     reload,
   } = useFestivalMap(festivalId);
 
+  const [selectedPlace, setSelectedPlace] = useState<TourPlace | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<MerchantPin | null>(null);
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [issuing, setIssuing] = useState(false);
@@ -74,6 +81,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
 
   const handleSelectFestival = (id: string) => {
     setSelectedMerchant(null);
+    setSelectedPlace(null);
     setCouponCode(null);
     setIssueError(null);
     setSelectedFestivalId(id);
@@ -81,6 +89,14 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
 
   const handleSelectMerchant = (merchant: MerchantPin) => {
     setSelectedMerchant(merchant);
+    setSelectedPlace(null);
+    setCouponCode(null);
+    setIssueError(null);
+  };
+
+  const handleSelectPlace = (place: TourPlace) => {
+    setSelectedPlace(place);
+    setSelectedMerchant(null);
     setCouponCode(null);
     setIssueError(null);
   };
@@ -136,10 +152,27 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
           />
         ))}
 
+        {tourPlaces.map((place) => {
+          const meta = TOUR_KIND_META[place.kind] ?? TOUR_KIND_META.other;
+          return (
+            <Marker
+              key={`tour-${place.contentId}`}
+              coordinate={{ latitude: place.mapY, longitude: place.mapX }}
+              pinColor={meta.pinColor}
+              badgeLabel={meta.badge}
+              title={place.title}
+              description={place.address}
+              onPress={() => handleSelectPlace(place)}
+            />
+          );
+        })}
+
         {merchants.map((merchant) => (
           <Marker
             key={`merchant-${merchant.id}`}
             coordinate={{ latitude: merchant.latitude, longitude: merchant.longitude }}
+            pinColor="green"
+            badgeLabel={`${Math.round(merchant.total_discount_rate)}%`}
             onPress={() => handleSelectMerchant(merchant)}
             tracksViewChanges={false}
           >
@@ -174,7 +207,24 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
           <MapLegend />
           <RecenterButton onPress={handleRecenter} />
         </View>
-        {selectedFestival ? (
+        {selectedPlace ? (
+          <View style={styles.festivalCard}>
+            <Text style={styles.festivalTitle}>{selectedPlace.title}</Text>
+            <Text style={styles.festivalMeta}>
+              {TOUR_KIND_META[selectedPlace.kind].label}
+              {selectedPlace.address ? ` · ${selectedPlace.address}` : ''}
+            </Text>
+            <Text
+              style={styles.detailLink}
+              onPress={() => navigation.navigate('TourDetail', {
+                contentId: selectedPlace.contentId,
+                contentTypeId: selectedPlace.contentTypeId,
+              })}
+            >
+              상세 보기
+            </Text>
+          </View>
+        ) : selectedFestival ? (
           <View style={styles.festivalCard}>
             <Text style={styles.festivalTitle}>{selectedFestival.title}</Text>
             <Text style={styles.festivalMeta}>
@@ -185,15 +235,15 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         ) : (
           <View style={styles.festivalCard}>
             <Text style={styles.festivalTitle}>경기온 축제 지도</Text>
-            <Text style={styles.festivalMeta}>빨간 핀 또는 상단 칩에서 축제를 선택하세요</Text>
+            <Text style={styles.festivalMeta}>축제·관광지·맛집 핀을 눌러 상세를 확인하세요</Text>
           </View>
         )}
       </View>
 
       <View style={styles.centerOverlay} pointerEvents="none">
         <MapLoadingOverlay
-          visible={loadingFestivals || loadingMerchants}
-          label={loadingFestivals ? '주변 축제를 불러오는 중' : '제휴업소를 불러오는 중'}
+          visible={loadingFestivals || loadingMerchants || loadingTour}
+          label={loadingFestivals ? '주변 축제를 불러오는 중' : loadingTour ? '주변 관광지를 불러오는 중' : '제휴업소를 불러오는 중'}
         />
       </View>
 
@@ -256,6 +306,7 @@ const styles = StyleSheet.create({
   },
   festivalTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
   festivalMeta: { fontSize: 12, color: '#6B7280', marginTop: 4 },
+  detailLink: { marginTop: 8, color: '#2563EB', fontWeight: '800', fontSize: 13 },
   discountPin: {
     backgroundColor: '#16A34A',
     borderRadius: 14,
