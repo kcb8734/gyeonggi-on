@@ -8,12 +8,14 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/app.js",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/utils/*.test.ts",
     "db:migrate": "for f in migrations/*.sql; do echo \"Applying $f\"; psql \"$DATABASE_URL\" -f \"$f\"; done"
   },
   "dependencies": {
     "express": "^4.19.2",
     "pg": "^8.12.0",
     "helmet": "^7.1.0",
+    "cors": "^2.8.5",
     "express-rate-limit": "^7.4.0",
     "jsonwebtoken": "^9.0.2",
     "dotenv": "^16.4.5"
@@ -23,6 +25,7 @@
     "@types/node": "^20.14.0",
     "@types/pg": "^8.11.6",
     "@types/jsonwebtoken": "^9.0.6",
+    "@types/cors": "^2.8.17",
     "typescript": "^5.5.0",
     "tsx": "^4.16.0"
   }

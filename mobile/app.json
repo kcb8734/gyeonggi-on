@@ -9,18 +9,30 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "kr.gyeonggion.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "주변 축제와 제휴업소를 보여주기 위해 현재 위치가 필요합니다."
+      },
       "config": {
         "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
       }
     },
     "android": {
       "package": "kr.gyeonggion.app",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "config": {
         "googleMaps": {
           "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY"
         }
       }
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "주변 축제와 제휴업소를 보여주기 위해 현재 위치가 필요합니다."
+        }
+      ]
+    ],
     "web": {
       "bundler": "metro"
     }

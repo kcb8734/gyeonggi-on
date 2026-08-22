@@ -33,7 +33,10 @@ node dist/app.js        # 또는 npm run dev (tsx watch)
 
 ## 주요 엔드포인트
 - `POST /api/promotions` — 소상공인 할인 등록 + 지자체 1:1 매칭 확정
+- `POST /api/coupons/issue` — 고객 쿠폰 발급(QR 코드) + 잔여 수량 차감
 - `POST /api/coupons/redeem` — QR 쿠폰 사용 처리 + 정산 트랜잭션 기록
+- `GET /api/festivals/nearby` — 주변/소속 지자체 축제 목록 (메인 지도, 할인 등록)
+- `GET /api/festivals/:id/map` — 축제 핀 + 활성 제휴업소 핀
 - `GET /health` — 헬스체크
 
 ## 보안/동시성 설계

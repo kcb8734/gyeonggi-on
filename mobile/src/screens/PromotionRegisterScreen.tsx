@@ -6,13 +6,9 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
+import { fetchNearbyFestivals } from '../api/festivals';
 import { API_BASE_URL } from '../config';
-
-interface Festival {
-  id: string;
-  title: string;
-  location_name: string;
-}
+import type { FestivalPin } from '../types/map';
 
 interface PromotionResponse {
   success: boolean;
@@ -27,7 +23,7 @@ interface PromotionResponse {
 const GOV_MATCH_CAP = 10; // 프론트 미리보기용 정책 캡(%) - 실제 확정치는 서버 응답 기준
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId: string }) {
-  const [festivals, setFestivals] = useState<Festival[]>([]);
+  const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
   const [discountRate, setDiscountRate] = useState<string>('5');
   const [quantity, setQuantity] = useState<string>('100');
@@ -36,8 +32,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId: st
   const [resultBadge, setResultBadge] = useState<PromotionResponse | null>(null);
 
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/api/festivals/nearby?merchant_id=${merchantId}`)
-      .then((res) => setFestivals(res.data.data ?? []))
+    fetchNearbyFestivals({ merchantId })
+      .then(setFestivals)
       .catch(() => Alert.alert('오류', '주변 축제 목록을 불러오지 못했습니다.'));
   }, [merchantId]);
 
