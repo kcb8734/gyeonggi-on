@@ -121,7 +121,7 @@ export const FESTIVAL_CATEGORIES = [
 export const COMING_SOON_MESSAGE = '해당 지역 서비스 준비 중입니다';
 
 export function getLocalities(metroId: string): Locality[] {
-  return METRO_LOCALITIES[metroId] ?? [];
+  return [...(METRO_LOCALITIES[metroId] ?? [])].sort((a, b) => a.label.localeCompare(b.label, 'ko'));
 }
 
 export function localityMatches(haystack: string, locality: Locality | null): boolean {

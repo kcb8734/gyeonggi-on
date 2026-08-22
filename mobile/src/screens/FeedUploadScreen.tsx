@@ -2,6 +2,8 @@ import React, { createElement, useRef, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { addFeedPost } from '../stores/feedStore';
+import { getAuthUser } from '../stores/authStore';
+import { pickFromCamera, pickFromGallery } from '../utils/pickImage';
 import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 
 const PRESETS = [
@@ -27,6 +29,7 @@ export default function FeedUploadScreen() {
       caption,
       festival: festivalRef.current.trim() || undefined,
       imageUrl,
+      author: getAuthUser()?.nickname,
     });
     Alert.alert('업로드 완료', '홈 피드에 바로 올라갔습니다.');
     navigation.goBack();
@@ -37,6 +40,20 @@ export default function FeedUploadScreen() {
       <Text style={styles.title}>축제 피드 올리기</Text>
       <Text style={styles.lead}>현장에서 찍은 순간을 틱톡형 카드로 공유하세요.</Text>
       <Image source={{ uri: imageUrl }} style={styles.preview} />
+      <View style={styles.pickRow}>
+        <TouchableOpacity style={styles.pickBtn} onPress={async () => {
+          const uri = await pickFromCamera();
+          if (uri) setImageUrl(uri);
+        }}>
+          <Text style={styles.pickText}>사진 촬영</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.pickBtn} onPress={async () => {
+          const uri = await pickFromGallery();
+          if (uri) setImageUrl(uri);
+        }}>
+          <Text style={styles.pickText}>갤러리에서 선택</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={styles.label}>썸네일 선택</Text>
       <View style={styles.presets}>
         {PRESETS.map((url) => (
@@ -105,6 +122,15 @@ const styles = StyleSheet.create({
   lead: { fontSize: 13, color: '#6B7280', marginTop: 6, marginBottom: 14 },
   preview: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#E5E7EB' },
   label: { fontSize: 14, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  pickRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  pickBtn: {
+    flex: 1,
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  pickText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   presets: { flexDirection: 'row', gap: 8 },
   preset: { width: 64, height: 64, borderRadius: 10 },
   presetOn: { borderWidth: 3, borderColor: '#111827' },

@@ -31,6 +31,13 @@
         {
           "locationWhenInUsePermission": "주변 축제와 제휴업소를 보여주기 위해 현재 위치가 필요합니다."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "축제 현장 피드를 올리기 위해 사진 접근이 필요합니다.",
+          "cameraPermission": "축제 현장 사진을 촬영하기 위해 카메라 접근이 필요합니다."
+        }
       ]
     ],
     "web": {

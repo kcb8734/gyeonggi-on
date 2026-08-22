@@ -16,6 +16,7 @@ import MerchantSettlementScreen from './src/screens/MerchantSettlementScreen';
 import SupportScreen from './src/screens/SupportScreen';
 import FeedUploadScreen from './src/screens/FeedUploadScreen';
 import FeedViewScreen from './src/screens/FeedViewScreen';
+import LoginScreen from './src/screens/LoginScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 
 ensureKoreanWebFont();
@@ -39,6 +40,7 @@ export type RootStackParamList = {
   Support: { topic?: 'notice' | 'help' };
   FeedUpload: undefined;
   FeedView: { postId: string };
+  Login: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -125,9 +127,10 @@ export default function App() {
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
             <Stack.Screen name="FeedUpload" component={FeedUploadScreen} options={{ title: '피드 올리기' }} />
-            <Stack.Screen name="FeedView" options={{ title: '피드 보기' }}>
+            <Stack.Screen name="FeedView" options={{ title: '피드 보기', headerTransparent: true, headerTintColor: '#fff' }}>
               {({ route }) => <FeedViewScreen postId={route.params.postId} />}
             </Stack.Screen>
+            <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인' }} />
           </Stack.Navigator>
         </NavigationContainer>
       </AppShell>

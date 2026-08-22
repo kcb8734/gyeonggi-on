@@ -2,20 +2,33 @@ import React from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppState } from '../stores/appStore';
+import { clearAuthSession, useAuthUser } from '../stores/authStore';
 
 export default function MyScreen() {
   const navigation = useNavigation<any>();
   const app = useAppState();
+  const user = useAuthUser();
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingBottom: 36 }}>
       <View style={styles.profile}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>온</Text></View>
+        {user?.avatarUrl
+          ? <Image source={{ uri: user.avatarUrl }} style={styles.avatarImg} />
+          : <View style={styles.avatar}><Text style={styles.avatarText}>온</Text></View>}
         <View style={{ flex: 1 }}>
-          <Text style={styles.hello}>반가워요, 온앤온(on&on) 회원</Text>
-          <Text style={styles.grade}>전국 축제 탐험가</Text>
+          <Text style={styles.hello}>{user ? `${user.provider === 'kakao' ? '카카오' : '구글'} 로그인` : '온앤온(on&on)'}</Text>
+          <Text style={styles.grade}>{user ? user.nickname : '로그인하고 축제를 기록하세요'}</Text>
         </View>
       </View>
+      {user ? (
+        <TouchableOpacity style={styles.loginGhost} onPress={() => clearAuthSession()}>
+          <Text style={styles.loginGhostText}>로그아웃</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.loginBtnText}>카카오 / 구글로 로그인</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.stats}>
         <View style={styles.stat}>
@@ -123,6 +136,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { color: '#fff', fontWeight: '900', fontSize: 18 },
+  avatarImg: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#374151' },
+  loginBtn: { marginTop: 10, backgroundColor: '#FEE500', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  loginBtnText: { fontWeight: '800', color: '#191919' },
+  loginGhost: { marginTop: 8, alignItems: 'center', paddingVertical: 8 },
+  loginGhostText: { fontWeight: '800', color: '#6B7280' },
   hello: { color: '#E5E7EB', fontSize: 13 },
   grade: { color: '#fff', fontSize: 18, fontWeight: '800', marginTop: 4 },
   stats: { flexDirection: 'row', gap: 8, marginTop: 12 },

@@ -1,46 +1,75 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { getFeedPost } from '../stores/feedStore';
+import { useFeedPosts } from '../stores/feedStore';
 
 export default function FeedViewScreen({ postId }: { postId: string }) {
-  const post = useMemo(() => getFeedPost(postId), [postId]);
+  const posts = useFeedPosts();
+  const [pageH, setPageH] = useState(640);
+  const scroller = useRef<ScrollView>(null);
+  const startIndex = useMemo(() => {
+    const index = posts.findIndex((item) => item.id === postId);
+    return index >= 0 ? index : 0;
+  }, [posts, postId]);
 
-  if (!post) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scroller.current?.scrollTo({ y: startIndex * pageH, animated: false });
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [pageH, startIndex]);
+
+  if (posts.length === 0) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>피드를 찾을 수 없습니다</Text>
+        <Text style={styles.emptyText}>아직 올라온 피드가 없습니다</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 36 }}>
-      <Image source={{ uri: post.imageUrl }} style={styles.hero} />
-      <View style={styles.body}>
-        {post.festival ? <Text style={styles.fest}>{post.festival}</Text> : null}
-        <Text style={styles.caption}>{post.caption}</Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.author}>@{post.author}</Text>
-          <Text style={styles.likes}>♥ {post.likes.toLocaleString()}</Text>
-        </View>
-        <Text style={styles.date}>{post.createdAt}</Text>
-        <Text style={styles.note}>온앤온(on&on) 축제 현장에서 올라온 세로 피드입니다.</Text>
-      </View>
-    </ScrollView>
+    <View style={styles.root} onLayout={(event) => setPageH(event.nativeEvent.layout.height)}>
+      <ScrollView
+        ref={scroller}
+        pagingEnabled
+        snapToInterval={pageH}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        showsVerticalScrollIndicator={false}
+      >
+        {posts.map((post) => (
+          <View key={post.id} style={{ height: pageH, width: '100%' }}>
+            <Image source={{ uri: post.imageUrl }} style={styles.hero} />
+            <View style={styles.scrim} />
+            <View style={styles.meta}>
+              {post.festival ? <Text style={styles.fest}>{post.festival}</Text> : null}
+              <Text style={styles.caption}>{post.caption}</Text>
+              <Text style={styles.author}>@{post.author} · ♥ {post.likes.toLocaleString()}</Text>
+              <Text style={styles.date}>{post.createdAt}</Text>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#111827' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6' },
-  emptyText: { color: '#6B7280', fontWeight: '700' },
-  hero: { width: '100%', height: 520, backgroundColor: '#1F2937' },
-  body: { padding: 20, backgroundColor: '#111827' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
+  emptyText: { color: '#9CA3AF', fontWeight: '700' },
+  hero: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(17,24,39,0.28)',
+  },
+  meta: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    bottom: 28,
+  },
   fest: { color: '#FDE68A', fontSize: 12, fontWeight: '800', marginBottom: 8 },
   caption: { color: '#fff', fontSize: 22, fontWeight: '800', lineHeight: 30 },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
-  author: { color: '#E5E7EB', fontSize: 14, fontWeight: '700' },
-  likes: { color: '#FCA5A5', fontSize: 14, fontWeight: '800' },
-  date: { color: '#9CA3AF', fontSize: 12, marginTop: 8 },
-  note: { color: '#9CA3AF', fontSize: 12, marginTop: 18, lineHeight: 18 },
+  author: { color: '#E5E7EB', fontSize: 14, fontWeight: '700', marginTop: 12 },
+  date: { color: '#9CA3AF', fontSize: 12, marginTop: 6 },
 });

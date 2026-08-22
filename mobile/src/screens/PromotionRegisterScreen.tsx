@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Switch,
 } from 'react-native';
-import ImeTextInput from '../components/ui/ImeTextInput';
+import IsolatedImeField from '../components/ui/IsolatedImeField';
 import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
@@ -30,7 +30,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
   const businessNameRef = useRef('');
-  const [businessNumber, setBusinessNumber] = useState('');
+  const businessNumberRef = useRef('');
   const [discountRate, setDiscountRate] = useState<string>('10');
   const [quantity, setQuantity] = useState<string>('100');
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>('5000');
@@ -54,7 +54,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
   const handleVerify = async () => {
     const businessName = businessNameRef.current.trim();
-    if (businessName.length < 1 || businessNumber.replace(/\D/g, '').length !== 10) {
+    const businessNumber = businessNumberRef.current.replace(/\D/g, '');
+    if (businessName.length < 1 || businessNumber.length !== 10) {
       Alert.alert('알림', '상호명과 사업자등록번호 10자리를 입력해주세요.');
       return;
     }
@@ -87,7 +88,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
         merchant_id: merchantId,
         business_name: businessNameRef.current.trim(),
-        business_number: businessNumber,
+        business_number: businessNumberRef.current.replace(/\D/g, ''),
         festival_id: selectedFestivalId,
         title: `${festivals.find((f) => f.id === selectedFestivalId)?.title ?? ''} 제휴 할인`,
         merchant_discount_rate: parseFloat(discountRate),
@@ -108,26 +109,22 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
       <Text style={styles.header}>사장님 자율 할인 등록</Text>
       <Text style={styles.note}>국세청 계속사업자 확인 후 상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 
       <Text style={styles.label}>상호명</Text>
-      <ImeTextInput
-        style={styles.input}
-        onChangeText={(text) => {
-          businessNameRef.current = text;
-        }}
+      <IsolatedImeField
+        valueRef={businessNameRef}
         placeholder="예: 화성행궁 한정식"
+        inputMode="text"
       />
 
       <Text style={styles.label}>사업자등록번호 (10자리)</Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="number-pad"
-        value={businessNumber}
-        onChangeText={setBusinessNumber}
+      <IsolatedImeField
+        valueRef={businessNumberRef}
         placeholder="1234567890"
+        inputMode="numeric"
         maxLength={12}
       />
       <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>

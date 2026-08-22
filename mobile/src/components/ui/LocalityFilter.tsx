@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import IsolatedImeField from './IsolatedImeField';
 import { getLocalities, type Locality, type MetroRegion } from '../../constants/regions';
 
 const ALL = '전체';
@@ -12,8 +13,15 @@ interface Props {
 
 export default function LocalityFilter({ metro, value, onChange }: Props) {
   const [open, setOpen] = useState(false);
-  const items = useMemo(() => getLocalities(metro.id), [metro.id]);
-  const selected = items.find((item) => item.id === value) ?? null;
+  const [query, setQuery] = useState('');
+  const searchRef = React.useRef('');
+  const items = useMemo(() => {
+    const all = getLocalities(metro.id);
+    const q = query.trim();
+    if (!q) return all;
+    return all.filter((item) => item.label.includes(q) || item.nameTokens.some((token) => token.includes(q)));
+  }, [metro.id, query]);
+  const selected = getLocalities(metro.id).find((item) => item.id === value) ?? null;
 
   const pick = (next: Locality | null) => {
     onChange(next?.id ?? null);
@@ -34,7 +42,14 @@ export default function LocalityFilter({ metro, value, onChange }: Props) {
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>{metro.label} 시·군·구</Text>
-            <Text style={styles.sheetLead}>{metro.covers} · 17개 광역을 온앤온(on&on) 권역으로 묶었습니다</Text>
+            <Text style={styles.sheetLead}>{metro.covers} · 가나다순으로 찾고 고를 수 있습니다</Text>
+            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+              <IsolatedImeField
+                valueRef={searchRef}
+                placeholder="시·군·구 검색 (가나다순)"
+                onLiveChange={setQuery}
+              />
+            </View>
             <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
               <TouchableOpacity style={[styles.item, !selected && styles.itemOn]} onPress={() => pick(null)}>
                 <Text style={[styles.itemText, !selected && styles.itemTextOn]}>{ALL}</Text>
