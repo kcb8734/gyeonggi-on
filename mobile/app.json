@@ -34,7 +34,9 @@
       ]
     ],
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "name": "온앤온",
+      "shortName": "on&on"
     }
   }
 }
