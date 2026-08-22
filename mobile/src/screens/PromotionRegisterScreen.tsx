@@ -59,6 +59,14 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   }, [discountRate, requestMatching]);
 
   const handleVerify = async () => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement as HTMLElement | null;
+      active?.blur?.();
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-onandon-ime-field]').forEach((el) => {
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
     const businessName = (readLiveImeValue('businessName') || businessNameRef.current).trim();
     const businessNumber = (readLiveImeValue('businessNumber') || businessNumberRef.current).replace(/\D/g, '');
     if (businessName.length < 1 || businessNumber.length !== 10) {
