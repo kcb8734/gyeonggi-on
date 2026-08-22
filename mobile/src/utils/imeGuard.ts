@@ -38,8 +38,12 @@ export function installImeGuard() {
         return desc.get!.call(this);
       },
       set(next) {
-        if (composing.has(this) && String(next) !== String(desc.get!.call(this))) {
-          return;
+        if (composing.has(this)) {
+          const current = String(desc.get!.call(this));
+          const incoming = String(next);
+          if (incoming.length < current.length && (current.startsWith(incoming) || incoming.length === 0)) {
+            return;
+          }
         }
         desc.set!.call(this, next);
       },

@@ -32,7 +32,11 @@
             enumerable: desc.enumerable,
             get: function () { return desc.get.call(this); },
             set: function (next) {
-              if (composing.has(this) && String(next) !== String(desc.get.call(this))) return;
+              if (composing.has(this)) {
+                var cur = String(desc.get.call(this));
+                var incoming = String(next);
+                if (incoming.length < cur.length && (cur.indexOf(incoming) === 0 || incoming.length === 0)) return;
+              }
               desc.set.call(this, next);
             }
           });

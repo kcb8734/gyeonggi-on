@@ -12,6 +12,7 @@ export default function IsolatedImeField({
   maxLength,
   onLiveChange,
   multiline = false,
+  fieldKey,
 }: {
   valueRef: React.MutableRefObject<string>;
   placeholder: string;
@@ -19,6 +20,7 @@ export default function IsolatedImeField({
   maxLength?: number;
   onLiveChange?: (value: string) => void;
   multiline?: boolean;
+  fieldKey?: string;
 }) {
   const hostRef = useRef<View>(null);
   const liveRef = useRef(onLiveChange);
@@ -37,6 +39,7 @@ export default function IsolatedImeField({
       inputMode,
       maxLength,
       initialValue: valueRefStable.current.current,
+      fieldKey,
       host,
     });
     const sync = () => {
@@ -45,12 +48,17 @@ export default function IsolatedImeField({
     };
     field.addEventListener('input', sync);
     field.addEventListener('change', sync);
+    field.addEventListener('blur', sync);
+    field.addEventListener('compositionend', sync);
     return () => {
+      sync();
       field.removeEventListener('input', sync);
       field.removeEventListener('change', sync);
+      field.removeEventListener('blur', sync);
+      field.removeEventListener('compositionend', sync);
       dispose();
     };
-  }, [inputMode, maxLength, multiline, placeholder]);
+  }, [fieldKey, inputMode, maxLength, multiline, placeholder]);
 
   return <View ref={hostRef} style={{ height: multiline ? 96 : 48, width: '100%' }} />;
 }

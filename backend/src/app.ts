@@ -14,7 +14,9 @@ import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
 
 const app = express();
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors());
 app.use(express.json());
 

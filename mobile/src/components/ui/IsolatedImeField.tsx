@@ -9,6 +9,7 @@ export default function IsolatedImeField({
   maxLength,
   onLiveChange,
   multiline = false,
+  fieldKey: _fieldKey,
 }: {
   valueRef: React.MutableRefObject<string>;
   placeholder: string;
@@ -16,6 +17,7 @@ export default function IsolatedImeField({
   maxLength?: number;
   onLiveChange?: (value: string) => void;
   multiline?: boolean;
+  fieldKey?: string;
 }) {
   return (
     <TextInput

@@ -1,4 +1,5 @@
 import { api } from './client';
+import { API_BASE_URL } from '../config';
 
 export interface MerchantVerifyResult {
   success: boolean;
@@ -76,15 +77,29 @@ export async function verifyMerchant(params: {
     business_number: params.businessNumber,
     business_name: params.businessName,
   };
-  const res = await api.post<MerchantVerifyResult>('/api/merchants/verify', payload, {
-    timeout: 15000,
-    validateStatus: () => true,
-  });
-  if (res.data && typeof res.data === 'object' && 'success' in res.data) {
-    return res.data;
+
+  const urls = [
+    API_BASE_URL ? `${API_BASE_URL}/api/merchants/verify` : '',
+    typeof window !== 'undefined' ? `${window.location.origin}/api/merchants/verify` : '',
+    'http://127.0.0.1:4000/api/merchants/verify',
+  ].filter((url, index, list) => url && list.indexOf(url) === index);
+
+  let lastMessage = '국세청 상태조회에 실패했습니다.';
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null) as MerchantVerifyResult | null;
+      if (data && typeof data === 'object' && 'success' in data) {
+        return data;
+      }
+      lastMessage = `국세청 상태조회에 실패했습니다. (HTTP ${res.status || 0})`;
+    } catch {
+      lastMessage = '국세청 확인 서버에 연결하지 못했습니다.';
+    }
   }
-  return {
-    success: false,
-    message: `국세청 상태조회에 실패했습니다. (HTTP ${res.status || 0})`,
-  };
+  return { success: false, message: lastMessage };
 }

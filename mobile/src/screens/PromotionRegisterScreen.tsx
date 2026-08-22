@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import IsolatedImeField from '../components/ui/IsolatedImeField';
+import { readLiveImeValue } from '../utils/nativeImeHost';
 import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
@@ -58,8 +59,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   }, [discountRate, requestMatching]);
 
   const handleVerify = async () => {
-    const businessName = businessNameRef.current.trim();
-    const businessNumber = businessNumberRef.current.replace(/\D/g, '');
+    const businessName = (readLiveImeValue('businessName') || businessNameRef.current).trim();
+    const businessNumber = (readLiveImeValue('businessNumber') || businessNumberRef.current).replace(/\D/g, '');
     if (businessName.length < 1 || businessNumber.length !== 10) {
       setNtsResult({ success: false, message: '상호명과 사업자등록번호 10자리를 입력해주세요.' });
       return;
@@ -85,7 +86,11 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       Alert.alert('알림', '국세청 계속사업자 확인 후에 등록할 수 있습니다.');
       return;
     }
-    if (!mainMenuRef.current.trim() || !featuresRef.current.trim()) {
+    const businessName = (readLiveImeValue('businessName') || businessNameRef.current).trim();
+    const businessNumber = (readLiveImeValue('businessNumber') || businessNumberRef.current).replace(/\D/g, '');
+    const mainMenu = (readLiveImeValue('mainMenu') || mainMenuRef.current).trim();
+    const features = (readLiveImeValue('features') || featuresRef.current).trim();
+    if (!mainMenu || !features) {
       Alert.alert('알림', '주요 메뉴와 특징을 입력한 뒤 쿠폰을 등록해주세요.');
       return;
     }
@@ -97,11 +102,11 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     try {
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
         merchant_id: merchantId,
-        business_name: businessNameRef.current.trim(),
-        business_number: businessNumberRef.current.replace(/\D/g, ''),
+        business_name: businessName,
+        business_number: businessNumber,
         festival_id: selectedFestivalId,
-        main_menu: mainMenuRef.current.trim(),
-        features: featuresRef.current.trim(),
+        main_menu: mainMenu,
+        features,
         title: `${festivals.find((f) => f.id === selectedFestivalId)?.title ?? ''} 제휴 할인`,
         merchant_discount_rate: parseFloat(discountRate),
         max_discount_amount: parseFloat(maxDiscountAmount),
@@ -130,6 +135,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
       <Text style={styles.label}>상호명</Text>
       <IsolatedImeField
+        fieldKey="businessName"
         valueRef={businessNameRef}
         placeholder="예: 화성행궁 한정식"
         inputMode="text"
@@ -137,6 +143,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
       <Text style={styles.label}>사업자등록번호 (10자리)</Text>
       <IsolatedImeField
+        fieldKey="businessNumber"
         valueRef={businessNumberRef}
         placeholder="1234567890"
         inputMode="numeric"
@@ -161,12 +168,14 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           <Text style={styles.note}>사업자 확인이 끝났습니다. 쿠폰 등록 전에 상가를 소개해 주세요.</Text>
           <Text style={styles.label}>주요 메뉴</Text>
           <IsolatedImeField
+            fieldKey="mainMenu"
             valueRef={mainMenuRef}
             placeholder="예: 궁중갈비탕, 수원왕갈비, 김치찌개"
             multiline
           />
           <Text style={styles.label}>특징</Text>
           <IsolatedImeField
+            fieldKey="features"
             valueRef={featuresRef}
             placeholder="예: 행궁 앞 30년 노포, 당일 손질 고기"
             multiline
