@@ -1,5 +1,109 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
+import { generateCouponCode } from '../utils/couponCode';
+
+/**
+ * POST /api/coupons/issue
+ * 고객이 제휴업소 핀에서 쿠폰을 다운로드(QR 발급)할 때 호출.
+ * 이미 ISSUED 쿠폰이 있으면 기존 코드를 그대로 반환(재다운로드).
+ */
+export const issueCoupon = async (req: Request, res: Response) => {
+  const { user_id, promotion_id } = req.body;
+
+  if (!user_id || !promotion_id) {
+    return res.status(400).json({ success: false, message: 'user_id와 promotion_id가 필요합니다.' });
+  }
+
+  // TODO(보안): req.user(인증 미들웨어에서 주입)의 userId와 body.user_id가
+  // 일치하는지 검증하여, 다른 사용자 명의로 쿠폰을 발급하는 것을 방지해야 함.
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const promotionResult = await client.query(
+      `SELECT id, status, remaining_quantity, start_time, end_time
+       FROM discount_promotions
+       WHERE id = $1
+       FOR UPDATE`,
+      [promotion_id],
+    );
+
+    if (promotionResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: '프로모션을 찾을 수 없습니다.' });
+    }
+
+    const promotion = promotionResult.rows[0];
+    if (promotion.status !== 'ACTIVE' || new Date(promotion.end_time) < new Date()) {
+      await client.query('ROLLBACK');
+      return res.status(410).json({ success: false, message: '만료되었거나 종료된 프로모션입니다.' });
+    }
+    if (new Date(promotion.start_time) > new Date()) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ success: false, message: '아직 시작되지 않은 프로모션입니다.' });
+    }
+
+    const existing = await client.query(
+      `SELECT coupon_code FROM user_coupons
+       WHERE user_id = $1 AND promotion_id = $2 AND status = 'ISSUED'
+       LIMIT 1`,
+      [user_id, promotion_id],
+    );
+
+    if ((existing.rowCount ?? 0) > 0) {
+      await client.query('COMMIT');
+      return res.status(200).json({
+        success: true,
+        message: '이미 발급된 쿠폰입니다.',
+        data: { coupon_code: existing.rows[0].coupon_code, already_issued: true },
+      });
+    }
+
+    const decrement = await client.query(
+      `UPDATE discount_promotions
+       SET remaining_quantity = remaining_quantity - 1,
+           status = CASE WHEN remaining_quantity <= 1 THEN 'EXHAUSTED' ELSE status END
+       WHERE id = $1 AND remaining_quantity > 0 AND status = 'ACTIVE'
+       RETURNING remaining_quantity`,
+      [promotion_id],
+    );
+
+    if (decrement.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ success: false, message: '쿠폰이 모두 소진되었습니다.' });
+    }
+
+    const couponCode = generateCouponCode();
+    const inserted = await client.query(
+      `INSERT INTO user_coupons (user_id, promotion_id, coupon_code, status)
+       VALUES ($1, $2, $3, 'ISSUED')
+       RETURNING coupon_code`,
+      [user_id, promotion_id, couponCode],
+    );
+
+    await client.query('COMMIT');
+
+    return res.status(201).json({
+      success: true,
+      message: '쿠폰이 발급되었습니다.',
+      data: {
+        coupon_code: inserted.rows[0].coupon_code,
+        remaining_quantity: Number(decrement.rows[0].remaining_quantity),
+      },
+    });
+  } catch (err: unknown) {
+    await client.query('ROLLBACK');
+    const code = typeof err === 'object' && err && 'code' in err ? (err as { code?: string }).code : undefined;
+    if (code === '23505') {
+      return res.status(409).json({ success: false, message: '쿠폰 코드가 중복되었습니다. 다시 시도해주세요.' });
+    }
+    console.error('[issueCoupon] Error:', err);
+    return res.status(500).json({ success: false, message: '쿠폰 발급 중 서버 오류가 발생했습니다.' });
+  } finally {
+    client.release();
+  }
+};
 
 export const redeemCoupon = async (req: Request, res: Response) => {
   const { coupon_code, original_amount } = req.body;

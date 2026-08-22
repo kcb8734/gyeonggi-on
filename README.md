@@ -18,7 +18,8 @@ webapp/
 │   │   ├── db/pool.ts                # PostgreSQL 커넥션 풀
 │   │   ├── controllers/
 │   │   │   ├── promotionController.ts  # POST /api/promotions (지자체 1:1 매칭)
-│   │   │   └── couponController.ts     # POST /api/coupons/redeem (QR 사용 + 정산)
+│   │   │   ├── couponController.ts     # POST /api/coupons/issue, /redeem
+│   │   │   └── festivalController.ts   # GET /api/festivals/nearby, /:id/map
 │   │   ├── routes/
 │   │   ├── middleware/auth.ts        # JWT 인증
 │   │   └── app.ts
@@ -30,6 +31,7 @@ webapp/
     ├── App.tsx
     ├── src/
     │   ├── config.ts
+    │   ├── components/map/MainMap.tsx        # 메인 지도 (축제/제휴업소 핀)
     │   └── screens/
     │       ├── PromotionRegisterScreen.tsx   # 사장님 자율 할인 등록 화면
     │       └── FestivalMerchantMapScreen.tsx # 축제/제휴업소 지도 화면
@@ -42,12 +44,14 @@ webapp/
 - ✅ `POST /api/promotions` — 지자체 예산 `FOR UPDATE` 잠금 → 1:1 매칭 확정(부분 매칭 로직 포함)
 - ✅ `POST /api/coupons/redeem` — 쿠폰 검증 → 할인 계산 → 예산 원자적 차감 → 정산 트랜잭션(PENDING) 기록
 - ✅ 모바일 앱 스캐폴딩 완료 — 사장님 할인 등록 화면, 축제/제휴업소 지도 화면(모달 + QR 발급)
+- ✅ `GET /api/festivals/nearby`, `GET /api/festivals/:id/map`, `POST /api/coupons/issue` — 메인 지도가 사용하는 보조 API
+- ✅ 메인 지도 컴포넌트(`MainMap`) — 주변 축제 칩, 카테고리 필터, 할인율 마커, 쿠폰 QR 시트
+- ✅ 개발용 시드 — 수원/용인/가평 축제 + 제휴업소 + 활성 프로모션
 
 ## 아직 실행/검증하지 않은 사항 (스캐폴딩 범위 밖)
 - ⬜ 실제 PostgreSQL(로컬 또는 Supabase) 기동 및 마이그레이션 적용
 - ⬜ 백엔드 서버 기동 후 API 실제 호출 테스트 (curl/Postman)
 - ⬜ `mobile/` 의 `npm install` 및 Expo 앱 실행(Expo Go/EAS Build)
-- ⬜ `GET /api/festivals/nearby`, `GET /api/festivals/:id/map`, `POST /api/coupons/issue` 등 화면에서 참조하는 보조 API (스펙 문서 범위 밖, 화면 동작을 위해 별도 구현 필요)
 - ⬜ Google Maps API Key 발급 및 `mobile/app.json`에 설정
 
 ## ⚠️ 배포 관련 중요 안내
@@ -58,5 +62,5 @@ webapp/
 1. Supabase 프로젝트 생성 후 `backend/migrations/0001_init_schema.sql` 적용, `.env`에 `DATABASE_URL` 설정
 2. `backend/`에서 `npm run dev`로 로컬 서버 기동 후 Postman으로 `/api/promotions`, `/api/coupons/redeem` 테스트
 3. `mobile/`에서 `npm install` → `npx expo start`로 Expo Go 미리보기
-4. 화면에서 참조하는 보조 API(`/api/festivals/nearby`, `/api/festivals/:id/map`, `/api/coupons/issue`) 구현
+4. `mobile/`에서 `npm install` → `npx expo start`로 메인 지도 미리보기
 5. 백엔드 호스팅 플랫폼(Railway 등) 결정 후 배포
