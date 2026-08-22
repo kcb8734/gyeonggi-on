@@ -14,6 +14,7 @@ import PromotionRegisterScreen from './src/screens/PromotionRegisterScreen';
 import TourDetailScreen from './src/screens/TourDetailScreen';
 import MerchantSettlementScreen from './src/screens/MerchantSettlementScreen';
 import SupportScreen from './src/screens/SupportScreen';
+import FeedUploadScreen from './src/screens/FeedUploadScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 
 ensureKoreanWebFont();
@@ -35,6 +36,7 @@ export type RootStackParamList = {
   TourDetail: { contentId: string; contentTypeId?: string };
   MerchantSettlement: undefined;
   Support: { topic?: 'notice' | 'help' };
+  FeedUpload: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -107,6 +109,7 @@ export default function App() {
             <Stack.Screen name="Support" options={({ route }) => ({ title: route.params?.topic === 'help' ? '고객센터' : '공지사항' })}>
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
+            <Stack.Screen name="FeedUpload" component={FeedUploadScreen} options={{ title: '피드 올리기' }} />
           </Stack.Navigator>
         </NavigationContainer>
       </AppShell>

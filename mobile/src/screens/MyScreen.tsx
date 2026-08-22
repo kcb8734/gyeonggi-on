@@ -32,6 +32,12 @@ export default function MyScreen() {
         </View>
       </View>
 
+      <TouchableOpacity style={styles.feedBtn} onPress={() => navigation.navigate('FeedUpload')}>
+        <Text style={styles.feedBtnKicker}>축제 현장 공유</Text>
+        <Text style={styles.feedBtnTitle}>틱톡형 피드 올리기</Text>
+        <Text style={styles.feedBtnBody}>지금 즐기는 축제를 세로 카드로 올려 홈 피드에 바로 보여주세요</Text>
+      </TouchableOpacity>
+
       <View style={styles.merchant}>
         <Text style={styles.merchantKicker}>사장님 전용 코너</Text>
         <Text style={styles.merchantTitle}>가맹점 쿠폰을 직접 열고 정산하세요</Text>
@@ -123,6 +129,15 @@ const styles = StyleSheet.create({
   stat: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   statNum: { fontSize: 20, fontWeight: '900', color: '#111827' },
   statLabel: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '700' },
+  feedBtn: {
+    marginTop: 16,
+    backgroundColor: '#111827',
+    borderRadius: 18,
+    padding: 16,
+  },
+  feedBtnKicker: { fontSize: 11, fontWeight: '800', color: '#FDE68A' },
+  feedBtnTitle: { fontSize: 17, fontWeight: '800', marginTop: 4, color: '#fff' },
+  feedBtnBody: { fontSize: 13, color: '#D1D5DB', marginTop: 6, lineHeight: 19 },
   merchant: {
     marginTop: 16,
     backgroundColor: '#FFF7ED',

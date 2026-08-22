@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Switch,
@@ -29,7 +29,7 @@ const GOV_MATCH_CAP = 10;
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
-  const [businessName, setBusinessName] = useState('');
+  const businessNameRef = useRef('');
   const [businessNumber, setBusinessNumber] = useState('');
   const [discountRate, setDiscountRate] = useState<string>('10');
   const [quantity, setQuantity] = useState<string>('100');
@@ -53,7 +53,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   }, [discountRate, requestMatching]);
 
   const handleVerify = async () => {
-    if (businessName.trim().length < 1 || businessNumber.replace(/\D/g, '').length !== 10) {
+    const businessName = businessNameRef.current.trim();
+    if (businessName.length < 1 || businessNumber.replace(/\D/g, '').length !== 10) {
       Alert.alert('알림', '상호명과 사업자등록번호 10자리를 입력해주세요.');
       return;
     }
@@ -85,7 +86,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     try {
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
         merchant_id: merchantId,
-        business_name: businessName,
+        business_name: businessNameRef.current.trim(),
         business_number: businessNumber,
         festival_id: selectedFestivalId,
         title: `${festivals.find((f) => f.id === selectedFestivalId)?.title ?? ''} 제휴 할인`,
@@ -114,8 +115,9 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       <Text style={styles.label}>상호명</Text>
       <ImeTextInput
         style={styles.input}
-        value={businessName}
-        onChangeText={setBusinessName}
+        onChangeText={(text) => {
+          businessNameRef.current = text;
+        }}
         placeholder="예: 화성행궁 한정식"
       />
 

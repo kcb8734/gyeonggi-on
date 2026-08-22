@@ -14,6 +14,7 @@ interface Props {
   status?: string;
   onPress?: () => void;
   cta?: string;
+  compact?: boolean;
 }
 
 export function TicketCouponCard({
@@ -27,28 +28,34 @@ export function TicketCouponCard({
   status,
   onPress,
   cta,
+  compact,
 }: Props) {
   return (
-    <TouchableOpacity style={styles.wrap} activeOpacity={0.9} onPress={onPress} disabled={!onPress}>
-      <View style={styles.notchLeft} />
-      <View style={styles.notchRight} />
-      <View style={styles.rateCol}>
-        <Text style={styles.rate}>{rate}</Text>
-        <Text style={styles.percent}>%</Text>
-        <Text style={styles.off}>OFF</Text>
+    <TouchableOpacity
+      style={[styles.wrap, compact && styles.wrapCompact]}
+      activeOpacity={0.9}
+      onPress={onPress}
+      disabled={!onPress}
+    >
+      <View style={[styles.notchLeft, compact && styles.notchCompact]} />
+      <View style={[styles.notchRight, compact && styles.notchCompact]} />
+      <View style={[styles.rateCol, compact && styles.rateColCompact]}>
+        <Text style={[styles.rate, compact && styles.rateCompact]}>{rate}</Text>
+        <Text style={[styles.percent, compact && styles.percentCompact]}>%</Text>
+        {compact ? null : <Text style={styles.off}>OFF</Text>}
       </View>
-      <View style={styles.dash} />
-      <View style={styles.body}>
-        <Text style={styles.shop} numberOfLines={1}>{shop}</Text>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        {festival ? <Text style={styles.fest} numberOfLines={1}>{festival}</Text> : null}
-        <View style={styles.metaRow}>
+      <View style={[styles.dash, compact && styles.dashCompact]} />
+      <View style={[styles.body, compact && styles.bodyCompact]}>
+        <Text style={[styles.shop, compact && styles.shopCompact]} numberOfLines={1}>{shop}</Text>
+        {compact ? null : <Text style={styles.title} numberOfLines={2}>{title}</Text>}
+        {!compact && festival ? <Text style={styles.fest} numberOfLines={1}>{festival}</Text> : null}
+        <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
           {matched ? <Text style={styles.badge}>지자체 1:1 매칭</Text> : <Text style={styles.self}>상가 자체 할인</Text>}
-          {expires ? <Text style={styles.expire}>~ {expires}</Text> : null}
+          {!compact && expires ? <Text style={styles.expire}>~ {expires}</Text> : null}
         </View>
-        {remaining != null ? <Text style={styles.remain}>잔여 {remaining.toLocaleString()}장</Text> : null}
-        {status ? <Text style={styles.status}>{status === 'ISSUED' ? '사용 가능' : status}</Text> : null}
-        {cta ? <Text style={styles.cta}>{cta}</Text> : null}
+        {!compact && remaining != null ? <Text style={styles.remain}>잔여 {remaining.toLocaleString()}장</Text> : null}
+        {!compact && status ? <Text style={styles.status}>{status === 'ISSUED' ? '사용 가능' : status}</Text> : null}
+        {cta ? <Text style={[styles.cta, compact && styles.ctaCompact]}>{cta}</Text> : null}
       </View>
     </TouchableOpacity>
   );
@@ -90,6 +97,11 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     minHeight: 118,
   },
+  wrapCompact: {
+    minHeight: 72,
+    borderRadius: 14,
+    marginBottom: 0,
+  },
   notchLeft: {
     position: 'absolute',
     left: 86,
@@ -114,6 +126,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
+  notchCompact: {
+    left: 60,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
   rateCol: {
     width: 96,
     backgroundColor: '#E0392A',
@@ -121,8 +139,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
   },
+  rateColCompact: { width: 68, paddingVertical: 8 },
   rate: { color: '#fff', fontSize: 34, fontWeight: '900', lineHeight: 36 },
+  rateCompact: { fontSize: 22, lineHeight: 24 },
   percent: { color: '#fff', fontSize: 16, fontWeight: '800', marginTop: -2 },
+  percentCompact: { fontSize: 12, marginTop: 0 },
   off: { color: '#FECACA', fontSize: 11, fontWeight: '800', marginTop: 2 },
   dash: {
     width: 1,
@@ -131,8 +152,13 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     marginVertical: 14,
   },
+  dashCompact: { marginVertical: 8 },
   body: { flex: 1, padding: 12, justifyContent: 'center' },
+  bodyCompact: { paddingVertical: 8, paddingHorizontal: 10 },
   shop: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  shopCompact: { fontSize: 13 },
+  metaRowCompact: { marginTop: 4 },
+  ctaCompact: { marginTop: 4, fontSize: 11 },
   title: { fontSize: 12, color: '#4B5563', marginTop: 3 },
   fest: { fontSize: 11, color: '#2563EB', fontWeight: '700', marginTop: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' },

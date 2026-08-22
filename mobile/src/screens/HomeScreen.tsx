@@ -22,6 +22,7 @@ import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
 import FestivalDetailPopup from '../components/ui/FestivalDetailPopup';
 import { TicketCouponCard, ticketFromPromotion } from '../components/ui/TicketCouponCard';
+import FeedRail from '../components/ui/FeedRail';
 import {
   addSchedule,
   addWalletCoupon,
@@ -196,8 +197,9 @@ export default function HomeScreen() {
         <Text style={styles.section}>선택 지역 할인쿠폰</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
           {filteredPromotions.map((promo) => (
-            <View key={promo.id} style={{ width: 300 }}>
+            <View key={promo.id} style={{ width: 260 }}>
               <TicketCouponCard
+                compact
                 {...ticketFromPromotion(promo, issuingId === promo.id ? '발급 중...' : '쿠폰 받기')}
                 onPress={() => handleIssue(promo)}
               />
@@ -205,9 +207,12 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
+        <Text style={styles.section}>축제 현장 피드</Text>
+        <FeedRail />
+
         <Text style={styles.section}>현재 인기 축제</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-          {[{ id: ALL, icon: '✨', label: ALL }, ...FESTIVAL_CATEGORIES].map((item) => {
+        <View style={styles.catBar}>
+          {[{ id: ALL, label: ALL }, ...FESTIVAL_CATEGORIES].map((item) => {
             const active = category === item.id;
             return (
               <TouchableOpacity
@@ -215,12 +220,11 @@ export default function HomeScreen() {
                 style={[styles.catTab, active && styles.catTabActive]}
                 onPress={() => setCategory(item.id)}
               >
-                <Text style={styles.catIcon}>{item.icon}</Text>
                 <Text style={[styles.catText, active && styles.catTextActive]}>{item.label}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
 
         {popular.length === 0 ? (
           <Text style={styles.empty}>이 달의 해당 카테고리 축제가 없습니다</Text>
@@ -316,21 +320,23 @@ const styles = StyleSheet.create({
   mapHintText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   section: { fontSize: 17, fontWeight: '800', marginTop: 20, marginHorizontal: 16, color: '#111827' },
   carousel: { paddingHorizontal: 16, paddingTop: 10, gap: 10 },
-  catRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8 },
-  catTab: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minWidth: 72,
+  catBar: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  catTabActive: { backgroundColor: '#111827', borderColor: '#111827' },
-  catIcon: { fontSize: 16 },
-  catText: { fontSize: 11, fontWeight: '700', color: '#374151', marginTop: 2 },
-  catTextActive: { color: '#fff' },
+  catTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  catTabActive: { borderBottomColor: '#111827' },
+  catText: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+  catTextActive: { fontWeight: '800', color: '#111827' },
   grid: {
     paddingHorizontal: 16,
     paddingTop: 12,
