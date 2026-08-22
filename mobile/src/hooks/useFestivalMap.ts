@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Location from 'expo-location';
 import { fetchFestivalMap, fetchNearbyFestivals } from '../api/festivals';
-import { ALL_CATEGORIES } from '../constants/map';
+import { fetchTourNearby } from '../api/tour';
+import { ALL_CATEGORIES, GYEONGGI_DEFAULT_REGION } from '../constants/map';
 import type { FestivalPin, MerchantPin } from '../types/map';
+import type { TourPlace } from '../types/tour';
 
 export function useFestivalMap(initialFestivalId?: string) {
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
@@ -14,6 +16,8 @@ export function useFestivalMap(initialFestivalId?: string) {
   const [loadingFestivals, setLoadingFestivals] = useState(true);
   const [loadingMerchants, setLoadingMerchants] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tourPlaces, setTourPlaces] = useState<TourPlace[]>([]);
+  const [loadingTour, setLoadingTour] = useState(false);
 
   const loadFestivals = useCallback(async () => {
     setLoadingFestivals(true);
@@ -42,6 +46,16 @@ export function useFestivalMap(initialFestivalId?: string) {
           : undefined,
       );
       setFestivals(list);
+
+      const center = coords ?? {
+        latitude: GYEONGGI_DEFAULT_REGION.latitude,
+        longitude: GYEONGGI_DEFAULT_REGION.longitude,
+      };
+      setLoadingTour(true);
+      fetchTourNearby({ mapX: center.longitude, mapY: center.latitude, radius: 3000 })
+        .then(setTourPlaces)
+        .catch(() => setTourPlaces([]))
+        .finally(() => setLoadingTour(false));
 
       if (initialFestivalId && list.some((f) => f.id === initialFestivalId)) {
         setSelectedFestivalId(initialFestivalId);
@@ -81,6 +95,21 @@ export function useFestivalMap(initialFestivalId?: string) {
           if (prev.some((f) => f.id === data.festival.id)) return prev;
           return [data.festival, ...prev];
         });
+        setLoadingTour(true);
+        fetchTourNearby({
+          mapX: data.festival.longitude,
+          mapY: data.festival.latitude,
+          radius: 3000,
+        })
+          .then((places) => {
+            if (!cancelled) setTourPlaces(places);
+          })
+          .catch(() => {
+            if (!cancelled) setTourPlaces([]);
+          })
+          .finally(() => {
+            if (!cancelled) setLoadingTour(false);
+          });
       })
       .catch(() => {
         if (!cancelled) setError('제휴업소 지도 데이터를 불러오지 못했습니다.');
@@ -115,8 +144,10 @@ export function useFestivalMap(initialFestivalId?: string) {
     setCategory,
     categories,
     userLocation,
+    tourPlaces,
     loadingFestivals,
     loadingMerchants,
+    loadingTour,
     error,
     reload: loadFestivals,
   };

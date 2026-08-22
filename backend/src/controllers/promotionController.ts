@@ -1,13 +1,15 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
 import { PoolClient } from 'pg';
-
-// 정책상 지자체 매칭 할인율의 최대 캡(%) — 정책 변경 시 이 값만 수정
-const GOV_MATCHING_CAP_RATE = 10.0;
+import {
+  fetchBusinessStatus,
+  NtsLookupError,
+  rejectionMessage,
+} from '../services/ntsService';
 
 export const createPromotion = async (req: Request, res: Response) => {
   const {
-    merchant_id,
+    merchant_id: merchantIdBody,
     festival_id,
     title,
     merchant_discount_rate,
@@ -15,17 +17,33 @@ export const createPromotion = async (req: Request, res: Response) => {
     total_quantity,
     start_time,
     end_time,
+    business_name,
+    business_number,
+    request_matching,
+    funding_type: fundingTypeBody,
   } = req.body;
+
+  const selfFunded =
+    fundingTypeBody === 'MERCHANT_ONLY' ||
+    request_matching === false ||
+    request_matching === 'false';
+  const maxRate = selfFunded ? 100 : 50;
 
   // 0. 입력 유효성 검증
   if (
-    !merchant_id || !title || merchant_discount_rate == null ||
+    (!merchantIdBody && !business_number) ||
+    !title || merchant_discount_rate == null ||
     !total_quantity || !start_time || !end_time
   ) {
     return res.status(400).json({ success: false, message: '필수 입력값이 누락되었습니다.' });
   }
-  if (merchant_discount_rate <= 0 || merchant_discount_rate > 50) {
-    return res.status(400).json({ success: false, message: '할인율은 0~50% 사이여야 합니다.' });
+  if (merchant_discount_rate <= 0 || merchant_discount_rate > maxRate) {
+    return res.status(400).json({
+      success: false,
+      message: selfFunded
+        ? '상가 자체 할인율은 0~100% 사이여야 합니다.'
+        : '할인율은 0~50% 사이여야 합니다.',
+    });
   }
 
   // TODO(보안): req.user(인증 미들웨어에서 주입)의 merchant_id와 body.merchant_id가
@@ -34,72 +52,94 @@ export const createPromotion = async (req: Request, res: Response) => {
 
   const client: PoolClient = await pool.connect();
   try {
-    await client.query('BEGIN');
+    // 1. 소상공인 조회 후 국세청 상태조회 — 계속사업자(b_stt_cd: 01)만 1:1 매칭 등록
+    let merchantResult = merchantIdBody
+      ? await client.query(
+          `SELECT id, municipality_id, is_verified, business_number, business_name
+           FROM merchants WHERE id = $1`,
+          [merchantIdBody],
+        )
+      : await client.query(
+          `SELECT id, municipality_id, is_verified, business_number, business_name
+           FROM merchants WHERE regexp_replace(business_number, '[^0-9]', '', 'g') = regexp_replace($1, '[^0-9]', '', 'g')`,
+          [business_number],
+        );
 
-    // 1. 소상공인 → 소속 지자체 조회 및 인증 여부 확인
-    const merchantResult = await client.query(
-      `SELECT id, municipality_id, is_verified FROM merchants WHERE id = $1`,
-      [merchant_id]
-    );
+    if (merchantResult.rowCount === 0 && business_number && business_name && festival_id) {
+      const festivalMunicipality = await client.query(
+        `SELECT municipality_id FROM festivals WHERE id = $1`,
+        [festival_id],
+      );
+      const municipalityId = festivalMunicipality.rows[0]?.municipality_id;
+      if (municipalityId) {
+        merchantResult = await client.query(
+          `INSERT INTO merchants
+            (owner_user_id, municipality_id, business_name, business_number, category, address, is_verified)
+           VALUES (gen_random_uuid(), $1, $2, $3, '기타', '미입력', FALSE)
+           RETURNING id, municipality_id, is_verified, business_number, business_name`,
+          [municipalityId, business_name, business_number],
+        );
+      }
+    }
 
     if (merchantResult.rowCount === 0) {
-      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, message: '등록된 소상공인 정보를 찾을 수 없습니다.' });
     }
 
     const merchant = merchantResult.rows[0];
-    if (!merchant.is_verified) {
-      await client.query('ROLLBACK');
+    const merchant_id = merchant.id;
+    let ntsStatus;
+    try {
+      ntsStatus = await fetchBusinessStatus(business_number || merchant.business_number);
+    } catch (err) {
+      if (err instanceof NtsLookupError) {
+        return res.status(err.statusCode).json({ success: false, message: err.message });
+      }
+      throw err;
+    }
+
+    await client.query(
+      `UPDATE merchants
+       SET is_verified = $2,
+           nts_verified_at = now(),
+           nts_b_stt_cd = $3,
+           business_name = COALESCE(NULLIF($4, ''), business_name)
+       WHERE id = $1`,
+      [merchant_id, ntsStatus.isActive, ntsStatus.b_stt_cd, business_name ?? ''],
+    );
+
+    if (!ntsStatus.isActive) {
       return res.status(403).json({
         success: false,
-        message: '사업자 인증이 완료되지 않은 점포는 프로모션을 등록할 수 없습니다.',
+        message: rejectionMessage(ntsStatus),
+        data: {
+          b_stt: ntsStatus.b_stt,
+          b_stt_cd: ntsStatus.b_stt_cd,
+          tax_type: ntsStatus.tax_type,
+        },
       });
     }
 
-    // 2. 지자체 예산 행에 배타적 잠금(FOR UPDATE) — 동시 등록 요청 간 경쟁 상태(Race Condition) 직렬화
-    const municipalityResult = await client.query(
-      `SELECT id, budget_balance FROM municipalities WHERE id = $1 FOR UPDATE`,
-      [merchant.municipality_id]
-    );
-
-    if (municipalityResult.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ success: false, message: '소속 지자체 정보를 찾을 수 없습니다.' });
-    }
-
-    const budgetBalance = Number(municipalityResult.rows[0].budget_balance);
-
-    // 3. 예상 지자체 지원 최대 노출액(Worst-case Exposure) 산정
-    //    정책: 점주 할인율만큼 1:1 매칭 (정책 캡 이내)
-    //    "전체 발급분이 모두 사용되고 매 건 max_discount_amount까지 소진"되는 최악의 시나리오 기준으로 필요 예산을 계산
-    const requestedGovRate = Math.min(merchant_discount_rate, GOV_MATCHING_CAP_RATE);
-    const totalRateIfMatched = merchant_discount_rate + requestedGovRate;
-    const govShareRatio = requestedGovRate / totalRateIfMatched; // 총 할인액 중 지자체 부담 비율
-    const perCouponCap = max_discount_amount ?? 0;
-    const estimatedGovExposure = perCouponCap * govShareRatio * total_quantity;
+    await client.query('BEGIN');
 
     let appliedGovRate = 0;
-    let matchNote = '지자체 예산 부족으로 매칭 할인이 적용되지 않았습니다.';
+    let matchingStatus = 'NONE';
+    let fundingType = 'MERCHANT_ONLY';
+    let matchNote = `상가 자체 할인 쿠폰(${merchant_discount_rate}%)이 즉시 발행됩니다. 지자체 매칭 없이 점주가 전액 부담합니다.`;
 
-    if (budgetBalance <= 0) {
-      appliedGovRate = 0;
-    } else if (estimatedGovExposure <= budgetBalance) {
-      // 예산 충분 → 100% 매칭
-      appliedGovRate = requestedGovRate;
-      matchNote = `지자체 1:1 매칭 할인(${appliedGovRate}%)이 적용되었습니다.`;
-    } else {
-      // 예산 부족 → 가용 예산 내에서 매칭 가능한 비율로 축소(부분 매칭)
-      const affordableRatio = budgetBalance / estimatedGovExposure;
-      appliedGovRate = Math.floor(requestedGovRate * affordableRatio * 100) / 100;
-      matchNote = `지자체 예산 부족으로 매칭 할인율이 ${requestedGovRate}%에서 ${appliedGovRate}%로 축소 적용되었습니다.`;
+    if (!selfFunded) {
+      fundingType = 'MATCHED';
+      matchingStatus = 'PENDING';
+      matchNote = '국세청 확인이 완료되었습니다. 지자체 1:1 매칭은 관리자 승인 후 적용됩니다. 상가 자체 할인은 바로 사용할 수 있습니다.';
     }
 
     // 4. 프로모션 저장 (total_discount_rate는 DB GENERATED 컬럼이 자동 계산)
     const insertResult = await client.query(
       `INSERT INTO discount_promotions
         (merchant_id, festival_id, title, merchant_discount_rate, gov_matching_rate,
-         max_discount_amount, total_quantity, remaining_quantity, start_time, end_time, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, 'ACTIVE')
+         max_discount_amount, total_quantity, remaining_quantity, start_time, end_time, status,
+         funding_type, matching_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, 'ACTIVE', $10, $11)
        RETURNING *`,
       [
         merchant_id,
@@ -111,6 +151,8 @@ export const createPromotion = async (req: Request, res: Response) => {
         total_quantity,
         start_time,
         end_time,
+        fundingType,
+        matchingStatus,
       ]
     );
 

@@ -8,7 +8,7 @@
 - 📄 https://www.genspark.ai/doc_agent?id=8ce0902e-f615-4b49-9938-bc51577d44c3
 
 ## 저장소 구조 (Monorepo)
-이 저장소는 **두 개의 독립 프로젝트**로 구성됩니다. (루트의 `src/`, `wrangler.jsonc` 등은 Cloudflare Pages 템플릿 초기 스캐폴딩 잔재로, 이 프로젝트에서는 사용하지 않습니다.)
+`backend/`, `mobile/`, `admin/` 세 프로젝트로 구성됩니다. (루트 Vite/Cloudflare 스캐폴딩은 사용하지 않습니다.)
 
 ```
 webapp/
@@ -42,6 +42,7 @@ webapp/
 - ✅ PostgreSQL 6개 테이블 마이그레이션 SQL (`municipalities`, `festivals`, `merchants`, `discount_promotions`, `user_coupons`, `settlement_transactions`)
 - ✅ 백엔드 스캐폴딩 완료 — `npm install` 및 `tsc --noEmit` 타입체크 **통과 확인**
 - ✅ `POST /api/promotions` — 지자체 예산 `FOR UPDATE` 잠금 → 1:1 매칭 확정(부분 매칭 로직 포함)
+- ✅ `POST /api/merchants/verify` — 국세청 사업자등록 상태조회, 계속사업자(`b_stt_cd: 01`)만 프로모션 등록
 - ✅ `POST /api/coupons/redeem` — 쿠폰 검증 → 할인 계산 → 예산 원자적 차감 → 정산 트랜잭션(PENDING) 기록
 - ✅ 모바일 앱 스캐폴딩 완료 — 사장님 할인 등록 화면, 축제/제휴업소 지도 화면(모달 + QR 발급)
 - ✅ `GET /api/festivals/nearby`, `GET /api/festivals/:id/map`, `POST /api/coupons/issue` — 메인 지도가 사용하는 보조 API

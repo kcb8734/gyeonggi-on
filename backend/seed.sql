@@ -232,3 +232,69 @@ INSERT INTO discount_promotions (
     now() - INTERVAL '1 day', now() + INTERVAL '14 days', 'ACTIVE'
   )
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE municipalities SET metro_region = 'GYEONGGI', initial_budget = COALESCE(initial_budget, budget_balance);
+
+UPDATE festivals SET
+  category = '문화/예술',
+  is_trending = TRUE,
+  image_url = 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80'
+WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+UPDATE festivals SET
+  category = '가족',
+  is_trending = TRUE,
+  image_url = 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80'
+WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+UPDATE festivals SET
+  category = '계절축제',
+  is_trending = TRUE,
+  image_url = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80'
+WHERE id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+INSERT INTO festivals (
+  id, municipality_id, title, description, start_date, end_date,
+  location_name, latitude, longitude, category, is_trending, image_url
+)
+SELECT
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  m.id,
+  '수원 영동시장 먹거리 축제',
+  '영동시장 골목 상권과 함께하는 먹거리 축제.',
+  CURRENT_DATE - INTERVAL '2 days',
+  CURRENT_DATE + INTERVAL '18 days',
+  '수원 영동시장',
+  37.2762,
+  127.0168,
+  '먹거리',
+  TRUE,
+  'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80'
+FROM municipalities m
+WHERE m.region_code = 'GG_SUWON'
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO festivals (
+  id, municipality_id, title, description, start_date, end_date,
+  location_name, latitude, longitude, category, is_trending, image_url
+)
+SELECT
+  'ffffffff-ffff-4fff-8fff-ffffffffffff',
+  m.id,
+  '용인 플리마켓 위크',
+  '핸드메이드 상점과 로컬 셀러가 모이는 플리마켓.',
+  CURRENT_DATE,
+  CURRENT_DATE + INTERVAL '10 days',
+  '용인 기흥구청 광장',
+  37.2755,
+  127.1148,
+  '플리마켓',
+  FALSE,
+  'https://images.unsplash.com/photo-1515165562839-978bbcf01262?w=800&q=80'
+FROM municipalities m
+WHERE m.region_code = 'GG_YONGIN'
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE discount_promotions
+SET funding_type = 'MATCHED', matching_status = 'APPROVED'
+WHERE gov_matching_rate > 0;

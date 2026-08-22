@@ -17,6 +17,9 @@ interface FestivalRow {
   municipality_name?: string;
   description?: string | null;
   distance_km?: string | number | null;
+  category?: string | null;
+  image_url?: string | null;
+  is_trending?: boolean;
 }
 
 interface MerchantMapRow {
@@ -44,6 +47,9 @@ function toFestivalPin(row: FestivalRow) {
     municipality_name: row.municipality_name ?? null,
     description: row.description ?? null,
     distance_km: row.distance_km != null ? toNumber(row.distance_km) : null,
+    category: row.category ?? '문화/예술',
+    image_url: row.image_url ?? null,
+    is_trending: Boolean(row.is_trending),
   };
 }
 
@@ -88,7 +94,8 @@ export const getNearbyFestivals = async (req: Request, res: Response) => {
       const result = await pool.query<FestivalRow>(
         `SELECT
            f.id, f.title, f.location_name, f.latitude, f.longitude,
-           f.start_date, f.end_date, f.description, mu.name AS municipality_name
+           f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+           mu.name AS municipality_name
          FROM festivals f
          JOIN municipalities mu ON mu.id = f.municipality_id
          WHERE f.municipality_id = $1
@@ -110,7 +117,8 @@ export const getNearbyFestivals = async (req: Request, res: Response) => {
       const result = await pool.query<FestivalRow>(
         `SELECT
            f.id, f.title, f.location_name, f.latitude, f.longitude,
-           f.start_date, f.end_date, f.description, mu.name AS municipality_name,
+           f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+           mu.name AS municipality_name,
            (${distanceSql}) AS distance_km
          FROM festivals f
          JOIN municipalities mu ON mu.id = f.municipality_id
@@ -129,7 +137,8 @@ export const getNearbyFestivals = async (req: Request, res: Response) => {
     const result = await pool.query<FestivalRow>(
       `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
-         f.start_date, f.end_date, f.description, mu.name AS municipality_name
+         f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+         mu.name AS municipality_name
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id
        WHERE f.end_date >= CURRENT_DATE
@@ -161,7 +170,8 @@ export const getFestivalMap = async (req: Request, res: Response) => {
     const festivalResult = await pool.query<FestivalRow>(
       `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
-         f.start_date, f.end_date, f.description, mu.name AS municipality_name
+         f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+         mu.name AS municipality_name
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id
        WHERE f.id = $1`,

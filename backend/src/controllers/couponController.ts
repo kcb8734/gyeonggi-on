@@ -105,6 +105,35 @@ export const issueCoupon = async (req: Request, res: Response) => {
   }
 };
 
+/** GET /api/coupons?user_id= — 내 쿠폰함 */
+export const listMyCoupons = async (req: Request, res: Response) => {
+  const userId = typeof req.query.user_id === 'string' ? req.query.user_id : '';
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'user_id가 필요합니다.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT
+         uc.id, uc.coupon_code, uc.status, uc.issued_at,
+         dp.id AS promotion_id, dp.title, dp.total_discount_rate,
+         dp.funding_type, dp.end_time,
+         m.business_name, f.title AS festival_title
+       FROM user_coupons uc
+       JOIN discount_promotions dp ON dp.id = uc.promotion_id
+       JOIN merchants m ON m.id = dp.merchant_id
+       LEFT JOIN festivals f ON f.id = dp.festival_id
+       WHERE uc.user_id = $1
+       ORDER BY uc.issued_at DESC`,
+      [userId],
+    );
+    return res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('[listMyCoupons] Error:', err);
+    return res.status(500).json({ success: false, message: '쿠폰함을 불러오지 못했습니다.' });
+  }
+};
+
 export const redeemCoupon = async (req: Request, res: Response) => {
   const { coupon_code, original_amount } = req.body;
 

@@ -1,0 +1,150 @@
+import { useEffect, useState } from 'react';
+import type { HomeFestival, HomePromotion } from '../types/home';
+import { readJson, writeJson } from '../utils/storage';
+
+export interface WalletCoupon {
+  id: string;
+  promotion_id: string;
+  coupon_code: string;
+  business_name: string;
+  title: string;
+  festival_title?: string | null;
+  total_discount_rate: number;
+  funding_type?: 'MERCHANT_ONLY' | 'MATCHED';
+  expires_at?: string;
+  status: 'ISSUED' | 'USED';
+}
+
+export interface ScheduledFestival {
+  id: string;
+  title: string;
+  start_date?: string;
+  end_date?: string;
+  location_name?: string | null;
+  remindAt: string;
+}
+
+interface AppState {
+  wallet: WalletCoupon[];
+  schedule: ScheduledFestival[];
+  recent: HomeFestival[];
+  favorites: HomeFestival[];
+  points: number;
+}
+
+const KEY = 'gyeonggi-on-app-state';
+
+const SEEDED_WALLET: WalletCoupon[] = [
+  {
+    id: 'preview-wallet-1',
+    promotion_id: 'dddddddd-dddd-4ddd-8ddd-dddddddd0001',
+    coupon_code: 'GGON-SW-1042',
+    business_name: '화성행궁 한정식',
+    title: '수원화성문화제 제휴 한정식 할인',
+    festival_title: '수원화성문화제',
+    total_discount_rate: 10,
+    funding_type: 'MATCHED',
+    expires_at: '2026-09-21',
+    status: 'ISSUED',
+  },
+];
+
+const INITIAL: AppState = {
+  wallet: SEEDED_WALLET,
+  schedule: [],
+  recent: [],
+  favorites: [],
+  points: 1280,
+};
+
+type Listener = () => void;
+let state: AppState = readJson(KEY, INITIAL);
+const listeners = new Set<Listener>();
+
+function emit(next: AppState) {
+  state = next;
+  writeJson(KEY, state);
+  listeners.forEach((fn) => fn());
+}
+
+export function getAppState(): AppState {
+  return state;
+}
+
+export function useAppState(): AppState {
+  const [value, setValue] = useState(state);
+  useEffect(() => {
+    const listen = () => setValue(getAppState());
+    listeners.add(listen);
+    return () => {
+      listeners.delete(listen);
+    };
+  }, []);
+  return value;
+}
+
+export function addWalletCoupon(coupon: WalletCoupon) {
+  const exists = state.wallet.some((item) => item.coupon_code === coupon.coupon_code);
+  emit({
+    ...state,
+    wallet: exists ? state.wallet : [coupon, ...state.wallet],
+    points: state.points + 30,
+  });
+}
+
+export function addSchedule(festival: HomeFestival) {
+  const exists = state.schedule.some((item) => item.id === festival.id);
+  if (exists) return;
+  emit({
+    ...state,
+    schedule: [
+      {
+        id: festival.id,
+        title: festival.title,
+        start_date: festival.start_date,
+        end_date: festival.end_date,
+        location_name: festival.location_name,
+        remindAt: festival.start_date ?? '',
+      },
+      ...state.schedule,
+    ],
+  });
+}
+
+export function isScheduled(id: string): boolean {
+  return state.schedule.some((item) => item.id === id);
+}
+
+export function rememberFestival(festival: HomeFestival) {
+  const next = [festival, ...state.recent.filter((item) => item.id !== festival.id)].slice(0, 8);
+  emit({ ...state, recent: next });
+}
+
+export function toggleFavorite(festival: HomeFestival) {
+  const exists = state.favorites.some((item) => item.id === festival.id);
+  emit({
+    ...state,
+    favorites: exists
+      ? state.favorites.filter((item) => item.id !== festival.id)
+      : [festival, ...state.favorites],
+  });
+}
+
+export function isFavorite(id: string): boolean {
+  return state.favorites.some((item) => item.id === id);
+}
+
+export function promotionToWallet(promo: HomePromotion, couponCode: string): WalletCoupon {
+  return {
+    id: `${promo.id}-${couponCode}`,
+    promotion_id: promo.id,
+    coupon_code: couponCode,
+    business_name: promo.business_name ?? '제휴업소',
+    title: promo.title,
+    festival_title: promo.festival_title,
+    total_discount_rate: promo.total_discount_rate,
+    funding_type: promo.funding_type,
+    expires_at: '2026-09-30',
+    status: 'ISSUED',
+  };
+}

@@ -2,7 +2,9 @@ export interface Municipality {
   id: string;
   name: string;
   region_code: string;
+  metro_region?: string;
   budget_balance: number;
+  initial_budget?: number;
   created_at: string;
 }
 
@@ -16,6 +18,9 @@ export interface Festival {
   location_name: string | null;
   latitude: number | null;
   longitude: number | null;
+  category?: string;
+  image_url?: string | null;
+  is_trending?: boolean;
   created_at: string;
 }
 
@@ -32,6 +37,8 @@ export interface Merchant {
   bank_name: string | null;
   bank_account_number: string | null;
   is_verified: boolean;
+  nts_verified_at?: string | null;
+  nts_b_stt_cd?: string | null;
   created_at: string;
 }
 
@@ -49,6 +56,8 @@ export interface DiscountPromotion {
   start_time: string;
   end_time: string;
   status: 'ACTIVE' | 'EXHAUSTED' | 'EXPIRED';
+  funding_type?: 'MERCHANT_ONLY' | 'MATCHED';
+  matching_status?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
   created_at: string;
 }
 
