@@ -1,7 +1,7 @@
-import { Region } from 'react-native-maps';
+import type { MapRegion } from '../types/map';
 
 /** 수원·용인 권이 한 화면에 보이도록 한 경기도 기본 영역 */
-export const GYEONGGI_DEFAULT_REGION: Region = {
+export const GYEONGGI_DEFAULT_REGION: MapRegion = {
   latitude: 37.275,
   longitude: 127.15,
   latitudeDelta: 0.35,

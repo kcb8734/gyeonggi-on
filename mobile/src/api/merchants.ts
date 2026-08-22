@@ -5,6 +5,7 @@ export interface MerchantVerifyResult {
   message: string;
   data?: {
     verified: boolean;
+    business_name?: string | null;
     business_number: string;
     b_stt: string;
     b_stt_cd: string;
@@ -17,10 +18,12 @@ export interface MerchantVerifyResult {
 export async function verifyMerchant(params: {
   merchantId?: string;
   businessNumber?: string;
+  businessName?: string;
 }): Promise<MerchantVerifyResult> {
   const res = await api.post<MerchantVerifyResult>('/api/merchants/verify', {
     merchant_id: params.merchantId,
     business_number: params.businessNumber,
+    business_name: params.businessName,
   });
   return res.data;
 }

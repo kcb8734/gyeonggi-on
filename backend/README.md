@@ -39,6 +39,12 @@ node dist/app.js        # 또는 npm run dev (tsx watch)
 - `POST /api/coupons/redeem` — QR 쿠폰 사용 처리 + 정산 트랜잭션 기록
 - `GET /api/festivals/nearby` — 주변/소속 지자체 축제 목록 (메인 지도, 할인 등록)
 - `GET /api/festivals/:id/map` — 축제 핀 + 활성 제휴업소 핀
+- `GET /api/home` — Korea-On 메인 피드
+- `POST /api/admin/login` — 관리자 JWT 로그인
+- `GET /api/admin/merchants` — 검증 가맹점/매칭 신청 목록
+- `POST /api/admin/merchants/:id/approve` — 1:1 매칭 승인/거절
+- `GET /api/admin/coupons/stats` — 쿠폰 발행·사용 통계
+- `GET /api/admin/budget` — 지자체 예산 잔액/집행률
 - `GET /health` — 헬스체크
 
 ## 보안/동시성 설계

@@ -15,6 +15,7 @@ import {
  */
 export const verifyMerchant = async (req: Request, res: Response) => {
   const merchantId = typeof req.body?.merchant_id === 'string' ? req.body.merchant_id : null;
+  const businessName = typeof req.body?.business_name === 'string' ? req.body.business_name.trim() : '';
   let businessNumber = typeof req.body?.business_number === 'string' ? req.body.business_number : '';
 
   try {
@@ -41,23 +42,30 @@ export const verifyMerchant = async (req: Request, res: Response) => {
 
     if (merchantId) {
       await pool.query(
-        `UPDATE merchants SET is_verified = $2 WHERE id = $1`,
-        [merchantId, verified],
+        `UPDATE merchants
+         SET is_verified = $2, nts_verified_at = now(), nts_b_stt_cd = $3,
+             business_name = COALESCE(NULLIF($4, ''), business_name)
+         WHERE id = $1`,
+        [merchantId, verified, status.b_stt_cd, businessName],
       );
     } else {
       await pool.query(
-        `UPDATE merchants SET is_verified = $2 WHERE regexp_replace(business_number, '[^0-9]', '', 'g') = $1`,
-        [normalizeBusinessNumber(businessNumber), verified],
+        `UPDATE merchants
+         SET is_verified = $2, nts_verified_at = now(), nts_b_stt_cd = $3,
+             business_name = COALESCE(NULLIF($4, ''), business_name)
+         WHERE regexp_replace(business_number, '[^0-9]', '', 'g') = $1`,
+        [normalizeBusinessNumber(businessNumber), verified, status.b_stt_cd, businessName],
       );
     }
 
     return res.status(verified ? 200 : 409).json({
       success: verified,
       message: verified
-        ? '국세청 계속사업자로 확인되었습니다.'
+        ? '국세청 계속사업자로 확인되었습니다. 상가 자체 할인은 바로 등록할 수 있습니다.'
         : rejectionMessage(status),
       data: {
         verified,
+        business_name: businessName || null,
         business_number: status.b_no,
         b_stt: status.b_stt,
         b_stt_cd: status.b_stt_cd,

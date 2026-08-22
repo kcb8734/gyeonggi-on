@@ -8,7 +8,7 @@
 - 📄 https://www.genspark.ai/doc_agent?id=8ce0902e-f615-4b49-9938-bc51577d44c3
 
 ## 저장소 구조 (Monorepo)
-이 저장소는 **두 개의 독립 프로젝트**로 구성됩니다. (루트의 `src/`, `wrangler.jsonc` 등은 Cloudflare Pages 템플릿 초기 스캐폴딩 잔재로, 이 프로젝트에서는 사용하지 않습니다.)
+`backend/`, `mobile/`, `admin/` 세 프로젝트로 구성됩니다. (루트 Vite/Cloudflare 스캐폴딩은 사용하지 않습니다.)
 
 ```
 webapp/

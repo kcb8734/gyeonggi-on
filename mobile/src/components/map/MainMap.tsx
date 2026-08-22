@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { issueCoupon } from '../../api/coupons';
 import { FESTIVAL_FOCUS_DELTA, GYEONGGI_DEFAULT_REGION } from '../../constants/map';
 import { useFestivalMap } from '../../hooks/useFestivalMap';
-import type { MerchantPin } from '../../types/map';
+import type { MapRegion, MerchantPin } from '../../types/map';
+import { MapView, Marker, PROVIDER_GOOGLE } from './CompatibleMap';
 import CategoryFilterBar from './CategoryFilterBar';
 import FestivalChipBar from './FestivalChipBar';
 import { MapErrorBanner, MapLegend, MapLoadingOverlay, RecenterButton } from './MapOverlays';
@@ -18,7 +18,7 @@ interface MainMapProps {
 
 export default function MainMap({ festivalId, userId }: MainMapProps) {
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
   const {
     festivals,
     selectedFestivalId,
@@ -41,7 +41,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState<string | null>(null);
 
-  const initialRegion = useMemo<Region>(() => {
+  const initialRegion = useMemo<MapRegion>(() => {
     if (selectedFestival) {
       return {
         latitude: selectedFestival.latitude,
