@@ -62,7 +62,7 @@ export default function App() {
     return (
       <div className="login-page">
         <form className="login-card" onSubmit={handleLogin}>
-          <p className="eyebrow">Korea-On Admin</p>
+          <p className="eyebrow">온앤온(on&on) Admin</p>
           <h1>관리자 로그인</h1>
           <label>이메일</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -79,7 +79,7 @@ export default function App() {
     <div className="dash">
       <header>
         <div>
-          <p className="eyebrow">Korea-On</p>
+          <p className="eyebrow">온앤온(on&on)</p>
           <h1>관리자 대시보드</h1>
         </div>
         <button

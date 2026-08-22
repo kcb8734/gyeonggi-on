@@ -8,6 +8,7 @@ const READY_METROS = new Set(['GYEONGGI']);
 export const METRO_REGIONS = [
   { id: 'GYEONGGI', label: '경기온', ready: true },
   { id: 'SEOUL', label: '서울온', ready: false },
+  { id: 'INCHEON', label: '인천온', ready: false },
   { id: 'GANGWON', label: '강원온', ready: false },
   { id: 'CHUNGCHEONG', label: '충청온', ready: false },
   { id: 'JEOLLA', label: '전라온', ready: false },

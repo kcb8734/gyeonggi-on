@@ -58,7 +58,7 @@ export default function FestivalDetailPopup({
               <Text style={styles.meta}>{formatRange(festival.start_date, festival.end_date)}</Text>
               <Text style={styles.meta}>{festival.location_name ?? '위치 미정'}</Text>
               <Text style={styles.overview} numberOfLines={5}>
-                {festival.description || '한국관광공사 축제 정보와 경기온 상생 할인을 함께 확인할 수 있습니다.'}
+                {festival.description || '한국관광공사 축제 정보와 온앤온(on&on) 상생 할인을 함께 확인할 수 있습니다.'}
               </Text>
 
               <View style={styles.actions}>

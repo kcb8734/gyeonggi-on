@@ -1,14 +1,19 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFeedPosts } from '../../stores/feedStore';
 
-export default function FeedRail() {
+export default function FeedRail({ onPress }: { onPress?: (postId: string) => void }) {
   const posts = useFeedPosts();
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {posts.map((post) => (
-        <View key={post.id} style={styles.card}>
+        <TouchableOpacity
+          key={post.id}
+          style={styles.card}
+          activeOpacity={0.9}
+          onPress={() => onPress?.(post.id)}
+        >
           <Image source={{ uri: post.imageUrl }} style={styles.image} />
           <View style={styles.scrim} />
           <View style={styles.meta}>
@@ -16,7 +21,7 @@ export default function FeedRail() {
             <Text style={styles.caption} numberOfLines={3}>{post.caption}</Text>
             <Text style={styles.author}>@{post.author} · ♥ {post.likes.toLocaleString()}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       ))}
     </ScrollView>
   );

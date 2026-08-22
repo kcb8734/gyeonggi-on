@@ -1,11 +1,10 @@
-import React, { createElement, useRef } from 'react';
+import React, { createElement, useEffect, useRef } from 'react';
 import { Platform, TextInput, type TextInputProps } from 'react-native';
 import { KOREAN_FONT_FAMILY } from '../../utils/koreanFont';
 
 /**
- * 웹 한글 IME: 브라우저 native input을 비제어로 둔다.
- * React 19는 defaultValue가 바뀌면 value를 다시 써서 조합이 깨지므로
- * 마운트 시점 값만 쓰고, 타이핑 중 setState로 다시 그리지 않는다.
+ * 웹: React reconcile 밖에 둔 native input.
+ * 네이티브: 비제어 TextInput.
  */
 export default function ImeTextInput({
   value,
@@ -16,37 +15,55 @@ export default function ImeTextInput({
   style,
   ...rest
 }: TextInputProps) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const onChangeRef = useRef(onChangeText);
+  onChangeRef.current = onChangeText;
   const initialValue = useRef(value ?? '');
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const host = hostRef.current;
+    if (!host || typeof document === 'undefined') return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.lang = 'ko';
+    input.setAttribute('inputmode', 'text');
+    input.autocomplete = 'off';
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.spellcheck = false;
+    input.placeholder = placeholder ?? '';
+    if (typeof maxLength === 'number') input.maxLength = maxLength;
+    input.disabled = editable === false;
+    input.style.cssText = [
+      'width:100%',
+      'box-sizing:border-box',
+      'background:#fff',
+      'border-radius:8px',
+      'border:1px solid #DDD',
+      'padding:12px',
+      'font-size:16px',
+      'line-height:22px',
+      'color:#111827',
+      `font-family:${KOREAN_FONT_FAMILY}`,
+      'outline:none',
+    ].join(';');
+
+    const onInput = () => {
+      onChangeRef.current?.(input.value);
+    };
+    input.addEventListener('input', onInput);
+    host.replaceChildren(input);
+
+    return () => {
+      input.removeEventListener('input', onInput);
+      input.remove();
+    };
+  }, [editable, maxLength, placeholder]);
+
   if (Platform.OS === 'web') {
-    return createElement('input', {
-      type: 'text',
-      lang: 'ko',
-      inputMode: 'text',
-      autoComplete: 'off',
-      autoCorrect: 'off',
-      spellCheck: false,
-      disabled: editable === false,
-      maxLength,
-      placeholder,
-      defaultValue: initialValue.current,
-      onInput: (event: { currentTarget: HTMLInputElement }) => {
-        onChangeText?.(event.currentTarget.value);
-      },
-      style: {
-        width: '100%',
-        boxSizing: 'border-box',
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        border: '1px solid #DDD',
-        padding: 12,
-        fontSize: 16,
-        lineHeight: '22px',
-        color: '#111827',
-        fontFamily: KOREAN_FONT_FAMILY,
-        outline: 'none',
-      },
-    });
+    return createElement('div', { ref: hostRef, style: { width: '100%' } });
   }
 
   return (

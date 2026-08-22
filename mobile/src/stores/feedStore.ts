@@ -66,6 +66,10 @@ export function getFeedPosts(): FeedPost[] {
   return posts;
 }
 
+export function getFeedPost(id: string): FeedPost | undefined {
+  return posts.find((item) => item.id === id);
+}
+
 export function useFeedPosts(): FeedPost[] {
   const [value, setValue] = useState(posts);
   useEffect(() => {
@@ -81,7 +85,7 @@ export function useFeedPosts(): FeedPost[] {
 export function addFeedPost(input: Omit<FeedPost, 'id' | 'likes' | 'createdAt' | 'author'> & { author?: string }) {
   const post: FeedPost = {
     id: `feed-${Date.now()}`,
-    author: input.author ?? '경기온 탐험가',
+    author: input.author ?? '온앤온 탐험가',
     caption: input.caption,
     festival: input.festival,
     imageUrl: input.imageUrl,

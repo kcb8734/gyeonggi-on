@@ -12,8 +12,8 @@ export default function MyScreen() {
       <View style={styles.profile}>
         <View style={styles.avatar}><Text style={styles.avatarText}>온</Text></View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.hello}>반가워요, 경기온 회원</Text>
-          <Text style={styles.grade}>경기도 축제 탐험가</Text>
+          <Text style={styles.hello}>반가워요, 온앤온(on&on) 회원</Text>
+          <Text style={styles.grade}>전국 축제 탐험가</Text>
         </View>
       </View>
 
@@ -87,7 +87,7 @@ export default function MyScreen() {
       <Text style={styles.section}>고객센터</Text>
       <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Support', { topic: 'notice' })}>
         <Text style={styles.menuTitle}>공지사항</Text>
-        <Text style={styles.menuMeta}>8월 축제 쿠폰 오픈 · 경기온 베타</Text>
+        <Text style={styles.menuMeta}>8월 축제 쿠폰 오픈 · 온앤온(on&on)</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Support', { topic: 'help' })}>
         <Text style={styles.menuTitle}>고객센터</Text>

@@ -98,9 +98,9 @@ const styles = StyleSheet.create({
     minHeight: 118,
   },
   wrapCompact: {
-    minHeight: 72,
+    minHeight: 64,
     borderRadius: 14,
-    marginBottom: 0,
+    marginBottom: 8,
   },
   notchLeft: {
     position: 'absolute',

@@ -15,6 +15,7 @@ import TourDetailScreen from './src/screens/TourDetailScreen';
 import MerchantSettlementScreen from './src/screens/MerchantSettlementScreen';
 import SupportScreen from './src/screens/SupportScreen';
 import FeedUploadScreen from './src/screens/FeedUploadScreen';
+import FeedViewScreen from './src/screens/FeedViewScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 
 ensureKoreanWebFont();
@@ -37,6 +38,7 @@ export type RootStackParamList = {
   MerchantSettlement: undefined;
   Support: { topic?: 'notice' | 'help' };
   FeedUpload: undefined;
+  FeedView: { postId: string };
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -61,7 +63,20 @@ function Tabs() {
         tabBarStyle: { height: 64, paddingBottom: 8, paddingTop: 8 },
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Korea-On', tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="홈" focused={focused} /> }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'on&on',
+          headerTitle: () => (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ fontSize: 20, fontWeight: '900', color: '#111827', letterSpacing: 0.3 }}>on&on</Text>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#6B7280' }}>온앤온</Text>
+            </View>
+          ),
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="홈" focused={focused} />,
+        }}
+      />
       <Tab.Screen
         name="Nearby"
         options={{ title: '내주변', tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" label="내주변" focused={focused} /> }}
@@ -110,6 +125,9 @@ export default function App() {
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
             <Stack.Screen name="FeedUpload" component={FeedUploadScreen} options={{ title: '피드 올리기' }} />
+            <Stack.Screen name="FeedView" options={{ title: '피드 보기' }}>
+              {({ route }) => <FeedViewScreen postId={route.params.postId} />}
+            </Stack.Screen>
           </Stack.Navigator>
         </NavigationContainer>
       </AppShell>

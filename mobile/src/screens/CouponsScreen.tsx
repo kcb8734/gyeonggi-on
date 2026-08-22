@@ -52,7 +52,7 @@ export default function CouponsScreen() {
           style={[styles.tab, tab === 'available' && styles.tabOn]}
           onPress={() => setTab('available')}
         >
-          <Text style={[styles.tabText, tab === 'available' && styles.tabTextOn]}>발행 가능 쿠폰</Text>
+          <Text style={[styles.tabText, tab === 'available' && styles.tabTextOn]}>사용 가능 쿠폰</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'wallet' && styles.tabOn]}
@@ -71,6 +71,7 @@ export default function CouponsScreen() {
             {promotions.map((promo) => (
               <TicketCouponCard
                 key={promo.id}
+                compact
                 {...ticketFromPromotion(promo, issuingId === promo.id ? '발급 중...' : '다운로드')}
                 onPress={() => handleIssue(promo)}
               />
@@ -85,6 +86,7 @@ export default function CouponsScreen() {
               app.wallet.map((item) => (
                 <TicketCouponCard
                   key={item.id}
+                  compact
                   {...ticketFromWallet(item)}
                   onPress={() => setSelected(item)}
                 />

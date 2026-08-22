@@ -14,7 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchHomeFeed } from '../api/home';
 import { fetchTourFestivals, homeFestivalFromTour } from '../api/tour';
 import { issueCoupon } from '../api/coupons';
-import { COMING_SOON_MESSAGE, FESTIVAL_CATEGORIES, METRO_REGIONS } from '../constants/regions';
+import {
+  COMING_SOON_MESSAGE,
+  FESTIVAL_CATEGORIES,
+  METRO_REGIONS,
+  getLocalities,
+  localityMatches,
+} from '../constants/regions';
 import { GYEONGGI_DEFAULT_REGION } from '../constants/map';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { MapView, Marker } from '../components/map/CompatibleMap';
@@ -23,6 +29,7 @@ import FestivalGridCard from '../components/ui/FestivalGridCard';
 import FestivalDetailPopup from '../components/ui/FestivalDetailPopup';
 import { TicketCouponCard, ticketFromPromotion } from '../components/ui/TicketCouponCard';
 import FeedRail from '../components/ui/FeedRail';
+import LocalityFilter from '../components/ui/LocalityFilter';
 import {
   addSchedule,
   addWalletCoupon,
@@ -39,6 +46,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [metro, setMetro] = useState('GYEONGGI');
+  const [localityId, setLocalityId] = useState<string | null>(null);
   const [category, setCategory] = useState<string>(ALL);
   const [query, setQuery] = useState('');
   const [toast, setToast] = useState<string | null>(null);
@@ -77,27 +85,37 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  const metroInfo = METRO_REGIONS.find((item) => item.id === metro) ?? METRO_REGIONS[0];
+  const locality = getLocalities(metro).find((item) => item.id === localityId) ?? null;
+
+  const locatedFestivals = useMemo(
+    () => festivals.filter((item) =>
+      localityMatches(`${item.title} ${item.location_name ?? ''} ${item.municipality_name ?? ''}`, locality),
+    ),
+    [festivals, locality],
+  );
+
   const filteredPromotions = useMemo(() => {
     const q = query.trim();
-    if (!q) return promotions;
-    return promotions.filter((item) =>
-      `${item.festival_title} ${item.business_name} ${item.title}`.includes(q),
-    );
-  }, [promotions, query]);
+    return promotions.filter((item) => {
+      const hay = `${item.festival_title ?? ''} ${item.business_name ?? ''} ${item.title}`;
+      return (!q || hay.includes(q)) && localityMatches(hay, locality);
+    });
+  }, [promotions, query, locality]);
 
   const banner = useMemo(
-    () => festivals.filter((item) => item.image_url).slice(0, 6),
-    [festivals],
+    () => locatedFestivals.filter((item) => item.image_url).slice(0, 6),
+    [locatedFestivals],
   );
 
   const popular = useMemo(() => {
     const q = query.trim();
-    return festivals.filter((item) => {
+    return locatedFestivals.filter((item) => {
       const matchCategory = category === ALL || item.category === category;
       const matchQuery = !q || `${item.title} ${item.location_name}`.includes(q);
       return matchCategory && matchQuery;
     });
-  }, [festivals, category, query]);
+  }, [locatedFestivals, category, query]);
 
   const discountByFestival = useMemo(() => {
     const map = new Map<string, number>();
@@ -119,11 +137,9 @@ export default function HomeScreen() {
   }, [promotions, selected]);
 
   const handleRegion = (id: string, ready: boolean) => {
-    if (!ready) {
-      setToast(COMING_SOON_MESSAGE);
-      return;
-    }
     setMetro(id);
+    setLocalityId(null);
+    if (!ready) setToast(COMING_SOON_MESSAGE);
   };
 
   const handleIssue = async (promotion: HomePromotion) => {
@@ -148,6 +164,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
+        <View style={styles.brandBar}>
+          <Text style={styles.brandName}>온앤온(on&on)</Text>
+          <Text style={styles.brandLead}>전국 17개 광역 · 권역을 고르면 시·군·구가 열립니다</Text>
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
           {METRO_REGIONS.map((region) => {
             const active = metro === region.id;
@@ -162,6 +182,7 @@ export default function HomeScreen() {
             );
           })}
         </ScrollView>
+        <LocalityFilter metro={metroInfo} value={localityId} onChange={setLocalityId} />
 
         <View style={styles.searchWrap}>
           <TextInput
@@ -208,7 +229,7 @@ export default function HomeScreen() {
         </ScrollView>
 
         <Text style={styles.section}>축제 현장 피드</Text>
-        <FeedRail />
+        <FeedRail onPress={(postId) => navigation.navigate('FeedView', { postId })} />
 
         <Text style={styles.section}>현재 인기 축제</Text>
         <View style={styles.catBar}>
@@ -276,7 +297,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
-  regionRow: { paddingHorizontal: 12, paddingTop: 12, gap: 8 },
+  brandBar: { paddingHorizontal: 16, paddingTop: 12 },
+  brandName: { fontSize: 13, fontWeight: '800', color: '#111827' },
+  brandLead: { fontSize: 12, color: '#6B7280', marginTop: 3 },
+  regionRow: { paddingHorizontal: 12, paddingTop: 10, gap: 8 },
   regionTab: {
     backgroundColor: '#fff',
     borderRadius: 16,
