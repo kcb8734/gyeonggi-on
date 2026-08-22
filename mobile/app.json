@@ -42,7 +42,7 @@
     ],
     "web": {
       "bundler": "metro",
-      "name": "온앤온",
+      "name": "온앤온 · TourAPI 리워드",
       "shortName": "on&on"
     }
   }

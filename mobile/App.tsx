@@ -98,6 +98,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={styles.webPage}>
+      <Text style={styles.liveBanner}>온앤온 미리보기 갱신됨 · TourAPI 4.0 · 현장피드 1,000P · 한글IME</Text>
       <View style={styles.phone}>{children}</View>
     </View>
   );
@@ -146,6 +147,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
+    gap: 10,
+  },
+  liveBanner: {
+    backgroundColor: '#1D4ED8',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   phone: {
     width: 390,
