@@ -301,7 +301,7 @@ function cacheOf(options: TourApiOptions): TtlCache {
 }
 
 function ttlOf(options: TourApiOptions): number {
-  return options.ttlMs ?? Number(process.env.TOUR_API_CACHE_TTL_MS) || TWELVE_HOURS_MS;
+  return options.ttlMs ?? (Number(process.env.TOUR_API_CACHE_TTL_MS) || TWELVE_HOURS_MS);
 }
 
 async function tourGet<T>(
@@ -513,19 +513,11 @@ export async function getTourDetail(
   const cacheKey = `detail:${id}:${contentTypeId ?? ''}`;
   return cacheOf(options).wrap(cacheKey, async () => {
     const [commonItems, imageItems] = await Promise.all([
-      tourGet<CommonItem>('/detailCommon2', {
-        contentId: id,
-        defaultYN: 'Y',
-        firstImageYN: 'Y',
-        areacodeYN: 'Y',
-        addrinfoYN: 'Y',
-        mapinfoYN: 'Y',
-        overviewYN: 'Y',
-      }, options),
+      // TourAPI 4.3: detailCommon2는 contentId만 사용. 구 YN 플래그는 오류/빈 응답을 낸다.
+      tourGet<CommonItem>('/detailCommon2', { contentId: id }, options),
       tourGet<ImageItem>('/detailImage2', {
         contentId: id,
         imageYN: 'Y',
-        subImageYN: 'Y',
         numOfRows: 20,
       }, options),
     ]);
@@ -559,7 +551,7 @@ export async function getTourDetail(
       .filter((img) => img.originUrl);
 
     if (firstImage && !images.some((img) => img.originUrl === firstImage)) {
-      images.unshift({ originUrl: firstImage });
+      images.unshift({ originUrl: firstImage, smallUrl: undefined, name: undefined });
     }
 
     const tel = text(common.tel)

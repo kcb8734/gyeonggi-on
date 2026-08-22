@@ -161,6 +161,7 @@ test('getTourDetail merges common, intro fee and image gallery', async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = String(input);
     if (url.includes('/detailCommon2')) {
+      assert.doesNotMatch(url, /defaultYN|overviewYN/);
       return jsonResponse(festivalEnvelope({
         contentid: '999',
         contenttypeid: '15',
@@ -183,6 +184,7 @@ test('getTourDetail merges common, intro fee and image gallery', async () => {
       }));
     }
     if (url.includes('/detailImage2')) {
+      assert.doesNotMatch(url, /subImageYN/);
       return jsonResponse(festivalEnvelope({
         originimgurl: 'http://tong.visitkorea.or.kr/gallery.jpg',
         imgname: '야경',
