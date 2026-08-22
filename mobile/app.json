@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "온앤온 · TourAPI 리워드",
+    "name": "온앤온 · 한글입력수정",
     "slug": "gyeonggi-on",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -42,7 +42,7 @@
     ],
     "web": {
       "bundler": "metro",
-      "name": "온앤온 · TourAPI 리워드",
+      "name": "온앤온 · 한글입력수정",
       "shortName": "on&on"
     }
   }

@@ -166,7 +166,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
         <View style={styles.brandBar}>
           <Text style={styles.brandName}>온앤온(on&on)</Text>
-          <Text style={styles.brandLead}>TourAPI 4.0 자동수집 · 현장 피드 1,000P · 한글 IME 분리입력</Text>
+          <Text style={styles.brandLead}>0822 갱신 · 할인 쿠폰 등록 · 한글 본체입력 · 피드 한 줄 소개</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
           {METRO_REGIONS.map((region) => {
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
   brandBar: { paddingHorizontal: 16, paddingTop: 12 },
   brandName: { fontSize: 13, fontWeight: '800', color: '#111827' },
-  brandLead: { fontSize: 12, color: '#6B7280', marginTop: 3 },
+  brandLead: { fontSize: 12, color: '#B91C1C', marginTop: 3, fontWeight: '800' },
   regionRow: { paddingHorizontal: 12, paddingTop: 10, gap: 8 },
   regionTab: {
     backgroundColor: '#fff',

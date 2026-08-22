@@ -98,7 +98,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={styles.webPage}>
-      <Text style={styles.liveBanner}>온앤온 미리보기 갱신됨 · TourAPI 4.0 · 현장피드 1,000P · 한글IME</Text>
+      <Text style={styles.liveBanner}>0822 빨간띠 · 한글입력 본체분리 · 할인쿠폰등록</Text>
       <View nativeID="onandon-phone" style={styles.phone}>{children}</View>
     </View>
   );
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   liveBanner: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#B91C1C',
     color: '#fff',
     fontSize: 12,
     fontWeight: '800',

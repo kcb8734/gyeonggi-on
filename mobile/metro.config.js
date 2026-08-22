@@ -2,7 +2,7 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 const previous = config.server?.enhanceMiddleware;
-const LIVE_BANNER = '온앤온 미리보기 갱신됨 · TourAPI 4.0 · 현장피드 1,000P · 한글IME';
+const LIVE_BANNER = '0822 빨간띠 보이면 최신 · 한글입력수정 · 할인 쿠폰 등록';
 
 config.server = config.server ?? {};
 config.server.enhanceMiddleware = (metroMiddleware, server) => {
@@ -24,12 +24,12 @@ config.server.enhanceMiddleware = (metroMiddleware, server) => {
     const rewrite = (raw) => {
       let html = Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw ?? '');
       const stamp = String(Date.now());
-      if (html.includes('id="root"') && !html.includes('onandon-live-banner')) {
+      if (html.includes('id="root"') && !html.includes('onandon-live-banner') && !html.includes('onandon-html-banner')) {
         html = html
-          .replace(/<title>[^<]*<\/title>/, '<title>온앤온 · TourAPI 리워드</title>')
+          .replace(/<title>[^<]*<\/title>/, '<title>온앤온 · 한글입력수정</title>')
           .replace(
-            /<div id="root"><\/div>/,
-            `<div id="onandon-live-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#1D4ED8;color:#fff;font:700 13px/1.45 sans-serif;text-align:center;padding:10px 12px;">${LIVE_BANNER}</div><div id="root" style="padding-top:44px"></div>`,
+            /<div id="root"[^>]*><\/div>/,
+            `<div id="onandon-live-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#B91C1C;color:#fff;font:700 13px/1.45 sans-serif;text-align:center;padding:10px 12px;">${LIVE_BANNER}</div><div id="root" style="padding-top:44px"></div>`,
           )
           .replace(/AppEntry\.bundle\?/g, `AppEntry.bundle?v=${stamp}&`);
       }
