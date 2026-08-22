@@ -33,6 +33,17 @@ export interface HomePromotion {
   total_quantity?: number;
   funding_type?: 'MERCHANT_ONLY' | 'MATCHED';
   matching_status?: string;
+  metro?: string;
+  municipality_name?: string | null;
+  main_menu?: string;
+  features?: string;
+  exterior_image_url?: string | null;
+  interior_image_url?: string | null;
+  address?: string | null;
+  latitude?: number;
+  longitude?: number;
+  gps_confirmed?: boolean;
+  tel?: string;
 }
 
 export interface HomeFeed {

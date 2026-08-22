@@ -22,13 +22,15 @@ interface Props {
   issuing?: boolean;
   onIssue?: () => void;
   onDetail?: () => void;
+  onDirections?: () => void;
 }
 
-export default function PlaceBottomSheet({ place, issuing, onIssue, onDetail }: Props) {
+export default function PlaceBottomSheet({ place, issuing, onIssue, onDetail, onDirections }: Props) {
   if (!place) return null;
 
   const openDirections = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
+    onDirections?.();
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}&travelmode=walking`;
     Linking.openURL(url).catch(() => undefined);
   };
 
@@ -58,20 +60,15 @@ export default function PlaceBottomSheet({ place, issuing, onIssue, onDetail }: 
         <TouchableOpacity style={styles.ghost} onPress={openDirections}>
           <Text style={styles.ghostText}>길찾기</Text>
         </TouchableOpacity>
-        {place.canIssueCoupon ? (
-          <TouchableOpacity style={styles.primary} onPress={onIssue} disabled={issuing}>
-            <Text style={styles.primaryText}>{issuing ? '발급 중...' : '할인 쿠폰 발급'}</Text>
-          </TouchableOpacity>
-        ) : place.canOpenDetail ? (
-          <TouchableOpacity style={styles.primary} onPress={onDetail}>
-            <Text style={styles.primaryText}>상세 보기</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.primary} onPress={onDetail}>
-            <Text style={styles.primaryText}>자세히</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.primary} onPress={onDetail}>
+          <Text style={styles.primaryText}>상세보기</Text>
+        </TouchableOpacity>
       </View>
+      {place.canIssueCoupon ? (
+        <TouchableOpacity style={styles.issue} onPress={onIssue} disabled={issuing}>
+          <Text style={styles.issueText}>{issuing ? '발급 중...' : '할인 쿠폰 발급'}</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -126,4 +123,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryText: { fontWeight: '800', color: '#fff' },
+  issue: {
+    marginTop: 8,
+    backgroundColor: '#E0392A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  issueText: { fontWeight: '800', color: '#fff' },
 });

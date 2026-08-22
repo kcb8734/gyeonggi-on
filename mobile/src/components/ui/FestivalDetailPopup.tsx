@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Image,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -11,6 +12,8 @@ import {
 import type { HomeFestival, HomePromotion } from '../../types/home';
 import { isFavorite, isScheduled } from '../../stores/appStore';
 import { ddayLabel, formatRange } from '../../utils/date';
+import { formatTel, telHref } from '../../utils/phone';
+import { setImeModalLock } from '../../utils/nativeImeHost';
 
 interface Props {
   festival: HomeFestival | null;
@@ -33,9 +36,15 @@ export default function FestivalDetailPopup({
   onSchedule,
   onIssue,
 }: Props) {
+  React.useEffect(() => {
+    setImeModalLock(Boolean(festival));
+    return () => setImeModalLock(false);
+  }, [festival]);
   if (!festival) return null;
   const liked = isFavorite(festival.id);
   const saved = isScheduled(festival.id);
+  const callUrl = telHref(festival.tel);
+  const telLabel = formatTel(festival.tel) || festival.tel;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -58,7 +67,13 @@ export default function FestivalDetailPopup({
               <Text style={styles.title}>{festival.title}</Text>
               <Text style={styles.meta}>{formatRange(festival.start_date, festival.end_date)}</Text>
               <Text style={styles.meta}>{festival.location_name ?? '위치 미정'}</Text>
-              {festival.tel ? <Text style={styles.meta}>전화 {festival.tel}</Text> : null}
+              {telLabel ? (
+                <TouchableOpacity disabled={!callUrl} onPress={() => callUrl && Linking.openURL(callUrl)}>
+                  <Text style={[styles.meta, callUrl ? styles.telLink : null]}>전화 {telLabel}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.meta}>전화 정보 없음</Text>
+              )}
               {festival.fee ? <Text style={styles.meta}>이용요금 {festival.fee}</Text> : null}
               <Text style={styles.overview} numberOfLines={6}>
                 {festival.description || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.'}
@@ -72,9 +87,14 @@ export default function FestivalDetailPopup({
                   <Text style={styles.ghostText}>{saved ? '일정 담김' : '알림 받기'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.primary} onPress={onOpenDetail}>
-                  <Text style={styles.primaryText}>TourAPI 상세</Text>
+                  <Text style={styles.primaryText}>상세보기</Text>
                 </TouchableOpacity>
               </View>
+              {callUrl ? (
+                <TouchableOpacity style={styles.call} onPress={() => Linking.openURL(callUrl)}>
+                  <Text style={styles.callText}>전화 걸기 {telLabel}</Text>
+                </TouchableOpacity>
+              ) : null}
 
               <Text style={styles.section}>이 축제 쿠폰 받기</Text>
               {promotions.length === 0 ? (
@@ -87,7 +107,7 @@ export default function FestivalDetailPopup({
                       <Text style={styles.rate}>총 {promo.total_discount_rate}% 할인</Text>
                     </View>
                     <TouchableOpacity style={styles.issue} onPress={() => onIssue(promo)} disabled={issuingId === promo.id}>
-                      <Text style={styles.issueText}>{issuingId === promo.id ? '발급 중' : '쿠폰 받기'}</Text>
+                      <Text style={styles.issueText}>{issuingId === promo.id ? '발급 중' : '상가 보기'}</Text>
                     </TouchableOpacity>
                   </View>
                 ))
@@ -174,6 +194,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  telLink: { color: '#2563EB', fontWeight: '800' },
+  call: {
+    marginTop: 10,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  callText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   section: { fontSize: 15, fontWeight: '800', marginTop: 20, marginBottom: 8 },
   empty: { fontSize: 13, color: '#6B7280' },
   promo: {

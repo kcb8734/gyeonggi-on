@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, ActivityIndicator, Switch,
+  StyleSheet, Alert, ActivityIndicator, Switch, Image, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import IsolatedImeField from '../components/ui/IsolatedImeField';
@@ -9,10 +9,13 @@ import { readLiveImeValue } from '../utils/nativeImeHost';
 import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
+import * as Location from 'expo-location';
 import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
+import { addLocalPromotion } from '../stores/appStore';
+import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
 
 interface PromotionResponse {
   success: boolean;
@@ -36,6 +39,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const businessNumberRef = useRef('');
   const mainMenuRef = useRef('');
   const featuresRef = useRef('');
+  const addressRef = useRef('');
   const [discountRate, setDiscountRate] = useState<string>('10');
   const [quantity, setQuantity] = useState<string>('100');
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>('5000');
@@ -44,12 +48,42 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const [verifying, setVerifying] = useState(false);
   const [ntsResult, setNtsResult] = useState<MerchantVerifyResult | null>(null);
   const [resultBadge, setResultBadge] = useState<PromotionResponse | null>(null);
+  const [exteriorUrl, setExteriorUrl] = useState('');
+  const [interiorUrl, setInteriorUrl] = useState('');
+  const [gps, setGps] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsConfirmed, setGpsConfirmed] = useState(false);
+  const [gpsLabel, setGpsLabel] = useState('위치 확인 중...');
 
   useEffect(() => {
     fetchNearbyFestivals(merchantId ? { merchantId } : undefined)
       .then(setFestivals)
       .catch(() => Alert.alert('오류', '주변 축제 목록을 불러오지 못했습니다.'));
   }, [merchantId]);
+
+  useEffect(() => {
+    const apply = (latitude: number, longitude: number) => {
+      setGps({ latitude, longitude });
+      setGpsLabel(`GPS ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+    };
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => apply(pos.coords.latitude, pos.coords.longitude),
+        () => setGpsLabel('위치 권한을 허용하면 GPS를 확인할 수 있습니다'),
+        { enableHighAccuracy: true, timeout: 8000 },
+      );
+      return;
+    }
+    Location.requestForegroundPermissionsAsync()
+      .then((permission) => (permission.granted ? Location.getCurrentPositionAsync({}) : null))
+      .then((pos) => {
+        if (!pos) {
+          setGpsLabel('위치 권한을 허용하면 GPS를 확인할 수 있습니다');
+          return;
+        }
+        apply(pos.coords.latitude, pos.coords.longitude);
+      })
+      .catch(() => setGpsLabel('위치 권한을 허용하면 GPS를 확인할 수 있습니다'));
+  }, []);
 
   const preview = useMemo(() => {
     const rate = parseFloat(discountRate) || 0;
@@ -98,8 +132,21 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     const businessNumber = (readLiveImeValue('businessNumber') || businessNumberRef.current).replace(/\D/g, '');
     const mainMenu = (readLiveImeValue('mainMenu') || mainMenuRef.current).trim();
     const features = (readLiveImeValue('features') || featuresRef.current).trim();
+    const address = (readLiveImeValue('address') || addressRef.current).trim();
     if (!mainMenu || !features) {
       Alert.alert('알림', '주요 메뉴와 특징을 입력한 뒤 쿠폰을 등록해주세요.');
+      return;
+    }
+    if (!exteriorUrl || !interiorUrl) {
+      Alert.alert('알림', '가게 외부·내부 사진을 각각 1장씩 올려주세요.');
+      return;
+    }
+    if (!address) {
+      Alert.alert('알림', '위치 등록 주소를 입력해주세요.');
+      return;
+    }
+    if (!gpsConfirmed || !gps) {
+      Alert.alert('알림', 'GPS 좌표를 확인한 뒤 체크해주세요.');
       return;
     }
     if (!selectedFestivalId) {
@@ -123,11 +170,67 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         request_matching: requestMatching,
         funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+        address,
+        latitude: gps.latitude,
+        longitude: gps.longitude,
+        gps_confirmed: gpsConfirmed,
+        exterior_image_url: exteriorUrl,
+        interior_image_url: interiorUrl,
+      });
+      const festival = festivals.find((f) => f.id === selectedFestivalId);
+      addLocalPromotion({
+        id: `local-${Date.now()}`,
+        title: `${festival?.title ?? ''} 제휴 할인`,
+        festival_id: selectedFestivalId,
+        festival_title: festival?.title,
+        business_name: businessName,
+        merchant_discount_rate: parseFloat(discountRate) || 0,
+        gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
+        total_discount_rate: requestMatching
+          ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
+          : (parseFloat(discountRate) || 0),
+        remaining_quantity: parseInt(quantity, 10) || 0,
+        funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+        metro: 'GYEONGGI',
+        municipality_name: festival?.municipality_name,
+        main_menu: mainMenu,
+        features,
+        exterior_image_url: exteriorUrl,
+        interior_image_url: interiorUrl,
+        address,
+        latitude: gps.latitude,
+        longitude: gps.longitude,
+        gps_confirmed: true,
       });
       setResultBadge(res.data);
       Alert.alert('등록 완료', res.data.message);
     } catch (err: any) {
-      Alert.alert('등록 실패', err?.response?.data?.message ?? '서버 오류가 발생했습니다.');
+      const festival = festivals.find((f) => f.id === selectedFestivalId);
+      addLocalPromotion({
+        id: `local-${Date.now()}`,
+        title: `${festival?.title ?? businessName} 제휴 할인`,
+        festival_id: selectedFestivalId,
+        festival_title: festival?.title,
+        business_name: businessName,
+        merchant_discount_rate: parseFloat(discountRate) || 0,
+        gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
+        total_discount_rate: requestMatching
+          ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
+          : (parseFloat(discountRate) || 0),
+        remaining_quantity: parseInt(quantity, 10) || 0,
+        funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+        metro: 'GYEONGGI',
+        municipality_name: festival?.municipality_name,
+        main_menu: mainMenu,
+        features,
+        exterior_image_url: exteriorUrl,
+        interior_image_url: interiorUrl,
+        address,
+        latitude: gps?.latitude,
+        longitude: gps?.longitude,
+        gps_confirmed: gpsConfirmed,
+      });
+      Alert.alert('미리보기 등록', err?.response?.data?.message ?? '서버 미연결 시에도 홈 할인쿠폰에 미리보기로 올렸습니다.');
     } finally {
       setLoading(false);
     }
@@ -188,6 +291,51 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
             placeholder="예: 행궁 앞 30년 노포, 당일 손질 고기"
             multiline
           />
+          <Text style={styles.label}>가게 사진 (외부 · 내부 각 1장)</Text>
+          <View style={styles.photoRow}>
+            <View style={styles.photoCol}>
+              {exteriorUrl ? <Image source={{ uri: exteriorUrl }} style={styles.shopPhoto} /> : <View style={styles.shopPhoto} />}
+              <TouchableOpacity style={styles.photoBtn} onPress={async () => {
+                const uri = await pickPhotoFromGallery();
+                if (uri) setExteriorUrl(uri);
+              }}>
+                <Text style={styles.photoBtnText}>외부 사진</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={async () => {
+                const uri = await pickFromCamera();
+                if (uri) setExteriorUrl(uri);
+              }}>
+                <Text style={styles.photoLink}>카메라</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.photoCol}>
+              {interiorUrl ? <Image source={{ uri: interiorUrl }} style={styles.shopPhoto} /> : <View style={styles.shopPhoto} />}
+              <TouchableOpacity style={styles.photoBtn} onPress={async () => {
+                const uri = await pickPhotoFromGallery();
+                if (uri) setInteriorUrl(uri);
+              }}>
+                <Text style={styles.photoBtnText}>내부 사진</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={async () => {
+                const uri = await pickFromCamera();
+                if (uri) setInteriorUrl(uri);
+              }}>
+                <Text style={styles.photoLink}>카메라</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Text style={styles.label}>위치 등록 주소</Text>
+          <IsolatedImeField
+            fieldKey="address"
+            valueRef={addressRef}
+            placeholder="예: 경기도 수원시 팔달구 정조로 825"
+          />
+          <Text style={styles.label}>GPS 확인</Text>
+          <Text style={styles.gps}>{gpsLabel}</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.label}>위 좌표가 가게 위치와 일치합니다</Text>
+            <Switch value={gpsConfirmed} onValueChange={setGpsConfirmed} />
+          </View>
         </View>
       ) : null}
 
@@ -263,4 +411,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#C7D2FE',
   },
+  photoRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  photoCol: { flex: 1, alignItems: 'center' },
+  shopPhoto: { width: '100%', height: 110, borderRadius: 12, backgroundColor: '#E5E7EB' },
+  photoBtn: {
+    marginTop: 8,
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    paddingVertical: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  photoBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  photoLink: { marginTop: 6, fontWeight: '800', color: '#2563EB', fontSize: 12 },
+  gps: { fontSize: 13, color: '#2563EB', fontWeight: '700', marginBottom: 4 },
 });

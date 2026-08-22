@@ -112,7 +112,7 @@ export const METRO_LOCALITIES: Record<string, Locality[]> = {
 
 export const FESTIVAL_CATEGORIES = [
   { id: '먹거리', icon: '🍜', label: '먹거리' },
-  { id: '문화/예술', icon: '🎭', label: '문화/예술' },
+  { id: '문화/예술', icon: '🎭', label: '문화예술' },
   { id: '가족', icon: '👨‍👩‍👧', label: '가족' },
   { id: '계절축제', icon: '🌸', label: '계절축제' },
   { id: '플리마켓', icon: '🧺', label: '플리마켓' },

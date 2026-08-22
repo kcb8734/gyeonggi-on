@@ -30,6 +30,7 @@ import { TicketCouponCard, ticketFromPromotion } from '../components/ui/TicketCo
 import IsolatedImeField from '../components/ui/IsolatedImeField';
 import FeedRail from '../components/ui/FeedRail';
 import LocalityFilter from '../components/ui/LocalityFilter';
+import MerchantDetailModal from '../components/ui/MerchantDetailModal';
 import {
   addSchedule,
   addWalletCoupon,
@@ -38,6 +39,7 @@ import {
   toggleFavorite,
   useAppState,
 } from '../stores/appStore';
+import { getFeedPosts, getMyFeedPosts } from '../stores/feedStore';
 
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 const ALL = '전체';
@@ -55,7 +57,8 @@ export default function HomeScreen() {
   const [promotions, setPromotions] = useState<HomePromotion[]>([]);
   const [issuingId, setIssuingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<HomeFestival | null>(null);
-  useAppState();
+  const [merchant, setMerchant] = useState<HomePromotion | null>(null);
+  const app = useAppState();
 
   const openFestival = (festival: HomeFestival) => {
     rememberFestival(festival);
@@ -70,7 +73,8 @@ export default function HomeScreen() {
         ? fetchTourFestivals({ areaCode: '31', month: now.getMonth() + 1, year: now.getFullYear() })
         : Promise.resolve([]),
     ]).then(([feed, tourFestivals]) => {
-      setPromotions(feed.promotions);
+      const extra = app.localPromotions.filter((item) => !feed.promotions.some((promo) => promo.id === item.id));
+      setPromotions([...extra, ...feed.promotions.map((item) => ({ ...item, metro }))]);
       if (tourFestivals.length) {
         setFestivals(tourFestivals.map(homeFestivalFromTour));
       } else {
@@ -78,7 +82,7 @@ export default function HomeScreen() {
       }
       if (!feed.available) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
-  }, [metro]);
+  }, [metro, app.localPromotions]);
 
   useEffect(() => {
     if (!toast) return;
@@ -147,20 +151,32 @@ export default function HomeScreen() {
     setIssuingId(promotion.id);
     try {
       const code = await issueCoupon(DEV_USER_ID, promotion.id);
-      addWalletCoupon(promotionToWallet(promotion, code));
+      addWalletCoupon(promotionToWallet(promotion, code, proofForPromotion(promotion)));
       Alert.alert('쿠폰 발급', `쿠폰함에 담겼습니다.\n${code}`);
     } catch (err: any) {
       const previewCode = `GGON-${promotion.id.slice(-4).toUpperCase()}`;
-      addWalletCoupon(promotionToWallet(promotion, previewCode));
+      addWalletCoupon(promotionToWallet(promotion, previewCode, proofForPromotion(promotion)));
       Alert.alert('미리보기 발급', `백엔드 연결 전 미리보기 쿠폰을 담았습니다.\n${previewCode}`);
     } finally {
       setIssuingId(null);
+      setMerchant(null);
     }
   };
+
+  const openMerchant = (promo: HomePromotion) => setMerchant(promo);
 
   const cardDiscount = (festival: HomeFestival) =>
     discountByFestival.get(festival.id)
     ?? [...discountByFestival.entries()].find(([key]) => key && festival.title.includes(key))?.[1];
+
+  function proofForPromotion(promo: HomePromotion): string | undefined {
+    const feeds = [...getMyFeedPosts(), ...getFeedPosts()];
+    const match = feeds.find((item) =>
+      (promo.festival_title && item.festival && item.festival.includes(promo.festival_title.slice(0, 4)))
+      || (promo.festival_id && item.festivalId === promo.festival_id),
+    );
+    return match?.imageUrl ?? promo.exterior_image_url ?? undefined;
+  }
 
   return (
     <View style={styles.root}>
@@ -221,17 +237,17 @@ export default function HomeScreen() {
             <View key={promo.id} style={{ width: 260 }}>
               <TicketCouponCard
                 compact
-                {...ticketFromPromotion(promo, issuingId === promo.id ? '발급 중...' : '쿠폰 받기')}
-                onPress={() => handleIssue(promo)}
+                {...ticketFromPromotion(promo, issuingId === promo.id ? '발급 중...' : '상가 보기')}
+                onPress={() => openMerchant(promo)}
               />
             </View>
           ))}
         </ScrollView>
 
-        <Text style={styles.section}>축제 현장 피드 · 지자체 1:1 매칭</Text>
+        <Text style={styles.section}>축제 현장 피드 올리고 지역화폐 받기</Text>
         <FeedRail onPress={(postId) => navigation.navigate('FeedView', { postId })} />
 
-        <Text style={styles.section}>TourAPI 4.0 자동수집 축제</Text>
+        <Text style={styles.section}>지역별 축제 리스트</Text>
         <View style={styles.catBar}>
           {[{ id: ALL, label: ALL }, ...FESTIVAL_CATEGORIES].map((item) => {
             const active = category === item.id;
@@ -270,7 +286,7 @@ export default function HomeScreen() {
         onClose={() => setSelected(null)}
         onFavorite={() => { if (selected) toggleFavorite(selected); setToast('즐겨찾기를 업데이트했습니다'); }}
         onSchedule={() => { if (selected) addSchedule(selected); setToast('시작일 하루 전 알림을 받도록 일정을 담았습니다'); }}
-        onIssue={handleIssue}
+        onIssue={openMerchant}
         onOpenDetail={() => {
           if (!selected) return;
           const festival = selected;
@@ -279,11 +295,20 @@ export default function HomeScreen() {
             navigation.navigate('TourDetail', {
               contentId: festival.contentId,
               contentTypeId: festival.contentTypeId,
+              tel: festival.tel,
+              title: festival.title,
             });
           } else {
             navigation.navigate('Nearby', { festivalId: festival.id });
           }
         }}
+      />
+
+      <MerchantDetailModal
+        promotion={merchant}
+        issuing={issuingId === merchant?.id}
+        onClose={() => setMerchant(null)}
+        onDownload={handleIssue}
       />
 
       {toast ? (
@@ -359,7 +384,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   catTabActive: { borderBottomColor: '#111827' },
-  catText: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+  catText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
   catTextActive: { fontWeight: '800', color: '#111827' },
   grid: {
     paddingHorizontal: 16,

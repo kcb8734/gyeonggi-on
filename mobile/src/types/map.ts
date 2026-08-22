@@ -16,6 +16,10 @@ export interface FestivalPin {
   municipality_name?: string | null;
   description?: string | null;
   distance_km?: number | null;
+  contentId?: string;
+  contentTypeId?: string;
+  tel?: string;
+  image_url?: string | null;
 }
 
 export interface MerchantPin {

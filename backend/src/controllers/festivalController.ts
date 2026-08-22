@@ -50,6 +50,7 @@ function toFestivalPin(row: FestivalRow) {
     category: row.category ?? '문화/예술',
     image_url: row.image_url ?? null,
     is_trending: Boolean(row.is_trending),
+    contentId: row.id,
   };
 }
 

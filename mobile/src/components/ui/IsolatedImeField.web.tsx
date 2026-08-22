@@ -42,8 +42,12 @@ export default function IsolatedImeField({
       fieldKey,
       host,
     });
-    const sync = () => {
+    const sync = (event?: Event) => {
+      const composing = Boolean(
+        event && 'isComposing' in event && (event as InputEvent).isComposing,
+      );
       valueRefStable.current.current = field.value;
+      if (composing) return;
       liveRef.current?.(field.value);
     };
     field.addEventListener('input', sync);

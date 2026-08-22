@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { HomePromotion } from '../../types/home';
 import type { WalletCoupon } from '../../stores/appStore';
+import { couponRateColor } from '../../utils/couponColors';
 
 interface Props {
   title: string;
@@ -15,6 +16,9 @@ interface Props {
   onPress?: () => void;
   cta?: string;
   compact?: boolean;
+  rateColor?: string;
+  proofImageUrl?: string;
+  onProofPress?: () => void;
 }
 
 export function TicketCouponCard({
@@ -29,6 +33,9 @@ export function TicketCouponCard({
   onPress,
   cta,
   compact,
+  rateColor = '#E0392A',
+  proofImageUrl,
+  onProofPress,
 }: Props) {
   return (
     <TouchableOpacity
@@ -39,7 +46,7 @@ export function TicketCouponCard({
     >
       <View style={[styles.notchLeft, compact && styles.notchCompact]} />
       <View style={[styles.notchRight, compact && styles.notchCompact]} />
-      <View style={[styles.rateCol, compact && styles.rateColCompact]}>
+      <View style={[styles.rateCol, compact && styles.rateColCompact, { backgroundColor: rateColor }]}>
         <Text style={[styles.rate, compact && styles.rateCompact]}>{rate}</Text>
         <Text style={[styles.percent, compact && styles.percentCompact]}>%</Text>
         {compact ? null : <Text style={styles.off}>OFF</Text>}
@@ -57,7 +64,27 @@ export function TicketCouponCard({
         {!compact && status ? <Text style={styles.status}>{status === 'ISSUED' ? '사용 가능' : status}</Text> : null}
         {cta ? <Text style={[styles.cta, compact && styles.ctaCompact]}>{cta}</Text> : null}
       </View>
+      {proofImageUrl ? (
+        <TouchableOpacity
+          style={styles.proofBox}
+          onPress={(event) => {
+            event.stopPropagation();
+            onProofPress?.();
+          }}
+          activeOpacity={0.85}
+        >
+          <Image source={{ uri: proofImageUrl }} style={styles.proof} />
+          <Text style={styles.proofCap}>인증</Text>
+        </TouchableOpacity>
+      ) : null}
     </TouchableOpacity>
+  );
+}
+
+function promotionColor(promo: HomePromotion): string {
+  return couponRateColor(
+    `${promo.municipality_name ?? ''} ${promo.festival_title ?? ''} ${promo.business_name ?? ''} ${promo.address ?? ''}`,
+    promo.metro,
   );
 }
 
@@ -70,6 +97,7 @@ export function ticketFromPromotion(promo: HomePromotion, cta = '다운로드'):
     matched: promo.funding_type !== 'MERCHANT_ONLY',
     remaining: promo.remaining_quantity,
     cta,
+    rateColor: promotionColor(promo),
   };
 }
 
@@ -83,6 +111,11 @@ export function ticketFromWallet(item: WalletCoupon): Props {
     expires: item.expires_at,
     status: item.status,
     cta: 'QR 보기',
+    rateColor: couponRateColor(
+      `${item.municipality_name ?? ''} ${item.festival_title ?? ''} ${item.business_name}`,
+      item.metro,
+    ),
+    proofImageUrl: item.proofImageUrl,
   };
 }
 
@@ -186,4 +219,18 @@ const styles = StyleSheet.create({
   remain: { fontSize: 11, color: '#6B7280', marginTop: 4 },
   status: { fontSize: 11, color: '#059669', fontWeight: '800', marginTop: 4 },
   cta: { marginTop: 8, fontSize: 12, fontWeight: '800', color: '#E0392A' },
+  proofBox: {
+    width: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingRight: 8,
+    gap: 4,
+  },
+  proof: {
+    width: 46,
+    height: 46,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+  },
+  proofCap: { fontSize: 9, fontWeight: '800', color: '#6B7280' },
 });
