@@ -11,6 +11,7 @@ import adminRouter from './routes/admin';
 import homeRouter from './routes/home';
 import tourRouter from './routes/tour';
 import authRouter from './routes/auth';
+import feedsRouter from './routes/feeds';
 
 const app = express();
 app.use(helmet());
@@ -36,6 +37,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/tour', tourRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/feeds', feedsRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

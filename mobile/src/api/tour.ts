@@ -41,7 +41,10 @@ function previewFestivals(): TourFestival[] {
     firstImage: item.image_url ?? undefined,
     mapX: item.longitude,
     mapY: item.latitude,
+    tel: item.tel,
     category: (item.category as TourFestival['category']) ?? '문화/예술',
+    overview: item.description ?? `${item.title} 상세 개요`,
+    fee: '현장 문의',
   }));
 }
 
@@ -55,7 +58,7 @@ export async function fetchTourFestivals(params?: {
     const res = await api.get<TourFestivalsResponse>('/api/tour/festivals', {
       timeout: 15000,
       params: {
-        areaCode: params?.areaCode ?? '31',
+        areaCode: params?.areaCode ?? 'all',
         month: params?.month,
         year: params?.year,
         category: params?.category,

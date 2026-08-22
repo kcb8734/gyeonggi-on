@@ -1,5 +1,10 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
+import {
+  deleteFestivalOverride,
+  listFestivalOverrides,
+  upsertFestivalOverride,
+} from '../services/festivalOverrideStore';
 
 const GOV_MATCHING_CAP_RATE = 10.0;
 
@@ -255,4 +260,46 @@ export const getBudgetOverview = async (_req: Request, res: Response) => {
     console.error('[getBudgetOverview] Error:', err);
     return res.status(500).json({ success: false, message: '예산 현황을 불러오지 못했습니다.' });
   }
+};
+
+/** GET /api/admin/festivals — TourAPI 보완용 수동 축제 */
+export const listAdminFestivals = async (_req: Request, res: Response) => {
+  return res.json({ success: true, data: listFestivalOverrides() });
+};
+
+/** POST /api/admin/festivals — 지자체 자체 행사 추가/수정 */
+export const upsertAdminFestival = async (req: Request, res: Response) => {
+  try {
+    const saved = upsertFestivalOverride({
+      contentId: typeof req.body?.contentId === 'string' ? req.body.contentId : undefined,
+      title: String(req.body?.title ?? ''),
+      overview: req.body?.overview,
+      address: req.body?.address,
+      tel: req.body?.tel,
+      firstImage: req.body?.firstImage,
+      mapX: req.body?.mapX != null ? Number(req.body.mapX) : undefined,
+      mapY: req.body?.mapY != null ? Number(req.body.mapY) : undefined,
+      eventStartDate: req.body?.eventStartDate,
+      eventEndDate: req.body?.eventEndDate,
+      eventPlace: req.body?.eventPlace,
+      fee: req.body?.fee,
+      category: req.body?.category,
+    });
+    return res.json({
+      success: true,
+      message: 'TourAPI에 없는 행사를 수동 등록했습니다. 앱 상세 화면에 바로 반영됩니다.',
+      data: saved,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err instanceof Error ? err.message : '축제 저장에 실패했습니다.',
+    });
+  }
+};
+
+/** DELETE /api/admin/festivals/:contentId */
+export const removeAdminFestival = async (req: Request, res: Response) => {
+  const removed = deleteFestivalOverride(String(req.params.contentId ?? ''));
+  return res.json({ success: removed, message: removed ? '삭제했습니다.' : '해당 행사가 없습니다.' });
 };

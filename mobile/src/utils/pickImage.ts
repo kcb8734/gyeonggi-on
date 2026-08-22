@@ -29,14 +29,14 @@ async function nativePick(fromCamera: boolean): Promise<string | null> {
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
   const result = fromCamera
-    ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
-    : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 })
+    : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8 });
   if (result.canceled || !result.assets?.[0]?.uri) return null;
   return result.assets[0].uri;
 }
 
 export function pickFromGallery(): Promise<string | null> {
-  if (Platform.OS === 'web') return webFile('image/*');
+  if (Platform.OS === 'web') return webFile('image/*,video/*');
   return nativePick(false);
 }
 

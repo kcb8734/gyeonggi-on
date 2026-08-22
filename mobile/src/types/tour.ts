@@ -10,11 +10,14 @@ export interface TourFestival {
   eventStartDate: string;
   eventEndDate: string;
   firstImage?: string;
+  firstImage2?: string;
   mapX: number;
   mapY: number;
   tel?: string;
   category: FestivalCategory;
   overview?: string;
+  fee?: string;
+  eventPlace?: string;
 }
 
 export interface TourPlace {

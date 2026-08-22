@@ -11,7 +11,6 @@ import {
   searchFestivals,
   searchNearby,
   secureImageUrl,
-  TourApiError,
 } from './tourApiService';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -67,22 +66,52 @@ test('placeKind maps contentTypeId', () => {
 });
 
 test('searchFestivals uses lDongRegnCd 41 and caches the result', async () => {
-  let calls = 0;
+  let searchCalls = 0;
   let calledUrl = '';
+  let commonCalls = 0;
+  let introCalls = 0;
   const fetchImpl: typeof fetch = async (input) => {
-    calls += 1;
-    calledUrl = String(input);
-    return jsonResponse(festivalEnvelope({
-      contentid: '1234',
-      contenttypeid: '15',
-      title: '세미원 연꽃문화제',
-      addr1: '경기도 양평군',
-      eventstartdate: '20260801',
-      eventenddate: '20260820',
-      firstimage: 'http://tong.visitkorea.or.kr/a.jpg',
-      mapx: '127.3',
-      mapy: '37.5',
-    }));
+    const url = String(input);
+    if (url.includes('/searchFestival2')) {
+      searchCalls += 1;
+      calledUrl = url;
+      return jsonResponse(festivalEnvelope({
+        contentid: '1234',
+        contenttypeid: '15',
+        title: '세미원 연꽃문화제',
+        addr1: '경기도 양평군',
+        eventstartdate: '20260801',
+        eventenddate: '20260820',
+        firstimage: 'http://tong.visitkorea.or.kr/a.jpg',
+        mapx: '127.3',
+        mapy: '37.5',
+      }));
+    }
+    if (url.includes('/detailCommon2')) {
+      commonCalls += 1;
+      return jsonResponse(festivalEnvelope({
+        contentid: '1234',
+        contenttypeid: '15',
+        title: '세미원 연꽃문화제',
+        addr1: '경기도 양평군 양서면',
+        overview: '두물머리 연꽃 단지에서 열리는 여름 축제',
+        firstimage: 'http://tong.visitkorea.or.kr/a.jpg',
+        tel: '031-775-1834',
+        mapx: '127.3',
+        mapy: '37.5',
+      }));
+    }
+    if (url.includes('/detailIntro2')) {
+      introCalls += 1;
+      return jsonResponse(festivalEnvelope({
+        usefee: '성인 8,000원',
+        usetimefestival: '주차 별도',
+        eventplace: '세미원',
+        eventstartdate: '20260801',
+        eventenddate: '20260820',
+      }));
+    }
+    throw new Error(`unexpected url ${url}`);
   };
 
   const cache = new TtlCache(60_000, () => 1);
@@ -95,8 +124,11 @@ test('searchFestivals uses lDongRegnCd 41 and caches the result', async () => {
     { serviceKey: 'test-key', fetchImpl, cache, baseUrl: 'https://apis.data.go.kr/B551011/KorService2' },
   );
 
-  assert.equal(calls, 1);
+  assert.equal(searchCalls, 1);
+  assert.equal(commonCalls, 1);
+  assert.equal(introCalls, 1);
   assert.match(calledUrl, /searchFestival2/);
+  assert.match(calledUrl, /contentTypeId=15/);
   assert.match(calledUrl, /lDongRegnCd=41/);
   assert.match(calledUrl, /eventStartDate=20260801/);
   assert.match(calledUrl, /eventEndDate=20260831/);
@@ -105,28 +137,37 @@ test('searchFestivals uses lDongRegnCd 41 and caches the result', async () => {
   assert.equal(first[0].title, '세미원 연꽃문화제');
   assert.equal(first[0].category, '계절축제');
   assert.equal(first[0].firstImage, 'https://tong.visitkorea.or.kr/a.jpg');
+  assert.equal(first[0].overview, '두물머리 연꽃 단지에서 열리는 여름 축제');
+  assert.equal(first[0].fee, '성인 8,000원');
+  assert.equal(first[0].tel, '031-775-1834');
   assert.equal(second[0].contentId, '1234');
 });
 
 test('searchFestivals filters by category after mapping', async () => {
-  const fetchImpl: typeof fetch = async () => jsonResponse(festivalEnvelope([
-    {
-      contentid: '1',
-      title: '수원 야시장 플리마켓',
-      eventstartdate: '20260810',
-      eventenddate: '20260812',
-      mapx: '127',
-      mapy: '37',
-    },
-    {
-      contentid: '2',
-      title: '수원화성문화제',
-      eventstartdate: '20260810',
-      eventenddate: '20260820',
-      mapx: '127',
-      mapy: '37',
-    },
-  ]));
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.includes('/searchFestival2')) {
+      return jsonResponse(festivalEnvelope([
+        {
+          contentid: '1',
+          title: '수원 야시장 플리마켓',
+          eventstartdate: '20260810',
+          eventenddate: '20260812',
+          mapx: '127',
+          mapy: '37',
+        },
+        {
+          contentid: '2',
+          title: '수원화성문화제',
+          eventstartdate: '20260810',
+          eventenddate: '20260820',
+          mapx: '127',
+          mapy: '37',
+        },
+      ]));
+    }
+    return jsonResponse(festivalEnvelope({}));
+  };
 
   const list = await searchFestivals(
     { areaCode: '31', month: 8, year: 2026, category: '플리마켓' },
@@ -176,7 +217,8 @@ test('getTourDetail merges common, intro fee and image gallery', async () => {
     }
     if (url.includes('/detailIntro2')) {
       return jsonResponse(festivalEnvelope({
-        usetimefestival: '무료',
+        usefee: '무료',
+        usetimefestival: '주차 별도',
         playtime: '18:00 ~ 22:00',
         eventplace: '화성행궁',
         eventstartdate: '20260820',
@@ -205,15 +247,29 @@ test('getTourDetail merges common, intro fee and image gallery', async () => {
   assert.equal(detail.eventPlace, '화성행궁');
 });
 
-test('searchFestivals throws when service key is missing', async () => {
+test('searchFestivals returns fallback mock when service key is missing', async () => {
   const prevTour = process.env.TOUR_API_SERVICE_KEY;
   const prevNts = process.env.NTS_SERVICE_KEY;
   delete process.env.TOUR_API_SERVICE_KEY;
   delete process.env.NTS_SERVICE_KEY;
-  await assert.rejects(
-    () => searchFestivals({}, { serviceKey: '', cache: new TtlCache() }),
-    (err: unknown) => err instanceof TourApiError && err.statusCode === 500,
-  );
+  const list = await searchFestivals({ month: 8, year: 2026 }, { serviceKey: '', cache: new TtlCache() });
+  assert.ok(list.length > 0);
+  assert.ok(list[0].overview);
+  assert.ok(list[0].firstImage);
   if (prevTour !== undefined) process.env.TOUR_API_SERVICE_KEY = prevTour;
   if (prevNts !== undefined) process.env.NTS_SERVICE_KEY = prevNts;
+});
+
+test('searchFestivals falls back when TourAPI times out', async () => {
+  const fetchImpl: typeof fetch = async () => {
+    const err = new Error('aborted');
+    err.name = 'AbortError';
+    throw err;
+  };
+  const list = await searchFestivals(
+    { areaCode: '31', month: 8, year: 2026 },
+    { serviceKey: 'k', fetchImpl, cache: new TtlCache() },
+  );
+  assert.ok(list.length > 0);
+  assert.equal(list[0].contentTypeId, '15');
 });

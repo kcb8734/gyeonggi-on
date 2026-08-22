@@ -52,6 +52,34 @@ export async function fetchBudget() {
   return data.data ?? [];
 }
 
+export async function fetchAdminFestivals() {
+  const res = await fetch(`${API_BASE}/api/admin/festivals`, { headers: authHeaders() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '수동 축제 조회 실패');
+  return data.data ?? [];
+}
+
+export async function saveAdminFestival(payload: Record<string, unknown>) {
+  const res = await fetch(`${API_BASE}/api/admin/festivals`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '축제 저장 실패');
+  return data;
+}
+
+export async function deleteAdminFestival(contentId: string) {
+  const res = await fetch(`${API_BASE}/api/admin/festivals/${encodeURIComponent(contentId)}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '축제 삭제 실패');
+  return data;
+}
+
 export function logout() {
   localStorage.removeItem('admin_token');
 }

@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   adminLogin,
   approveMerchant,
+  deleteAdminFestival,
+  fetchAdminFestivals,
   fetchBudget,
   fetchMerchants,
   fetchStats,
   logout,
+  saveAdminFestival,
 } from './api';
 
 type View = 'login' | 'dashboard';
@@ -21,6 +24,19 @@ export default function App() {
   const [merchants, setMerchants] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [budget, setBudget] = useState<any[]>([]);
+  const [manualFestivals, setManualFestivals] = useState<any[]>([]);
+  const [festivalForm, setFestivalForm] = useState({
+    title: '',
+    address: '',
+    tel: '',
+    overview: '',
+    fee: '',
+    eventStartDate: '',
+    eventEndDate: '',
+    firstImage: '',
+    mapX: '127.013',
+    mapY: '37.287',
+  });
 
   useEffect(() => {
     if (path === '/admin/login' && view !== 'login') {
@@ -31,10 +47,16 @@ export default function App() {
   }, [view, path]);
 
   const load = async () => {
-    const [m, s, b] = await Promise.all([fetchMerchants(), fetchStats(), fetchBudget()]);
+    const [m, s, b, f] = await Promise.all([
+      fetchMerchants(),
+      fetchStats(),
+      fetchBudget(),
+      fetchAdminFestivals().catch(() => []),
+    ]);
     setMerchants(m);
     setStats(s);
     setBudget(b);
+    setManualFestivals(f);
   };
 
   useEffect(() => {
@@ -173,6 +195,75 @@ export default function App() {
                 <td>{Number(row.merchant_burden).toLocaleString()}원</td>
                 <td>{Number(row.gov_support).toLocaleString()}원</td>
                 <td>{row.settlement_status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>TourAPI 수동 보완 (지자체 자체 행사)</h2>
+        <p className="muted">TourAPI에 없거나 최신 자체 행사만 여기서 추가합니다. 앱 상세 화면에 즉시 반영됩니다.</p>
+        <form
+          className="festival-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await saveAdminFestival({
+                ...festivalForm,
+                mapX: Number(festivalForm.mapX),
+                mapY: Number(festivalForm.mapY),
+              });
+              setFestivalForm({
+                title: '',
+                address: '',
+                tel: '',
+                overview: '',
+                fee: '',
+                eventStartDate: '',
+                eventEndDate: '',
+                firstImage: '',
+                mapX: '127.013',
+                mapY: '37.287',
+              });
+              await load();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : '저장 실패');
+            }
+          }}
+        >
+          <input placeholder="축제명" value={festivalForm.title} onChange={(e) => setFestivalForm({ ...festivalForm, title: e.target.value })} required />
+          <input placeholder="주소" value={festivalForm.address} onChange={(e) => setFestivalForm({ ...festivalForm, address: e.target.value })} />
+          <input placeholder="전화" value={festivalForm.tel} onChange={(e) => setFestivalForm({ ...festivalForm, tel: e.target.value })} />
+          <input placeholder="이용요금" value={festivalForm.fee} onChange={(e) => setFestivalForm({ ...festivalForm, fee: e.target.value })} />
+          <input placeholder="시작일 YYYY-MM-DD" value={festivalForm.eventStartDate} onChange={(e) => setFestivalForm({ ...festivalForm, eventStartDate: e.target.value })} />
+          <input placeholder="종료일 YYYY-MM-DD" value={festivalForm.eventEndDate} onChange={(e) => setFestivalForm({ ...festivalForm, eventEndDate: e.target.value })} />
+          <input placeholder="대표 이미지 URL" value={festivalForm.firstImage} onChange={(e) => setFestivalForm({ ...festivalForm, firstImage: e.target.value })} />
+          <input placeholder="경도 mapX" value={festivalForm.mapX} onChange={(e) => setFestivalForm({ ...festivalForm, mapX: e.target.value })} />
+          <input placeholder="위도 mapY" value={festivalForm.mapY} onChange={(e) => setFestivalForm({ ...festivalForm, mapY: e.target.value })} />
+          <textarea placeholder="상세 개요" value={festivalForm.overview} onChange={(e) => setFestivalForm({ ...festivalForm, overview: e.target.value })} />
+          <button type="submit">수동 등록</button>
+        </form>
+        <table>
+          <thead>
+            <tr>
+              <th>축제명</th>
+              <th>주소</th>
+              <th>전화</th>
+              <th>요금</th>
+              <th>처리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {manualFestivals.map((row) => (
+              <tr key={row.contentId}>
+                <td>{row.title}</td>
+                <td>{row.address}</td>
+                <td>{row.tel}</td>
+                <td>{row.fee}</td>
+                <td>
+                  <button className="danger" onClick={() => deleteAdminFestival(row.contentId).then(load)}>삭제</button>
+                </td>
               </tr>
             ))}
           </tbody>

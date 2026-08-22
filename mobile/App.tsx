@@ -11,7 +11,7 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import CouponsScreen from './src/screens/CouponsScreen';
 import MyScreen from './src/screens/MyScreen';
 import PromotionRegisterScreen from './src/screens/PromotionRegisterScreen';
-import TourDetailScreen from './src/screens/TourDetailScreen';
+import FestivalDetailScreen from './src/screens/FestivalDetailScreen';
 import MerchantSettlementScreen from './src/screens/MerchantSettlementScreen';
 import SupportScreen from './src/screens/SupportScreen';
 import FeedUploadScreen from './src/screens/FeedUploadScreen';
@@ -114,9 +114,9 @@ export default function App() {
             <Stack.Screen name="PromotionRegister" options={{ title: '자율 할인 등록' }}>
               {() => <PromotionRegisterScreen merchantId={DEV_MERCHANT_ID} />}
             </Stack.Screen>
-            <Stack.Screen name="TourDetail" options={{ title: '상세 보기' }}>
+            <Stack.Screen name="TourDetail" options={{ title: '행사 상세' }}>
               {({ route }) => (
-                <TourDetailScreen
+                <FestivalDetailScreen
                   contentId={route.params.contentId}
                   contentTypeId={route.params.contentTypeId}
                 />

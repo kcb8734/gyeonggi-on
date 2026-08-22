@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { HomeFestival, HomePromotion } from '../types/home';
+import type { LocalCurrencyCoupon } from '../api/feeds';
 import { readJson, writeJson } from '../utils/storage';
 
 export interface WalletCoupon {
@@ -30,6 +31,7 @@ interface AppState {
   recent: HomeFestival[];
   favorites: HomeFestival[];
   points: number;
+  localCoupons: LocalCurrencyCoupon[];
 }
 
 const KEY = 'gyeonggi-on-app-state';
@@ -55,10 +57,28 @@ const INITIAL: AppState = {
   recent: [],
   favorites: [],
   points: 1280,
+  localCoupons: [
+    {
+      id: 'lc-seed-1',
+      title: '수원화성문화제 지역화폐 1,000원',
+      amount: 1000,
+      kind: 'LOCAL_CURRENCY',
+      festivalId: '1000001',
+      festivalTitle: '수원화성문화제',
+      issuedAt: '2026-08-21T12:00:00.000Z',
+    },
+  ],
 };
 
 type Listener = () => void;
-let state: AppState = readJson(KEY, INITIAL);
+const loaded = readJson<Partial<AppState>>(KEY, INITIAL);
+let state: AppState = {
+  ...INITIAL,
+  ...loaded,
+  wallet: loaded.wallet ?? INITIAL.wallet,
+  localCoupons: loaded.localCoupons ?? INITIAL.localCoupons,
+  points: loaded.points ?? INITIAL.points,
+};
 const listeners = new Set<Listener>();
 
 function emit(next: AppState) {
@@ -132,6 +152,27 @@ export function toggleFavorite(festival: HomeFestival) {
 
 export function isFavorite(id: string): boolean {
   return state.favorites.some((item) => item.id === id);
+}
+
+export function addPoints(amount: number) {
+  if (!Number.isFinite(amount) || amount === 0) return;
+  emit({ ...state, points: Math.max(0, state.points + amount) });
+}
+
+export function addLocalCurrencyCoupon(coupon: LocalCurrencyCoupon) {
+  const exists = state.localCoupons.some((item) => item.id === coupon.id);
+  emit({
+    ...state,
+    localCoupons: exists ? state.localCoupons : [coupon, ...state.localCoupons],
+  });
+}
+
+export function syncRewardBalance(points: number, coupons: LocalCurrencyCoupon[]) {
+  emit({
+    ...state,
+    points: Math.max(state.points, points),
+    localCoupons: coupons.length ? coupons : state.localCoupons,
+  });
 }
 
 export function promotionToWallet(promo: HomePromotion, couponCode: string): WalletCoupon {

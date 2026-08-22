@@ -19,6 +19,9 @@ export default function FeedRail({ onPress }: { onPress?: (postId: string) => vo
           <View style={styles.meta}>
             {post.festival ? <Text style={styles.fest} numberOfLines={1}>{post.festival}</Text> : null}
             <Text style={styles.caption} numberOfLines={3}>{post.caption}</Text>
+            <Text style={styles.reward} numberOfLines={1}>
+              {post.rewarded === false ? '지자체 1:1 매칭 피드' : '🎁 지자체 지원 리워드 지급완료'}
+            </Text>
             <Text style={styles.author}>@{post.author} · ♥ {post.likes.toLocaleString()}</Text>
           </View>
         </TouchableOpacity>
@@ -49,5 +52,6 @@ const styles = StyleSheet.create({
   },
   fest: { color: '#FDE68A', fontSize: 10, fontWeight: '800', marginBottom: 4 },
   caption: { color: '#fff', fontSize: 13, fontWeight: '800', lineHeight: 18 },
+  reward: { color: '#FDE68A', fontSize: 10, fontWeight: '800', marginTop: 6 },
   author: { color: '#E5E7EB', fontSize: 11, marginTop: 6, fontWeight: '600' },
 });

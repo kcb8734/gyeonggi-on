@@ -6,9 +6,13 @@ export interface FeedPost {
   author: string;
   caption: string;
   festival?: string;
+  festivalId?: string;
   imageUrl: string;
   likes: number;
   createdAt: string;
+  rewarded?: boolean;
+  pointsAwarded?: number;
+  badge?: '지자체 지원 리워드 지급완료' | '지자체 1:1 매칭 피드';
 }
 
 const KEY = 'gyeonggi-on-feed';
@@ -19,36 +23,52 @@ const SEEDED: FeedPost[] = [
     author: '수원나들이',
     caption: '화성행궁 야경 미쳤다… 야행 조명 실화?',
     festival: '수원 국가유산야행',
+    festivalId: '1000001',
     imageUrl: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=600&q=80',
     likes: 1284,
     createdAt: '2026-08-21',
+    rewarded: true,
+    pointsAwarded: 1000,
+    badge: '지자체 지원 리워드 지급완료',
   },
   {
     id: 'feed-2',
     author: '먹킷리스트',
     caption: '영동시장 꼬치 한 입. 쿠폰 찍고 왔음',
     festival: '수원 영동시장 먹거리 축제',
+    festivalId: '1000004',
     imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&q=80',
     likes: 862,
     createdAt: '2026-08-21',
+    rewarded: true,
+    pointsAwarded: 1000,
+    badge: '지자체 1:1 매칭 피드',
   },
   {
     id: 'feed-3',
     author: '재즈키드',
     caption: '자라섬 선셋 무대. 소리 꺼도 심장은 쿵',
     festival: '가평 자라섬 재즈페스티벌',
+    festivalId: '1000003',
     imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80',
     likes: 2103,
     createdAt: '2026-08-22',
+    rewarded: true,
+    pointsAwarded: 1000,
+    badge: '지자체 지원 리워드 지급완료',
   },
   {
     id: 'feed-4',
     author: '플리헌터',
     caption: '용인 플리에서 빈티지 가방 득템',
     festival: '용인 플리마켓 위크',
+    festivalId: '1000005',
     imageUrl: 'https://images.unsplash.com/photo-1515165562839-978bbcf01262?w=600&q=80',
     likes: 541,
     createdAt: '2026-08-22',
+    rewarded: true,
+    pointsAwarded: 1000,
+    badge: '지자체 1:1 매칭 피드',
   },
 ];
 
@@ -88,9 +108,13 @@ export function addFeedPost(input: Omit<FeedPost, 'id' | 'likes' | 'createdAt' |
     author: input.author ?? '온앤온 탐험가',
     caption: input.caption,
     festival: input.festival,
+    festivalId: input.festivalId,
     imageUrl: input.imageUrl,
     likes: 0,
     createdAt: new Date().toISOString().slice(0, 10),
+    rewarded: input.rewarded ?? true,
+    pointsAwarded: input.pointsAwarded ?? 1000,
+    badge: input.badge ?? (input.rewarded === false ? '지자체 1:1 매칭 피드' : '지자체 지원 리워드 지급완료'),
   };
   emit([post, ...posts]);
   return post;

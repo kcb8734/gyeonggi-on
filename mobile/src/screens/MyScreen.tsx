@@ -1,13 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAppState } from '../stores/appStore';
+import { syncRewardBalance, useAppState } from '../stores/appStore';
 import { clearAuthSession, useAuthUser } from '../stores/authStore';
+import { fetchRewardBalance } from '../api/feeds';
 
 export default function MyScreen() {
   const navigation = useNavigation<any>();
   const app = useAppState();
   const user = useAuthUser();
+
+  useEffect(() => {
+    const userId = user?.id ?? '11111111-1111-4111-8111-111111111111';
+    fetchRewardBalance(userId)
+      .then((balance) => {
+        if (balance) syncRewardBalance(balance.points, balance.coupons ?? []);
+      })
+      .catch(() => undefined);
+  }, [user?.id]);
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingBottom: 36 }}>
@@ -37,12 +47,30 @@ export default function MyScreen() {
         </View>
         <View style={styles.stat}>
           <Text style={styles.statNum}>{app.points.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>포인트</Text>
+          <Text style={styles.statLabel}>온앤온 포인트</Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statNum}>{app.schedule.length}</Text>
-          <Text style={styles.statLabel}>내 일정</Text>
+          <Text style={styles.statNum}>{app.localCoupons.length}</Text>
+          <Text style={styles.statLabel}>지역화폐 쿠폰</Text>
         </View>
+      </View>
+
+      <View style={styles.rewardBox}>
+        <Text style={styles.merchantKicker}>내 보유 포인트 / 지역화폐 쿠폰</Text>
+        <Text style={styles.merchantTitle}>{app.points.toLocaleString()} P</Text>
+        <Text style={styles.merchantBody}>
+          축제 현장 피드 1건당 지자체 1:1 매칭 1,000P와 지역화폐 쿠폰이 적립됩니다.
+        </Text>
+        {app.localCoupons.length === 0 ? (
+          <Text style={styles.empty}>아직 받은 지역화폐 쿠폰이 없습니다</Text>
+        ) : (
+          app.localCoupons.slice(0, 4).map((coupon) => (
+            <View key={coupon.id} style={styles.couponRow}>
+              <Text style={styles.rowTitle}>{coupon.title}</Text>
+              <Text style={styles.rowMeta}>{coupon.festivalTitle} · {coupon.amount.toLocaleString()}원</Text>
+            </View>
+          ))
+        )}
       </View>
 
       <TouchableOpacity style={styles.feedBtn} onPress={() => navigation.navigate('FeedUpload')}>
@@ -171,6 +199,15 @@ const styles = StyleSheet.create({
   merchantBtnText: { color: '#fff', fontWeight: '800' },
   merchantGhost: { marginTop: 8, paddingVertical: 10, alignItems: 'center' },
   merchantGhostText: { fontWeight: '800', color: '#9A3412' },
+  rewardBox: {
+    marginTop: 16,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  couponRow: { marginTop: 10, backgroundColor: '#F9FAFB', borderRadius: 12, padding: 10 },
   section: { fontSize: 16, fontWeight: '800', marginTop: 22, marginBottom: 8, color: '#111827' },
   empty: { color: '#6B7280', fontSize: 13 },
   row: { flexDirection: 'row', gap: 10, backgroundColor: '#fff', borderRadius: 14, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#E5E7EB' },

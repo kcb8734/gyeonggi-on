@@ -3,23 +3,15 @@ import {
   getTourDetail,
   searchFestivals,
   searchNearby,
-  TourApiError,
 } from '../services/tourApiService';
 import { parseOptionalFloat } from '../utils/geo';
 
-function sendTourError(res: Response, err: unknown, fallback: string) {
-  if (err instanceof TourApiError) {
-    return res.status(err.statusCode).json({ success: false, message: err.message });
-  }
-  console.error('[tour]', err);
-  return res.status(502).json({ success: false, message: fallback });
-}
-
 /**
- * GET /api/tour/festivals?areaCode=31&month=8&year=2026&category=계절축제
+ * GET /api/tour/festivals?areaCode=all&month=8&year=2026&category=계절축제
+ * 기본은 전국(contentTypeId=15). 실패해도 더미 목록을 내려 화면이 비지 않게 한다.
  */
 export const listFestivals = async (req: Request, res: Response) => {
-  const areaCode = typeof req.query.areaCode === 'string' ? req.query.areaCode : '31';
+  const areaCode = typeof req.query.areaCode === 'string' ? req.query.areaCode : 'all';
   const category = typeof req.query.category === 'string' ? req.query.category : undefined;
   const monthRaw = parseOptionalFloat(req.query.month);
   const yearRaw = parseOptionalFloat(req.query.year);
@@ -30,19 +22,15 @@ export const listFestivals = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: 'month는 1~12 사이여야 합니다.' });
   }
 
-  try {
-    const festivals = await searchFestivals({ areaCode, month, year, category });
-    return res.json({
-      success: true,
-      areaCode,
-      month: month ?? null,
-      year: year ?? new Date().getFullYear(),
-      count: festivals.length,
-      data: festivals,
-    });
-  } catch (err) {
-    return sendTourError(res, err, '축제 목록을 불러오지 못했습니다.');
-  }
+  const festivals = await searchFestivals({ areaCode, month, year, category });
+  return res.json({
+    success: true,
+    areaCode,
+    month: month ?? null,
+    year: year ?? new Date().getFullYear(),
+    count: festivals.length,
+    data: festivals,
+  });
 };
 
 /**
@@ -61,19 +49,15 @@ export const listNearby = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: '유효하지 않은 좌표입니다.' });
   }
 
-  try {
-    const places = await searchNearby({ mapX, mapY, radius, contentTypeId });
-    return res.json({
-      success: true,
-      mapX,
-      mapY,
-      radius,
-      count: places.length,
-      data: places,
-    });
-  } catch (err) {
-    return sendTourError(res, err, '주변 관광 정보를 불러오지 못했습니다.');
-  }
+  const places = await searchNearby({ mapX, mapY, radius, contentTypeId });
+  return res.json({
+    success: true,
+    mapX,
+    mapY,
+    radius,
+    count: places.length,
+    data: places,
+  });
 };
 
 /**
@@ -86,10 +70,6 @@ export const getDetail = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: '콘텐츠 ID가 필요합니다.' });
   }
 
-  try {
-    const detail = await getTourDetail(contentId, contentTypeId);
-    return res.json({ success: true, data: detail });
-  } catch (err) {
-    return sendTourError(res, err, '상세 정보를 불러오지 못했습니다.');
-  }
+  const detail = await getTourDetail(contentId, contentTypeId);
+  return res.json({ success: true, data: detail });
 };

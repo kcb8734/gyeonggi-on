@@ -19,6 +19,8 @@ export const PREVIEW_HOME: HomeFeed = {
       category: '문화/예술',
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80',
+      tel: '031-228-3675',
+      description: '세계유산 수원화성을 무대로 펼쳐지는 야간 퍼레이드와 전통 공연, 행궁 야행 프로그램이 이어집니다.',
     },
     {
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -34,6 +36,8 @@ export const PREVIEW_HOME: HomeFeed = {
       category: '가족',
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80',
+      tel: '031-288-0000',
+      description: '전통 가옥과 장터 체험, 가족 공연이 하루 종일 이어지는 용인 대표 가족 축제입니다.',
     },
     {
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -49,6 +53,8 @@ export const PREVIEW_HOME: HomeFeed = {
       category: '계절축제',
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80',
+      tel: '031-582-0174',
+      description: '북한강 위 자라섬에서 열리는 국내 대표 재즈 페스티벌. 선셋 무대와 푸드존이 함께합니다.',
     },
     {
       id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
@@ -64,6 +70,8 @@ export const PREVIEW_HOME: HomeFeed = {
       category: '먹거리',
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80',
+      tel: '031-241-1101',
+      description: '영동시장 골목 상인과 함께하는 먹거리 축제. 온앤온 상생 쿠폰으로 꼬치·분식을 할인받을 수 있습니다.',
     },
     {
       id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -79,6 +87,8 @@ export const PREVIEW_HOME: HomeFeed = {
       category: '플리마켓',
       is_trending: false,
       image_url: 'https://images.unsplash.com/photo-1515165562839-978bbcf01262?w=800&q=80',
+      tel: '031-324-2114',
+      description: '빈티지·수공예 셀러가 모이는 용인 야외 플리마켓. 현장 피드 작성 시 지자체 매칭 포인트가 적립됩니다.',
     },
   ],
   promotions: [

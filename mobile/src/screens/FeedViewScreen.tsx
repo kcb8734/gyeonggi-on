@@ -43,6 +43,11 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
             <View style={styles.meta}>
               {post.festival ? <Text style={styles.fest}>{post.festival}</Text> : null}
               <Text style={styles.caption}>{post.caption}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {post.rewarded === false ? '지자체 1:1 매칭 피드' : '🎁 지자체 지원 리워드 지급완료'}
+                </Text>
+              </View>
               <Text style={styles.author}>@{post.author} · ♥ {post.likes.toLocaleString()}</Text>
               <Text style={styles.date}>{post.createdAt}</Text>
             </View>
@@ -70,6 +75,15 @@ const styles = StyleSheet.create({
   },
   fest: { color: '#FDE68A', fontSize: 12, fontWeight: '800', marginBottom: 8 },
   caption: { color: '#fff', fontSize: 22, fontWeight: '800', lineHeight: 30 },
+  badge: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    backgroundColor: 'rgba(253, 230, 138, 0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  badgeText: { color: '#FDE68A', fontWeight: '800', fontSize: 12 },
   author: { color: '#E5E7EB', fontSize: 14, fontWeight: '700', marginTop: 12 },
   date: { color: '#9CA3AF', fontSize: 12, marginTop: 6 },
 });
