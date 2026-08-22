@@ -1,5 +1,5 @@
-import React, { useMemo, useRef } from 'react';
-import { unstable_createElement as createEl } from 'react-native-web';
+import React, { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 
 function escapeHtml(value: string) {
   return value
@@ -10,8 +10,8 @@ function escapeHtml(value: string) {
 }
 
 /**
- * RN-web renderer는 일반 createElement('iframe')을 호스트로 취급하지 않을 수 있다.
- * react-native-web의 unstable_createElement로 실제 HTML iframe을 만든다.
+ * RN-web은 #root에서 IME 조합을 가로챈다.
+ * 실제 iframe을 document.body에 붙여 입력 문서 자체를 분리한다.
  */
 export default function IsolatedImeField({
   valueRef,
@@ -19,55 +19,85 @@ export default function IsolatedImeField({
   inputMode = 'text',
   maxLength,
   onLiveChange,
+  multiline = false,
 }: {
   valueRef: React.MutableRefObject<string>;
   placeholder: string;
   inputMode?: 'text' | 'numeric' | 'tel';
   maxLength?: number;
   onLiveChange?: (value: string) => void;
+  multiline?: boolean;
 }) {
+  const hostRef = useRef<View>(null);
   const liveRef = useRef(onLiveChange);
   const valueRefStable = useRef(valueRef);
   liveRef.current = onLiveChange;
   valueRefStable.current = valueRef;
 
-  const srcDoc = useMemo(() => `<!doctype html><html lang="ko"><head><meta charset="utf-8" />
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const host = hostRef.current as unknown as HTMLElement | null;
+    if (!host) return;
+
+    const tag = multiline ? 'textarea' : 'input';
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('title', placeholder);
+    iframe.setAttribute('lang', 'ko');
+    iframe.style.cssText = 'position:fixed;z-index:2147483000;border:0;background:transparent;margin:0;padding:0;overflow:hidden;';
+    iframe.srcdoc = `<!doctype html><html lang="ko"><head><meta charset="utf-8" />
 <style>
   html, body { margin: 0; height: 100%; background: transparent; }
-  input {
-    width: 100%; height: 48px; box-sizing: border-box;
-    border: 1px solid #DDD; border-radius: 8px; padding: 0 12px;
+  input, textarea {
+    width: 100%; height: 100%; box-sizing: border-box;
+    border: 1px solid #DDD; border-radius: 8px; padding: 12px;
     font-size: 16px; line-height: 22px; color: #111827;
     font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-    outline: none; background: #fff;
+    outline: none; background: #fff; resize: none;
   }
 </style></head><body>
-<input lang="ko" type="text" inputmode="${inputMode}" placeholder="${escapeHtml(placeholder)}"
+<${tag} lang="ko" ${multiline ? '' : `type="text" inputmode="${inputMode}"`}
+  placeholder="${escapeHtml(placeholder)}"
   ${typeof maxLength === 'number' ? `maxlength="${maxLength}"` : ''}
-  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-</body></html>`, [inputMode, maxLength, placeholder]);
+  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></${tag}>
+</body></html>`;
+    document.body.appendChild(iframe);
 
-  return createEl('iframe', {
-    title: placeholder,
-    srcDoc,
-    onLoad: (event: { currentTarget: HTMLIFrameElement }) => {
-      const input = event.currentTarget.contentDocument?.querySelector('input');
-      if (!input) return;
-      if (valueRefStable.current.current) input.value = valueRefStable.current.current;
+    const place = () => {
+      const rect = host.getBoundingClientRect();
+      iframe.style.top = `${rect.top}px`;
+      iframe.style.left = `${rect.left}px`;
+      iframe.style.width = `${Math.max(rect.width, 40)}px`;
+      iframe.style.height = `${Math.max(rect.height, multiline ? 96 : 48)}px`;
+      iframe.style.visibility = rect.width < 8 ? 'hidden' : 'visible';
+    };
+
+    const onLoad = () => {
+      const field = iframe.contentDocument?.querySelector(tag) as HTMLInputElement | HTMLTextAreaElement | null;
+      if (!field) return;
+      if (valueRefStable.current.current) field.value = valueRefStable.current.current;
       const sync = () => {
-        valueRefStable.current.current = input.value;
-        liveRef.current?.(input.value);
+        valueRefStable.current.current = field.value;
+        liveRef.current?.(field.value);
       };
-      input.addEventListener('input', sync);
-      input.addEventListener('change', sync);
-    },
-    style: {
-      width: '100%',
-      height: 52,
-      borderWidth: 0,
-      borderStyle: 'none',
-      display: 'block',
-      backgroundColor: 'transparent',
-    },
-  });
+      field.addEventListener('input', sync);
+      field.addEventListener('change', sync);
+      place();
+    };
+    iframe.addEventListener('load', onLoad);
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    ro?.observe(host);
+
+    return () => {
+      iframe.removeEventListener('load', onLoad);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+      ro?.disconnect();
+      iframe.remove();
+    };
+  }, [inputMode, maxLength, multiline, placeholder]);
+
+  return <View ref={hostRef} style={{ height: multiline ? 96 : 48, width: '100%' }} />;
 }

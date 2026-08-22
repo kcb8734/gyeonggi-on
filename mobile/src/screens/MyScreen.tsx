@@ -120,9 +120,9 @@ export default function MyScreen() {
       <View style={styles.merchant}>
         <Text style={styles.merchantKicker}>사장님 전용 코너</Text>
         <Text style={styles.merchantTitle}>가맹점 쿠폰을 직접 열고 정산하세요</Text>
-        <Text style={styles.merchantBody}>국세청 계속사업자 인증 후 자율 할인을 바로 등록할 수 있습니다.</Text>
+        <Text style={styles.merchantBody}>국세청 계속사업자 인증 후 할인 쿠폰을 바로 등록할 수 있습니다.</Text>
         <TouchableOpacity style={styles.merchantBtn} onPress={() => navigation.navigate('PromotionRegister')}>
-          <Text style={styles.merchantBtnText}>자율 할인 등록 · 상호명 한글 입력</Text>
+          <Text style={styles.merchantBtnText}>할인 쿠폰 등록 · 상호명 한글 입력</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.merchantGhost} onPress={() => navigation.navigate('MerchantSettlement')}>
           <Text style={styles.merchantGhostText}>내 가맹점 쿠폰 사용 내역 / 정산 현황</Text>

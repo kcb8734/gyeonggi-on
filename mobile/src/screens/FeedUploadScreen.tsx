@@ -1,12 +1,12 @@
-import React, { createElement, useEffect, useRef, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import IsolatedImeField from '../components/ui/IsolatedImeField';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { addFeedPost } from '../stores/feedStore';
 import { addLocalCurrencyCoupon, addPoints } from '../stores/appStore';
 import { getAuthUser } from '../stores/authStore';
 import { pickFromCamera, pickFromGallery } from '../utils/pickImage';
-import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 import { fetchTourFestivals } from '../api/tour';
 import { submitFeedReward } from '../api/feeds';
 import type { TourFestival } from '../types/tour';
@@ -186,55 +186,16 @@ export default function FeedUploadScreen() {
           </TouchableOpacity>
         ))}
       </View>
-      <Text style={styles.label}>한 줄 소개</Text>
-      {hangulField(captionRef, '예: 화성행궁 야경 실화냐', true)}
+      <Text style={styles.label}>한 줄 소개 (한글 입력)</Text>
+      <IsolatedImeField
+        valueRef={captionRef}
+        placeholder="예: 화성행궁 야경 실화냐"
+        multiline
+      />
       <TouchableOpacity style={styles.submit} onPress={submit}>
         <Text style={styles.submitText}>피드 올리고 1,000P 받기</Text>
       </TouchableOpacity>
     </ScrollView>
-  );
-}
-
-function hangulField(ref: React.MutableRefObject<string>, placeholder: string, multiline = false) {
-  if (Platform.OS === 'web') {
-    return createElement(multiline ? 'textarea' : 'input', {
-      type: multiline ? undefined : 'text',
-      lang: 'ko',
-      defaultValue: '',
-      placeholder,
-      rows: multiline ? 4 : undefined,
-      autoComplete: 'off',
-      autoCorrect: 'off',
-      spellCheck: false,
-      onInput: (event: { currentTarget: { value: string } }) => {
-        ref.current = event.currentTarget.value;
-      },
-      style: {
-        width: '100%',
-        boxSizing: 'border-box',
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        border: '1px solid #DDD',
-        padding: 12,
-        minHeight: multiline ? 96 : undefined,
-        fontSize: 16,
-        fontFamily: KOREAN_FONT_FAMILY,
-        outline: 'none',
-        resize: multiline ? 'vertical' : 'none',
-      },
-    });
-  }
-
-  return (
-    <TextInput
-      defaultValue=""
-      placeholder={placeholder}
-      multiline={multiline}
-      onChangeText={(value) => {
-        ref.current = value;
-      }}
-      style={[styles.nativeInput, multiline && styles.nativeMultiline]}
-    />
   );
 }
 
@@ -281,15 +242,4 @@ const styles = StyleSheet.create({
   presetOn: { borderWidth: 3, borderColor: '#111827' },
   submit: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
   submitText: { color: '#fff', fontWeight: '800' },
-  nativeInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    padding: 12,
-    fontSize: 16,
-    fontFamily: KOREAN_FONT_FAMILY,
-    color: '#111827',
-  },
-  nativeMultiline: { minHeight: 96, textAlignVertical: 'top' },
 });

@@ -31,6 +31,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
   const businessNameRef = useRef('');
   const businessNumberRef = useRef('');
+  const mainMenuRef = useRef('');
+  const featuresRef = useRef('');
   const [discountRate, setDiscountRate] = useState<string>('10');
   const [quantity, setQuantity] = useState<string>('100');
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>('5000');
@@ -79,6 +81,10 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       Alert.alert('알림', '국세청 계속사업자 확인 후에 등록할 수 있습니다.');
       return;
     }
+    if (!mainMenuRef.current.trim() || !featuresRef.current.trim()) {
+      Alert.alert('알림', '주요 메뉴와 특징을 입력한 뒤 쿠폰을 등록해주세요.');
+      return;
+    }
     if (!selectedFestivalId) {
       Alert.alert('알림', '연계할 축제를 선택해주세요.');
       return;
@@ -90,6 +96,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         business_name: businessNameRef.current.trim(),
         business_number: businessNumberRef.current.replace(/\D/g, ''),
         festival_id: selectedFestivalId,
+        main_menu: mainMenuRef.current.trim(),
+        features: featuresRef.current.trim(),
         title: `${festivals.find((f) => f.id === selectedFestivalId)?.title ?? ''} 제휴 할인`,
         merchant_discount_rate: parseFloat(discountRate),
         max_discount_amount: parseFloat(maxDiscountAmount),
@@ -110,7 +118,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
-      <Text style={styles.header}>사장님 자율 할인 등록</Text>
+      <Text style={styles.header}>할인 쿠폰 등록</Text>
       <Text style={styles.note}>국세청 계속사업자 확인 후 상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 
       <Text style={styles.label}>상호명</Text>
@@ -140,6 +148,24 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           </Text>
         </View>
       )}
+
+      {ntsResult?.data?.verified ? (
+        <View style={styles.introBox}>
+          <Text style={styles.note}>사업자 확인이 끝났습니다. 쿠폰 등록 전에 상가를 소개해 주세요.</Text>
+          <Text style={styles.label}>주요 메뉴</Text>
+          <IsolatedImeField
+            valueRef={mainMenuRef}
+            placeholder="예: 궁중갈비탕, 수원왕갈비, 김치찌개"
+            multiline
+          />
+          <Text style={styles.label}>특징</Text>
+          <IsolatedImeField
+            valueRef={featuresRef}
+            placeholder="예: 행궁 앞 30년 노포, 당일 손질 고기"
+            multiline
+          />
+        </View>
+      ) : null}
 
       <Text style={styles.label}>연계 축제 선택</Text>
       <View style={styles.pickerWrap}>
@@ -205,4 +231,12 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 14, fontWeight: '700', color: '#B4530A', lineHeight: 22 },
   submitBtn: { backgroundColor: '#2D6CDF', borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 24, marginBottom: 40 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  introBox: {
+    marginTop: 16,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
 });

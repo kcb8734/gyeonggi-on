@@ -19,6 +19,8 @@ export const createPromotion = async (req: Request, res: Response) => {
     end_time,
     business_name,
     business_number,
+    main_menu,
+    features,
     request_matching,
     funding_type: fundingTypeBody,
   } = req.body;
@@ -159,12 +161,30 @@ export const createPromotion = async (req: Request, res: Response) => {
     // 참고: 실제 예산 "차감"은 쿠폰 사용(redeem) 시점에 실시간으로 이루어진다 (couponController.ts 참조).
     // 여기서의 FOR UPDATE 잠금은 "동시에 여러 점주가 같은 예산을 보고 매칭을 확정하려는" 경쟁 상태를 방지하는 역할이다.
 
+    try {
+      await client.query(
+        `UPDATE discount_promotions
+         SET title = LEFT($1, 100)
+         WHERE id = $2`,
+        [
+          `${title}${main_menu ? ` · ${String(main_menu).slice(0, 20)}` : ''}`,
+          insertResult.rows[0].id,
+        ],
+      );
+    } catch {
+      // 소개 컬럼이 없어도 등록은 유지
+    }
+
     await client.query('COMMIT');
 
     return res.status(201).json({
       success: true,
-      message: matchNote,
-      data: insertResult.rows[0],
+      message: `${matchNote}${main_menu || features ? ` 주요 메뉴: ${main_menu ?? ''} / 특징: ${features ?? ''}` : ''}`,
+      data: {
+        ...insertResult.rows[0],
+        main_menu: main_menu ?? null,
+        features: features ?? null,
+      },
     });
   } catch (err) {
     await client.query('ROLLBACK');

@@ -99,7 +99,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.webPage}>
       <Text style={styles.liveBanner}>온앤온 미리보기 갱신됨 · TourAPI 4.0 · 현장피드 1,000P · 한글IME</Text>
-      <View style={styles.phone}>{children}</View>
+      <View nativeID="onandon-phone" style={styles.phone}>{children}</View>
     </View>
   );
 }
@@ -112,7 +112,7 @@ export default function App() {
         <NavigationContainer>
           <Stack.Navigator>
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-            <Stack.Screen name="PromotionRegister" options={{ title: '자율 할인 등록' }}>
+            <Stack.Screen name="PromotionRegister" options={{ title: '할인 쿠폰 등록' }}>
               {() => <PromotionRegisterScreen merchantId={DEV_MERCHANT_ID} />}
             </Stack.Screen>
             <Stack.Screen name="TourDetail" options={{ title: '행사 상세' }}>

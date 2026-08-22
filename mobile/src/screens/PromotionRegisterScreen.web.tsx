@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert } from 'react-native';
-import { unstable_createElement as createEl } from 'react-native-web';
+import { Alert, StyleSheet, View } from 'react-native';
 import axios from 'axios';
 import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
@@ -20,7 +19,9 @@ const FORM = `<!doctype html>
   .note { font-size: 12px; color: #6B7280; line-height: 18px; margin-bottom: 8px; }
   .ime { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; border-radius: 12px; padding: 10px 12px; font-size: 12px; font-weight: 700; margin-bottom: 12px; }
   label { display: block; font-size: 14px; font-weight: 600; margin: 12px 0 6px; }
-  input, select { width: 100%; box-sizing: border-box; height: 48px; border: 1px solid #DDD; border-radius: 8px; padding: 0 12px; font-size: 16px; font-family: inherit; background: #fff; }
+  input, select, textarea { width: 100%; box-sizing: border-box; border: 1px solid #DDD; border-radius: 8px; padding: 0 12px; font-size: 16px; font-family: inherit; background: #fff; }
+  input, select { height: 48px; }
+  textarea { min-height: 88px; padding: 12px; resize: vertical; line-height: 22px; }
   .btn { width: 100%; border: 0; border-radius: 10px; padding: 12px; font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer; }
   .dark { background: #111827; color: #fff; margin-top: 10px; }
   .blue { background: #2D6CDF; color: #fff; margin-top: 24px; }
@@ -28,19 +29,29 @@ const FORM = `<!doctype html>
   .badge { background: #FFF4E5; border: 1px solid #FFD08A; border-radius: 12px; padding: 16px; margin-top: 16px; font-size: 14px; font-weight: 700; color: #B4530A; }
   .ok { background: #E7F7EC; border-color: #8BE0A6; color: #166534; }
   .row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  #introBlock { display: none; background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 14px; padding: 14px; margin-top: 16px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>사장님 자율 할인 등록</h1>
-  <div class="ime">한글 IME 분리 입력창 — 상호명에 ‘온앤온분식’을 그대로 입력해 보세요. 자모가 조합됩니다.</div>
-  <p class="note">이 화면은 React Native Web 밖에 있는 브라우저 기본 입력입니다.</p>
+  <h1>할인 쿠폰 등록</h1>
+  <div class="ime">상호명·메뉴·특징은 브라우저 기본 한글 입력입니다. ‘온앤온분식’처럼 치면 자모가 조합됩니다.</div>
+  <p class="note">국세청 계속사업자 확인 후 상가 소개를 적고 쿠폰을 등록합니다.</p>
   <label for="bizName">상호명</label>
   <input id="bizName" name="business_name" lang="ko" type="text" inputmode="text" placeholder="예: 화성행궁 한정식" autocomplete="off" autocorrect="off" spellcheck="false" />
   <label for="bizNo">사업자등록번호 (10자리)</label>
   <input id="bizNo" name="business_number" lang="ko" type="text" inputmode="numeric" maxlength="12" placeholder="1234567890" autocomplete="off" />
   <button class="btn dark" id="verifyBtn" type="button">국세청 사업자 상태 확인</button>
   <div id="nts" class="badge" style="display:none"></div>
+
+  <div id="introBlock">
+    <p class="note" style="margin:0 0 8px">사업자 확인이 끝났습니다. 쿠폰 등록 전에 상가를 소개해 주세요.</p>
+    <label for="mainMenu">주요 메뉴</label>
+    <textarea id="mainMenu" lang="ko" placeholder="예: 궁중갈비탕, 수원왕갈비, 김치찌개" autocomplete="off"></textarea>
+    <label for="features">특징</label>
+    <textarea id="features" lang="ko" placeholder="예: 행궁 앞 30년 노포, 당일 손질 고기, 단체석 가능" autocomplete="off"></textarea>
+  </div>
+
   <label for="festival">연계 축제 선택</label>
   <select id="festival"><option value="">축제를 선택하세요</option></select>
   <label for="rate">점주 할인율 (%) — 자체 할인 최대 100%</label>
@@ -83,6 +94,8 @@ const FORM = `<!doctype html>
       type: 'submit',
       businessName: val('bizName'),
       businessNumber: val('bizNo'),
+      mainMenu: val('mainMenu'),
+      features: val('features'),
       festivalId: val('festival'),
       rate: val('rate'),
       qty: val('qty'),
@@ -95,6 +108,7 @@ const FORM = `<!doctype html>
 </html>`;
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
+  const hostRef = useRef<View>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [nts, setNts] = useState<MerchantVerifyResult | null>(null);
@@ -104,6 +118,30 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       .then(setFestivals)
       .catch(() => undefined);
   }, [merchantId]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const host = hostRef.current as unknown as HTMLElement | null;
+    const phone = document.getElementById('onandon-phone');
+    const parent = phone ?? host ?? document.body;
+    const iframe = document.createElement('iframe');
+    iframe.title = '할인 쿠폰 등록';
+    iframe.setAttribute('lang', 'ko');
+    iframe.srcdoc = FORM;
+    iframe.style.cssText = phone
+      ? 'position:absolute;inset:0;width:100%;height:100%;border:0;z-index:30;background:#F7F8FA;'
+      : 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:#F7F8FA;';
+    if (phone) {
+      const style = window.getComputedStyle(phone);
+      if (style.position === 'static') phone.style.position = 'relative';
+    }
+    parent.appendChild(iframe);
+    iframeRef.current = iframe;
+    return () => {
+      iframe.remove();
+      iframeRef.current = null;
+    };
+  }, []);
 
   const fillFestivals = () => {
     const select = iframeRef.current?.contentDocument?.getElementById('festival') as HTMLSelectElement | null;
@@ -120,16 +158,22 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   };
 
   useEffect(() => {
+    const iframe = iframeRef.current;
+    iframe?.addEventListener('load', fillFestivals);
     fillFestivals();
+    return () => iframe?.removeEventListener('load', fillFestivals);
   }, [festivals]);
 
   useEffect(() => {
-    const badge = iframeRef.current?.contentDocument?.getElementById('nts');
-    const submit = iframeRef.current?.contentDocument?.getElementById('submitBtn') as HTMLButtonElement | null;
+    const doc = iframeRef.current?.contentDocument;
+    const badge = doc?.getElementById('nts');
+    const submit = doc?.getElementById('submitBtn') as HTMLButtonElement | null;
+    const intro = doc?.getElementById('introBlock');
     if (!badge) return;
     if (!nts) {
       badge.setAttribute('style', 'display:none');
       if (submit) submit.disabled = true;
+      if (intro) intro.style.display = 'none';
       return;
     }
     badge.style.display = 'block';
@@ -137,7 +181,9 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     badge.textContent = nts.data?.verified
       ? `계속사업자 확인 완료 (${nts.data.b_stt_cd})`
       : `확인 실패: ${nts.message}`;
-    if (submit) submit.disabled = !nts.data?.verified;
+    const ok = !!nts.data?.verified;
+    if (submit) submit.disabled = !ok;
+    if (intro) intro.style.display = ok ? 'block' : 'none';
   }, [nts]);
 
   useEffect(() => {
@@ -165,6 +211,10 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           Alert.alert('알림', '국세청 계속사업자 확인 후에 등록할 수 있습니다.');
           return;
         }
+        if (!String(event.data.mainMenu ?? '').trim() || !String(event.data.features ?? '').trim()) {
+          Alert.alert('알림', '주요 메뉴와 특징을 입력한 뒤 쿠폰을 등록해주세요.');
+          return;
+        }
         if (!event.data.festivalId) {
           Alert.alert('알림', '연계할 축제를 선택해주세요.');
           return;
@@ -174,6 +224,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
             merchant_id: merchantId,
             business_name: String(event.data.businessName ?? '').trim(),
             business_number: String(event.data.businessNumber ?? '').replace(/\D/g, ''),
+            main_menu: String(event.data.mainMenu ?? '').trim(),
+            features: String(event.data.features ?? '').trim(),
             festival_id: event.data.festivalId,
             title: `${festivals.find((item) => item.id === event.data.festivalId)?.title ?? ''} 제휴 할인`,
             merchant_discount_rate: parseFloat(event.data.rate),
@@ -194,19 +246,9 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     return () => window.removeEventListener('message', onMessage);
   }, [festivals, merchantId, nts]);
 
-  return createEl('iframe', {
-    ref: iframeRef,
-    title: '자율 할인 등록',
-    srcDoc: FORM,
-    onLoad: fillFestivals,
-    style: {
-      width: '100%',
-      height: '100%',
-      minHeight: 860,
-      borderWidth: 0,
-      borderStyle: 'none',
-      display: 'block',
-      backgroundColor: '#F7F8FA',
-    },
-  });
+  return <View ref={hostRef} style={styles.host} />;
 }
+
+const styles = StyleSheet.create({
+  host: { flex: 1, minHeight: 860, backgroundColor: '#F7F8FA' },
+});
