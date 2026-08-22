@@ -1,9 +1,18 @@
 {
+  "version": 2,
   "framework": null,
-  "installCommand": "npm ci --prefix mobile",
-  "buildCommand": "npm run export:web --prefix mobile",
+  "installCommand": "npm ci --prefix backend && npm ci --prefix mobile",
+  "buildCommand": "npm run build --prefix backend && npm run export:web --prefix mobile",
   "outputDirectory": "mobile/dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 15,
+      "includeFiles": "backend/dist/**"
+    }
+  },
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/health", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -21,8 +30,8 @@
     }
   ],
   "env": {
-    "EXPO_PUBLIC_API_URL": "https://api.gyeonggi-on.kr",
-    "EXPO_PUBLIC_API_BASE_URL": "https://api.gyeonggi-on.kr",
+    "EXPO_PUBLIC_API_URL": "https://kdanji.com",
+    "EXPO_PUBLIC_API_BASE_URL": "https://kdanji.com",
     "EXPO_PUBLIC_WEB_ORIGIN": "https://kdanji.com"
   }
 }

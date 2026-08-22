@@ -33,6 +33,29 @@ interface StatusApiResponse {
   match_cnt?: number;
   request_cnt?: number;
   data?: Array<Partial<NtsBusinessStatus> & { b_no?: string }>;
+  code?: number | string;
+  msg?: string;
+  message?: string;
+  resultCode?: string;
+  resultMsg?: string;
+}
+
+function resolveServiceKey(explicit?: string): string {
+  return String(explicit ?? process.env.NTS_SERVICE_KEY ?? '').trim();
+}
+
+function ntsErrorMessage(payload: StatusApiResponse | null, httpStatus: number): string {
+  const detail = payload?.msg || payload?.message || payload?.resultMsg || payload?.status_code;
+  if (httpStatus === 401 || httpStatus === 403 || payload?.code === 401 || payload?.code === 'UNAUTHORIZED') {
+    return '국세청 API 인증키(NTS_SERVICE_KEY)가 유효하지 않습니다. Vercel 환경변수를 확인하세요.';
+  }
+  if (httpStatus === 429) {
+    return '국세청 사업자 상태조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+  }
+  if (detail && !/serviceKey|NTS_SERVICE_KEY/i.test(detail)) {
+    return `국세청 사업자 상태조회가 실패했습니다. (${detail})`;
+  }
+  return `국세청 사업자 상태조회가 실패했습니다. (HTTP ${httpStatus})`;
 }
 
 export interface FetchBusinessStatusOptions {
@@ -81,7 +104,7 @@ export async function fetchBusinessStatus(
     throw new NtsLookupError('사업자등록번호는 숫자 10자리여야 합니다.', 400);
   }
 
-  const serviceKey = options.serviceKey ?? process.env.NTS_SERVICE_KEY;
+  const serviceKey = resolveServiceKey(options.serviceKey);
   if (!serviceKey) {
     throw new NtsLookupError('국세청 API 인증키(NTS_SERVICE_KEY)가 설정되지 않았습니다.', 500);
   }
@@ -107,26 +130,31 @@ export async function fetchBusinessStatus(
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new NtsLookupError('국세청 사업자 상태조회 요청이 시간 초과되었습니다.');
+      throw new NtsLookupError('국세청 사업자 상태조회 요청이 시간 초과되었습니다.', 504);
     }
-    throw new NtsLookupError('국세청 사업자 상태조회 서비스에 연결하지 못했습니다.');
+    throw new NtsLookupError('국세청 사업자 상태조회 서비스에 연결하지 못했습니다.', 502);
   } finally {
     clearTimeout(timer);
   }
 
-  if (!response.ok) {
-    throw new NtsLookupError(`국세청 사업자 상태조회가 실패했습니다. (HTTP ${response.status})`);
-  }
-
-  let payload: StatusApiResponse;
+  let payload: StatusApiResponse | null = null;
   try {
     payload = (await response.json()) as StatusApiResponse;
   } catch {
-    throw new NtsLookupError('국세청 응답을 해석하지 못했습니다.');
+    payload = null;
+  }
+
+  if (!response.ok) {
+    console.warn('[NTS] status lookup failed', { httpStatus: response.status, statusCode: payload?.status_code ?? payload?.code });
+    throw new NtsLookupError(ntsErrorMessage(payload, response.status), response.status >= 400 && response.status < 500 ? response.status : 502);
+  }
+
+  if (!payload) {
+    throw new NtsLookupError('국세청 응답을 해석하지 못했습니다.', 502);
   }
 
   if (payload.status_code && payload.status_code !== 'OK') {
-    throw new NtsLookupError(`국세청 사업자 상태조회가 실패했습니다. (${payload.status_code})`);
+    throw new NtsLookupError(ntsErrorMessage(payload, response.status), 502);
   }
 
   const row = payload.data?.[0];

@@ -15,7 +15,7 @@ const apiFromEnv =
 const fallbackApi =
   typeof __DEV__ !== 'undefined' && __DEV__
     ? ''
-    : 'https://api.gyeonggi-on.kr';
+    : 'https://kdanji.com';
 
 export const API_BASE_URL = (apiFromEnv || fallbackApi).replace(/\/$/, '');
 export const WEB_ORIGIN = (readPublic('EXPO_PUBLIC_WEB_ORIGIN') || 'https://kdanji.com').replace(/\/$/, '');
