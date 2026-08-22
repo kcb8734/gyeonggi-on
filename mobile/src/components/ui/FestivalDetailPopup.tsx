@@ -1,0 +1,180 @@
+import React from 'react';
+import {
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import type { HomeFestival, HomePromotion } from '../../types/home';
+import { isFavorite, isScheduled } from '../../stores/appStore';
+import { ddayLabel, formatRange } from '../../utils/date';
+
+interface Props {
+  festival: HomeFestival | null;
+  promotions: HomePromotion[];
+  issuingId?: string | null;
+  onClose: () => void;
+  onOpenDetail: () => void;
+  onFavorite: () => void;
+  onSchedule: () => void;
+  onIssue: (promo: HomePromotion) => void;
+}
+
+export default function FestivalDetailPopup({
+  festival,
+  promotions,
+  issuingId,
+  onClose,
+  onOpenDetail,
+  onFavorite,
+  onSchedule,
+  onIssue,
+}: Props) {
+  if (!festival) return null;
+  const liked = isFavorite(festival.id);
+  const saved = isScheduled(festival.id);
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+        <View style={styles.sheet}>
+          <View style={styles.handle} />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {festival.image_url ? (
+              <Image source={{ uri: festival.image_url }} style={styles.hero} />
+            ) : (
+              <View style={[styles.hero, styles.fallback]} />
+            )}
+            <View style={styles.body}>
+              <View style={styles.row}>
+                <Text style={styles.dday}>{ddayLabel(festival.start_date, festival.end_date)}</Text>
+                {festival.category ? <Text style={styles.cat}>{festival.category}</Text> : null}
+              </View>
+              <Text style={styles.title}>{festival.title}</Text>
+              <Text style={styles.meta}>{formatRange(festival.start_date, festival.end_date)}</Text>
+              <Text style={styles.meta}>{festival.location_name ?? '위치 미정'}</Text>
+              <Text style={styles.overview} numberOfLines={5}>
+                {festival.description || '한국관광공사 축제 정보와 경기온 상생 할인을 함께 확인할 수 있습니다.'}
+              </Text>
+
+              <View style={styles.actions}>
+                <TouchableOpacity style={styles.ghost} onPress={onFavorite}>
+                  <Text style={styles.ghostText}>{liked ? '찜 해제' : '즐겨찾기'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.ghost} onPress={onSchedule}>
+                  <Text style={styles.ghostText}>{saved ? '일정 담김' : '알림 받기'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.primary} onPress={onOpenDetail}>
+                  <Text style={styles.primaryText}>상세 보기</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.section}>이 축제 쿠폰 받기</Text>
+              {promotions.length === 0 ? (
+                <Text style={styles.empty}>연결된 상생 쿠폰이 아직 없습니다</Text>
+              ) : (
+                promotions.map((promo) => (
+                  <View key={promo.id} style={styles.promo}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.shop}>{promo.business_name}</Text>
+                      <Text style={styles.rate}>총 {promo.total_discount_rate}% 할인</Text>
+                    </View>
+                    <TouchableOpacity style={styles.issue} onPress={() => onIssue(promo)} disabled={issuingId === promo.id}>
+                      <Text style={styles.issueText}>{issuingId === promo.id ? '발급 중' : '쿠폰 받기'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet: {
+    maxHeight: '86%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    overflow: 'hidden',
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  hero: { width: '100%', height: 170, backgroundColor: '#E5E7EB' },
+  fallback: { backgroundColor: '#CBD5E1' },
+  body: { padding: 16, paddingBottom: 28 },
+  row: { flexDirection: 'row', gap: 6, marginBottom: 8 },
+  dday: {
+    backgroundColor: '#111827',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  cat: {
+    backgroundColor: '#EEF2FF',
+    color: '#3730A3',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  title: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  meta: { fontSize: 13, color: '#6B7280', marginTop: 4 },
+  overview: { fontSize: 14, lineHeight: 21, color: '#374151', marginTop: 12 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  ghost: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  ghostText: { fontSize: 12, fontWeight: '800', color: '#374151' },
+  primary: {
+    flex: 1,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  primaryText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  section: { fontSize: 15, fontWeight: '800', marginTop: 20, marginBottom: 8 },
+  empty: { fontSize: 13, color: '#6B7280' },
+  promo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  shop: { fontSize: 14, fontWeight: '800' },
+  rate: { fontSize: 12, color: '#B4530A', fontWeight: '700', marginTop: 2 },
+  issue: { backgroundColor: '#E0392A', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  issueText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+});

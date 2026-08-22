@@ -12,6 +12,8 @@ import CouponsScreen from './src/screens/CouponsScreen';
 import MyScreen from './src/screens/MyScreen';
 import PromotionRegisterScreen from './src/screens/PromotionRegisterScreen';
 import TourDetailScreen from './src/screens/TourDetailScreen';
+import MerchantSettlementScreen from './src/screens/MerchantSettlementScreen';
+import SupportScreen from './src/screens/SupportScreen';
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -28,13 +30,20 @@ export type RootStackParamList = {
   Tabs: undefined;
   PromotionRegister: undefined;
   TourDetail: { contentId: string; contentTypeId?: string };
+  MerchantSettlement: undefined;
+  Support: { topic?: 'notice' | 'help' };
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  return <Text style={{ fontSize: 11, fontWeight: '800', color: focused ? '#111827' : '#9CA3AF' }}>{label}</Text>;
+function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Text style={{ fontSize: 16 }}>{emoji}</Text>
+      <Text style={{ fontSize: 10, fontWeight: '800', color: focused ? '#111827' : '#9CA3AF' }}>{label}</Text>
+    </View>
+  );
 }
 
 function Tabs() {
@@ -43,21 +52,22 @@ function Tabs() {
       screenOptions={{
         headerTitleAlign: 'center',
         tabBarActiveTintColor: '#111827',
-        tabBarStyle: { height: 62, paddingBottom: 8, paddingTop: 8 },
+        tabBarShowLabel: false,
+        tabBarStyle: { height: 64, paddingBottom: 8, paddingTop: 8 },
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Korea-On', tabBarLabel: '홈', tabBarIcon: ({ focused }) => <TabIcon label="홈" focused={focused} /> }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Korea-On', tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="홈" focused={focused} /> }} />
       <Tab.Screen
         name="Nearby"
-        options={{ title: '내주변', tabBarLabel: '내주변', tabBarIcon: ({ focused }) => <TabIcon label="지도" focused={focused} /> }}
+        options={{ title: '내주변', tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" label="내주변" focused={focused} /> }}
       >
         {({ route }) => (
           <FestivalMerchantMapScreen festivalId={route.params?.festivalId} userId={DEV_USER_ID} />
         )}
       </Tab.Screen>
-      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: '달력', tabBarLabel: '달력', tabBarIcon: ({ focused }) => <TabIcon label="일정" focused={focused} /> }} />
-      <Tab.Screen name="Coupons" component={CouponsScreen} options={{ title: '쿠폰', tabBarLabel: '쿠폰', tabBarIcon: ({ focused }) => <TabIcon label="쿠폰" focused={focused} /> }} />
-      <Tab.Screen name="My" component={MyScreen} options={{ title: '마이', tabBarLabel: '마이', tabBarIcon: ({ focused }) => <TabIcon label="마이" focused={focused} /> }} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: '달력', tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="달력" focused={focused} /> }} />
+      <Tab.Screen name="Coupons" component={CouponsScreen} options={{ title: '쿠폰함', tabBarIcon: ({ focused }) => <TabIcon emoji="🎟️" label="쿠폰" focused={focused} /> }} />
+      <Tab.Screen name="My" component={MyScreen} options={{ title: '마이', tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="마이" focused={focused} /> }} />
     </Tab.Navigator>
   );
 }
@@ -89,6 +99,10 @@ export default function App() {
                   contentTypeId={route.params.contentTypeId}
                 />
               )}
+            </Stack.Screen>
+            <Stack.Screen name="MerchantSettlement" options={{ title: '정산 현황' }} component={MerchantSettlementScreen} />
+            <Stack.Screen name="Support" options={({ route }) => ({ title: route.params?.topic === 'help' ? '고객센터' : '공지사항' })}>
+              {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
           </Stack.Navigator>
         </NavigationContainer>

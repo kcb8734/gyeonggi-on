@@ -82,3 +82,64 @@ export const verifyMerchant = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: '사업자 상태 확인 중 서버 오류가 발생했습니다.' });
   }
 };
+
+/** GET /api/merchants/:id/settlement — 가맹점 쿠폰 사용/정산 현황 */
+export const getMerchantSettlement = async (req: Request, res: Response) => {
+  const merchantId = req.params.id;
+  if (!merchantId) {
+    return res.status(400).json({ success: false, message: '가맹점 ID가 필요합니다.' });
+  }
+
+  try {
+    const summary = await pool.query(
+      `SELECT
+         COUNT(uc.id) AS issued_count,
+         COUNT(uc.id) FILTER (WHERE uc.status = 'USED') AS used_count,
+         COALESCE(SUM(st.gov_support_amount) FILTER (WHERE st.settlement_status = 'PENDING'), 0) AS pending_amount
+       FROM discount_promotions dp
+       LEFT JOIN user_coupons uc ON uc.promotion_id = dp.id
+       LEFT JOIN settlement_transactions st ON st.user_coupon_id = uc.id
+       WHERE dp.merchant_id = $1`,
+      [merchantId],
+    );
+
+    const rows = await pool.query(
+      `SELECT
+         dp.id, dp.title,
+         COUNT(uc.id) AS issued_count,
+         COUNT(uc.id) FILTER (WHERE uc.status = 'USED') AS used_count,
+         COALESCE(SUM(st.merchant_discount_amount), 0) AS merchant_discount_total,
+         COALESCE(SUM(st.gov_support_amount), 0) AS gov_support_total,
+         CASE
+           WHEN dp.funding_type = 'MERCHANT_ONLY' THEN '자체 할인 정산 불필요'
+           ELSE '정산 대기'
+         END AS status
+       FROM discount_promotions dp
+       LEFT JOIN user_coupons uc ON uc.promotion_id = dp.id
+       LEFT JOIN settlement_transactions st ON st.user_coupon_id = uc.id
+       WHERE dp.merchant_id = $1
+       GROUP BY dp.id, dp.title, dp.funding_type
+       ORDER BY dp.created_at DESC`,
+      [merchantId],
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        issued_count: Number(summary.rows[0]?.issued_count ?? 0),
+        used_count: Number(summary.rows[0]?.used_count ?? 0),
+        pending_amount: Number(summary.rows[0]?.pending_amount ?? 0),
+        rows: rows.rows.map((row) => ({
+          ...row,
+          issued_count: Number(row.issued_count),
+          used_count: Number(row.used_count),
+          merchant_discount_total: Number(row.merchant_discount_total),
+          gov_support_total: Number(row.gov_support_total),
+        })),
+      },
+    });
+  } catch (err) {
+    console.error('[getMerchantSettlement] Error:', err);
+    return res.status(500).json({ success: false, message: '정산 현황을 불러오지 못했습니다.' });
+  }
+};

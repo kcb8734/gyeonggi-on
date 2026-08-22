@@ -1,22 +1,72 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { issueCoupon } from '../../api/coupons';
 import { FESTIVAL_FOCUS_DELTA, GYEONGGI_DEFAULT_REGION } from '../../constants/map';
 import { useFestivalMap } from '../../hooks/useFestivalMap';
 import type { MapRegion, MerchantPin } from '../../types/map';
+import type { FestivalPin } from '../../types/map';
 import type { TourPlace } from '../../types/tour';
 import { TOUR_KIND_META } from '../../types/tour';
 import { MapView, Marker, PROVIDER_GOOGLE } from './CompatibleMap';
 import CategoryFilterBar from './CategoryFilterBar';
 import FestivalChipBar from './FestivalChipBar';
-import { MapErrorBanner, MapLegend, MapLoadingOverlay, RecenterButton } from './MapOverlays';
+import { MapErrorBanner, MapLegend, MapLoadingOverlay } from './MapOverlays';
 import MerchantCouponSheet from './MerchantCouponSheet';
+import PlaceBottomSheet, { type SheetPlace } from './PlaceBottomSheet';
 
 interface MainMapProps {
   festivalId?: string;
   userId: string;
+}
+
+type LayerFilter = 'all' | 'festivals' | 'merchants';
+
+function toSheetFromFestival(festival: FestivalPin): SheetPlace {
+  return {
+    id: festival.id,
+    kind: 'festival',
+    title: festival.title,
+    address: festival.location_name,
+    latitude: festival.latitude,
+    longitude: festival.longitude,
+    canOpenDetail: true,
+  };
+}
+
+function toSheetFromMerchant(merchant: MerchantPin): SheetPlace {
+  return {
+    id: merchant.id,
+    kind: 'merchant',
+    title: merchant.business_name,
+    subtitle: merchant.category,
+    address: merchant.address,
+    latitude: merchant.latitude,
+    longitude: merchant.longitude,
+    discountRate: merchant.total_discount_rate,
+    canIssueCoupon: true,
+  };
+}
+
+function toSheetFromPlace(place: TourPlace): SheetPlace {
+  return {
+    id: place.contentId,
+    kind: 'place',
+    title: place.title,
+    subtitle: TOUR_KIND_META[place.kind].label,
+    address: place.address,
+    imageUrl: place.firstImage,
+    latitude: place.mapY,
+    longitude: place.mapX,
+    canOpenDetail: true,
+  };
+}
+
+function distance2(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
+  const dy = a.latitude - b.latitude;
+  const dx = a.longitude - b.longitude;
+  return dy * dy + dx * dx;
 }
 
 export default function MainMap({ festivalId, userId }: MainMapProps) {
@@ -29,7 +79,6 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     setSelectedFestivalId,
     selectedFestival,
     merchants,
-    allMerchantCount,
     category,
     setCategory,
     categories,
@@ -42,11 +91,16 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     reload,
   } = useFestivalMap(festivalId);
 
-  const [selectedPlace, setSelectedPlace] = useState<TourPlace | null>(null);
+  const [layer, setLayer] = useState<LayerFilter>('all');
+  const [sheet, setSheet] = useState<SheetPlace | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<MerchantPin | null>(null);
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState<string | null>(null);
+
+  const visibleFestivals = layer === 'merchants' ? [] : festivals;
+  const visibleMerchants = layer === 'festivals' ? [] : merchants;
+  const visiblePlaces = layer === 'all' ? tourPlaces : [];
 
   const initialRegion = useMemo<MapRegion>(() => {
     if (selectedFestival) {
@@ -61,44 +115,44 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
 
   useEffect(() => {
     if (!mapRef.current) return;
-
     if (selectedFestival) {
       mapRef.current.animateToRegion({
         latitude: selectedFestival.latitude,
         longitude: selectedFestival.longitude,
         ...FESTIVAL_FOCUS_DELTA,
       });
+      setSheet(toSheetFromFestival(selectedFestival));
       return;
     }
-
     if (festivals.length > 1) {
       mapRef.current.fitToCoordinates(
         festivals.map((f) => ({ latitude: f.latitude, longitude: f.longitude })),
-        { edgePadding: { top: 140, right: 40, bottom: 80, left: 40 }, animated: true },
+        { edgePadding: { top: 160, right: 40, bottom: 140, left: 40 }, animated: true },
       );
     }
   }, [selectedFestival, festivals]);
 
   const handleSelectFestival = (id: string) => {
+    const found = festivals.find((item) => item.id === id);
     setSelectedMerchant(null);
-    setSelectedPlace(null);
     setCouponCode(null);
     setIssueError(null);
     setSelectedFestivalId(id);
+    if (found) setSheet(toSheetFromFestival(found));
   };
 
   const handleSelectMerchant = (merchant: MerchantPin) => {
     setSelectedMerchant(merchant);
-    setSelectedPlace(null);
     setCouponCode(null);
     setIssueError(null);
+    setSheet(toSheetFromMerchant(merchant));
   };
 
   const handleSelectPlace = (place: TourPlace) => {
-    setSelectedPlace(place);
     setSelectedMerchant(null);
     setCouponCode(null);
     setIssueError(null);
+    setSheet(toSheetFromPlace(place));
   };
 
   const handleIssueCoupon = async () => {
@@ -118,7 +172,8 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     }
   };
 
-  const handleRecenter = () => {
+  const handleResearch = () => {
+    reload();
     if (userLocation) {
       mapRef.current?.animateToRegion({
         ...userLocation,
@@ -128,6 +183,31 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
       return;
     }
     mapRef.current?.animateToRegion(GYEONGGI_DEFAULT_REGION);
+  };
+
+  const handleRegionChange = (region: MapRegion) => {
+    const center = { latitude: region.latitude, longitude: region.longitude };
+    const candidates: Array<{ place: SheetPlace; coordinate: { latitude: number; longitude: number } }> = [
+      ...visibleFestivals.map((item) => ({ place: toSheetFromFestival(item), coordinate: item })),
+      ...visibleMerchants.map((item) => ({ place: toSheetFromMerchant(item), coordinate: item })),
+      ...visiblePlaces.map((item) => ({
+        place: toSheetFromPlace(item),
+        coordinate: { latitude: item.mapY, longitude: item.mapX },
+      })),
+    ];
+    if (!candidates.length) return;
+    let best = candidates[0];
+    let bestD = distance2(center, best.coordinate);
+    for (const item of candidates.slice(1)) {
+      const d = distance2(center, item.coordinate);
+      if (d < bestD) {
+        best = item;
+        bestD = d;
+      }
+    }
+    setSheet(best.place);
+    const merchant = visibleMerchants.find((item) => item.id === best.place.id);
+    setSelectedMerchant(merchant ?? null);
   };
 
   return (
@@ -140,8 +220,9 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass
+        onRegionChangeComplete={handleRegionChange}
       >
-        {festivals.map((festival) => (
+        {visibleFestivals.map((festival) => (
           <Marker
             key={`festival-${festival.id}`}
             coordinate={{ latitude: festival.latitude, longitude: festival.longitude }}
@@ -152,7 +233,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
           />
         ))}
 
-        {tourPlaces.map((place) => {
+        {visiblePlaces.map((place) => {
           const meta = TOUR_KIND_META[place.kind] ?? TOUR_KIND_META.other;
           return (
             <Marker
@@ -167,7 +248,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
           );
         })}
 
-        {merchants.map((merchant) => (
+        {visibleMerchants.map((merchant) => (
           <Marker
             key={`merchant-${merchant.id}`}
             coordinate={{ latitude: merchant.latitude, longitude: merchant.longitude }}
@@ -188,12 +269,30 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
 
       <View style={[styles.topOverlay, { paddingTop: Math.max(insets.top, 8) }]} pointerEvents="box-none">
         {error ? <MapErrorBanner message={error} onRetry={reload} /> : null}
+        <View style={styles.filterRow}>
+          {([
+            { id: 'all', label: '전체' },
+            { id: 'festivals', label: '축제만 보기' },
+            { id: 'merchants', label: '할인 상가만 보기' },
+          ] as const).map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.filterChip, layer === item.id && styles.filterChipOn]}
+              onPress={() => setLayer(item.id)}
+            >
+              <Text style={[styles.filterText, layer === item.id && styles.filterTextOn]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TouchableOpacity style={styles.research} onPress={handleResearch}>
+          <Text style={styles.researchText}>현 위치 재검색</Text>
+        </TouchableOpacity>
         <FestivalChipBar
-          festivals={festivals}
+          festivals={visibleFestivals}
           selectedFestivalId={selectedFestivalId}
           onSelect={handleSelectFestival}
         />
-        {selectedFestival ? (
+        {selectedFestival && layer !== 'festivals' ? (
           <CategoryFilterBar
             categories={categories}
             selected={category}
@@ -202,42 +301,28 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         ) : null}
       </View>
 
-      <View style={[styles.bottomOverlay, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+      <View style={[styles.bottomOverlay, { paddingBottom: Math.max(insets.bottom, 8) }]} pointerEvents="box-none">
         <View style={styles.bottomRow}>
           <MapLegend />
-          <RecenterButton onPress={handleRecenter} />
         </View>
-        {selectedPlace ? (
-          <View style={styles.festivalCard}>
-            <Text style={styles.festivalTitle}>{selectedPlace.title}</Text>
-            <Text style={styles.festivalMeta}>
-              {TOUR_KIND_META[selectedPlace.kind].label}
-              {selectedPlace.address ? ` · ${selectedPlace.address}` : ''}
-            </Text>
-            <Text
-              style={styles.detailLink}
-              onPress={() => navigation.navigate('TourDetail', {
-                contentId: selectedPlace.contentId,
-                contentTypeId: selectedPlace.contentTypeId,
-              })}
-            >
-              상세 보기
-            </Text>
-          </View>
-        ) : selectedFestival ? (
-          <View style={styles.festivalCard}>
-            <Text style={styles.festivalTitle}>{selectedFestival.title}</Text>
-            <Text style={styles.festivalMeta}>
-              {selectedFestival.location_name ?? '위치 미정'}
-              {allMerchantCount > 0 ? ` · 제휴업소 ${allMerchantCount}곳` : ' · 제휴업소 없음'}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.festivalCard}>
-            <Text style={styles.festivalTitle}>경기온 축제 지도</Text>
-            <Text style={styles.festivalMeta}>축제·관광지·맛집 핀을 눌러 상세를 확인하세요</Text>
-          </View>
-        )}
+        <PlaceBottomSheet
+          place={sheet}
+          issuing={issuing}
+          onIssue={() => {
+            if (selectedMerchant) {
+              handleIssueCoupon();
+            }
+          }}
+          onDetail={() => {
+            if (sheet?.kind === 'place') {
+              navigation.navigate('TourDetail', { contentId: sheet.id });
+              return;
+            }
+            if (sheet?.kind === 'festival') {
+              setSelectedFestivalId(sheet.id);
+            }
+          }}
+        />
       </View>
 
       <View style={styles.centerOverlay} pointerEvents="none">
@@ -248,13 +333,12 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
       </View>
 
       <MerchantCouponSheet
-        merchant={selectedMerchant}
+        merchant={couponCode ? selectedMerchant : null}
         couponCode={couponCode}
         issuing={issuing}
         error={issueError}
         onIssue={handleIssueCoupon}
         onClose={() => {
-          setSelectedMerchant(null);
           setCouponCode(null);
           setIssueError(null);
         }}
@@ -271,18 +355,40 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    gap: 8,
   },
+  filterRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 12 },
+  filterChip: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  filterChipOn: { backgroundColor: '#111827', borderColor: '#111827' },
+  filterText: { fontSize: 12, fontWeight: '800', color: '#374151' },
+  filterTextOn: { color: '#fff' },
+  research: {
+    alignSelf: 'flex-start',
+    marginLeft: 12,
+    backgroundColor: '#2D6CDF',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  researchText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   bottomOverlay: {
     position: 'absolute',
-    left: 12,
-    right: 12,
+    left: 0,
+    right: 0,
     bottom: 0,
     gap: 8,
   },
   bottomRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 12,
   },
   centerOverlay: {
     position: 'absolute',
@@ -291,22 +397,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
-  festivalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  festivalTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  festivalMeta: { fontSize: 12, color: '#6B7280', marginTop: 4 },
-  detailLink: { marginTop: 8, color: '#2563EB', fontWeight: '800', fontSize: 13 },
   discountPin: {
     backgroundColor: '#16A34A',
     borderRadius: 14,

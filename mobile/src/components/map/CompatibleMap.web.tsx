@@ -42,6 +42,11 @@ interface MapViewProps {
   initialRegion?: MapRegion;
   pointerEvents?: 'auto' | 'none' | 'box-none';
   children?: ReactNode;
+  onRegionChangeComplete?: (region: MapRegion) => void;
+  showsUserLocation?: boolean;
+  showsMyLocationButton?: boolean;
+  showsCompass?: boolean;
+  provider?: string;
 }
 
 function regionToZoom(region: MapRegion): number {
@@ -63,12 +68,14 @@ function ensureLeafletCss() {
 }
 
 export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
-  { style, initialRegion, children },
+  { style, initialRegion, children, onRegionChangeComplete },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const regionCb = useRef(onRegionChangeComplete);
+  regionCb.current = onRegionChangeComplete;
   const region = initialRegion ?? {
     latitude: 37.275,
     longitude: 127.15,
@@ -101,6 +108,17 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+    map.on('moveend', () => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const delta = zoom >= 14 ? 0.02 : zoom >= 12 ? 0.06 : 0.2;
+      regionCb.current?.({
+        latitude: center.lat,
+        longitude: center.lng,
+        latitudeDelta: delta,
+        longitudeDelta: delta,
+      });
+    });
     const invalidate = () => map.invalidateSize();
     const timer = window.setTimeout(invalidate, 80);
     return () => {
