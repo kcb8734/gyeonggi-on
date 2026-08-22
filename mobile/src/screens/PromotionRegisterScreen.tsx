@@ -40,6 +40,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>('5000');
   const [requestMatching, setRequestMatching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [ntsResult, setNtsResult] = useState<MerchantVerifyResult | null>(null);
   const [resultBadge, setResultBadge] = useState<PromotionResponse | null>(null);
 
@@ -60,9 +61,10 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     const businessName = businessNameRef.current.trim();
     const businessNumber = businessNumberRef.current.replace(/\D/g, '');
     if (businessName.length < 1 || businessNumber.length !== 10) {
-      Alert.alert('알림', '상호명과 사업자등록번호 10자리를 입력해주세요.');
+      setNtsResult({ success: false, message: '상호명과 사업자등록번호 10자리를 입력해주세요.' });
       return;
     }
+    setVerifying(true);
     try {
       const verified = await verifyMerchant({
         merchantId,
@@ -70,11 +72,11 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         businessName,
       });
       setNtsResult(verified);
-      if (!verified.success) Alert.alert('사업자 확인 실패', verified.message);
     } catch (err: any) {
       const data = err?.response?.data;
-      if (data) setNtsResult(data);
-      Alert.alert('사업자 확인 실패', data?.message ?? '국세청 상태조회에 실패했습니다.');
+      setNtsResult(data ?? { success: false, message: data?.message ?? '국세청 상태조회에 실패했습니다.' });
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -140,14 +142,14 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         inputMode="numeric"
         maxLength={12}
       />
-      <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify}>
-        <Text style={styles.verifyText}>국세청 사업자 상태 확인</Text>
+      <TouchableOpacity style={styles.verifyBtn} onPress={handleVerify} disabled={verifying}>
+        {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.verifyText}>국세청 사업자 상태 확인</Text>}
       </TouchableOpacity>
 
-      {ntsResult?.data && (
-        <View style={[styles.badge, ntsResult.data.verified ? styles.confirmedBadge : styles.rejectBadge]}>
+      {ntsResult && (
+        <View style={[styles.badge, ntsResult.data?.verified ? styles.confirmedBadge : styles.rejectBadge]}>
           <Text style={styles.badgeText}>
-            {ntsResult.data.verified
+            {ntsResult.data?.verified
               ? `계속사업자 확인 완료 (${ntsResult.data.b_stt_cd})`
               : `확인 실패: ${ntsResult.message}`}
           </Text>

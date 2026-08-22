@@ -131,18 +131,26 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     const onVerify = async () => {
       const businessName = val(root, 'bizName');
       const businessNumber = val(root, 'bizNo').replace(/\D/g, '');
+      const btn = root.querySelector('#verifyBtn') as HTMLButtonElement | null;
       if (businessName.length < 1 || businessNumber.length !== 10) {
-        Alert.alert('알림', '상호명과 사업자등록번호 10자리를 입력해주세요.');
+        applyNts({ success: false, message: '상호명과 사업자등록번호 10자리를 입력해주세요.' });
         return;
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '국세청 확인 중...';
       }
       try {
         const verified = await verifyMerchant({ merchantId, businessNumber, businessName });
         applyNts(verified);
-        if (!verified.success) Alert.alert('사업자 확인 실패', verified.message);
       } catch (err: any) {
         const data = err?.response?.data;
-        if (data) applyNts(data);
-        Alert.alert('사업자 확인 실패', data?.message ?? '국세청 상태조회에 실패했습니다.');
+        applyNts(data ?? { success: false, message: data?.message ?? '국세청 상태조회에 실패했습니다.' });
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '국세청 사업자 상태 확인';
+        }
       }
     };
 

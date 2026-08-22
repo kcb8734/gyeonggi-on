@@ -23,9 +23,14 @@ export function mountBodyOverlay(html: string): { root: HTMLDivElement; dispose:
   const root = document.createElement('div');
   root.setAttribute('data-onandon-ime-overlay', '1');
   root.style.cssText =
-    'position:fixed;z-index:2147483000;overflow:auto;background:#F7F8FA;box-sizing:border-box;';
+    'position:fixed;z-index:2147483645;overflow:auto;background:#F7F8FA;box-sizing:border-box;';
   root.innerHTML = html;
   document.body.appendChild(root);
+  document.querySelectorAll('[data-onandon-ime-field]').forEach((node) => {
+    const el = node as HTMLElement;
+    el.style.visibility = 'hidden';
+    el.style.pointerEvents = 'none';
+  });
 
   const place = () => {
     const rect = phoneRect();
@@ -77,6 +82,7 @@ export function mountBodyField(options: {
   }
   if (typeof options.maxLength === 'number') field.maxLength = options.maxLength;
   if (options.initialValue) field.value = options.initialValue;
+  field.setAttribute('data-onandon-ime-field', '1');
   field.style.cssText = [
     'position:fixed',
     'z-index:2147483000',
@@ -96,6 +102,7 @@ export function mountBodyField(options: {
   document.body.appendChild(field);
 
   const place = () => {
+    const overlayOpen = !!document.querySelector('[data-onandon-ime-overlay]');
     const rect = options.host.getBoundingClientRect();
     applyRect(field, {
       top: rect.top,
@@ -103,7 +110,9 @@ export function mountBodyField(options: {
       width: Math.max(rect.width, 40),
       height: Math.max(rect.height, options.tag === 'textarea' ? 96 : 48),
     });
-    field.style.visibility = rect.width < 8 ? 'hidden' : 'visible';
+    const hidden = overlayOpen || rect.width < 8;
+    field.style.visibility = hidden ? 'hidden' : 'visible';
+    field.style.pointerEvents = hidden ? 'none' : 'auto';
   };
   place();
   window.addEventListener('resize', place);

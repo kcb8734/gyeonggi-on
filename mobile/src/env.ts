@@ -8,8 +8,16 @@ const apiFromEnv =
   || readPublic('EXPO_PUBLIC_API_BASE_URL')
   || readPublic('EXPO_PUBLIC_API_BASE');
 
-/** 배포(Vercel/kdanji.com)에서는 EXPO_PUBLIC_API_URL을 빌드 시 주입한다. */
-export const API_BASE_URL = (apiFromEnv || 'https://api.gyeonggi-on.kr').replace(/\/$/, '');
+/**
+ * 개발 미리보기: 같은 출처 `/api` → Metro가 백엔드(4000)로 프록시.
+ * 배포: EXPO_PUBLIC_API_URL 또는 기본 API 호스트.
+ */
+const fallbackApi =
+  typeof __DEV__ !== 'undefined' && __DEV__
+    ? ''
+    : 'https://api.gyeonggi-on.kr';
+
+export const API_BASE_URL = (apiFromEnv || fallbackApi).replace(/\/$/, '');
 export const WEB_ORIGIN = (readPublic('EXPO_PUBLIC_WEB_ORIGIN') || 'https://kdanji.com').replace(/\/$/, '');
 export const KAKAO_CLIENT_ID = readPublic('EXPO_PUBLIC_KAKAO_CLIENT_ID');
 export const GOOGLE_CLIENT_ID = readPublic('EXPO_PUBLIC_GOOGLE_CLIENT_ID');

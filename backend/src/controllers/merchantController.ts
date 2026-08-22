@@ -20,14 +20,18 @@ export const verifyMerchant = async (req: Request, res: Response) => {
 
   try {
     if (merchantId && !businessNumber) {
-      const found = await pool.query(
-        `SELECT id, business_number, business_name FROM merchants WHERE id = $1`,
-        [merchantId],
-      );
-      if (found.rowCount === 0) {
-        return res.status(404).json({ success: false, message: '등록된 소상공인 정보를 찾을 수 없습니다.' });
+      try {
+        const found = await pool.query(
+          `SELECT id, business_number, business_name FROM merchants WHERE id = $1`,
+          [merchantId],
+        );
+        if (found.rowCount === 0) {
+          return res.status(404).json({ success: false, message: '등록된 소상공인 정보를 찾을 수 없습니다.' });
+        }
+        businessNumber = found.rows[0].business_number;
+      } catch (dbErr) {
+        console.warn('[verifyMerchant] merchant lookup skipped:', dbErr);
       }
-      businessNumber = found.rows[0].business_number;
     }
 
     if (!businessNumber) {
@@ -40,22 +44,26 @@ export const verifyMerchant = async (req: Request, res: Response) => {
     const status = await fetchBusinessStatus(businessNumber);
     const verified = status.isActive;
 
-    if (merchantId) {
-      await pool.query(
-        `UPDATE merchants
-         SET is_verified = $2, nts_verified_at = now(), nts_b_stt_cd = $3,
-             business_name = COALESCE(NULLIF($4, ''), business_name)
-         WHERE id = $1`,
-        [merchantId, verified, status.b_stt_cd, businessName],
-      );
-    } else {
-      await pool.query(
-        `UPDATE merchants
-         SET is_verified = $2, nts_verified_at = now(), nts_b_stt_cd = $3,
-             business_name = COALESCE(NULLIF($4, ''), business_name)
-         WHERE regexp_replace(business_number, '[^0-9]', '', 'g') = $1`,
-        [normalizeBusinessNumber(businessNumber), verified, status.b_stt_cd, businessName],
-      );
+    try {
+      if (merchantId) {
+        await pool.query(
+          `UPDATE merchants
+           SET is_verified = $2, nts_verified_at = now(), nts_b_stt_cd = $3,
+               business_name = COALESCE(NULLIF($4, ''), business_name)
+           WHERE id = $1`,
+          [merchantId, verified, status.b_stt_cd, businessName],
+        );
+      } else {
+        await pool.query(
+          `UPDATE merchants
+           SET is_verified = $2, nts_verified_at = now(), nts_b_stt_cd = $3,
+               business_name = COALESCE(NULLIF($4, ''), business_name)
+           WHERE regexp_replace(business_number, '[^0-9]', '', 'g') = $1`,
+          [normalizeBusinessNumber(businessNumber), verified, status.b_stt_cd, businessName],
+        );
+      }
+    } catch (dbErr) {
+      console.warn('[verifyMerchant] merchant persist skipped:', dbErr);
     }
 
     return res.status(verified ? 200 : 409).json({

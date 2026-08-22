@@ -71,10 +71,20 @@ export async function verifyMerchant(params: {
   businessNumber?: string;
   businessName?: string;
 }): Promise<MerchantVerifyResult> {
-  const res = await api.post<MerchantVerifyResult>('/api/merchants/verify', {
+  const payload = {
     merchant_id: params.merchantId,
     business_number: params.businessNumber,
     business_name: params.businessName,
+  };
+  const res = await api.post<MerchantVerifyResult>('/api/merchants/verify', payload, {
+    timeout: 15000,
+    validateStatus: () => true,
   });
-  return res.data;
+  if (res.data && typeof res.data === 'object' && 'success' in res.data) {
+    return res.data;
+  }
+  return {
+    success: false,
+    message: `국세청 상태조회에 실패했습니다. (HTTP ${res.status || 0})`,
+  };
 }

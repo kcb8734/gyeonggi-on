@@ -1,17 +1,53 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const http = require('http');
 
 const config = getDefaultConfig(__dirname);
 const previous = config.server?.enhanceMiddleware;
 const LIVE_BANNER = '0822 빨간띠 보이면 최신 · 한글입력수정 · 할인 쿠폰 등록';
+const API_PROXY_TARGET = process.env.API_PROXY_TARGET || 'http://127.0.0.1:4000';
+
+function proxyToBackend(req, res) {
+  const target = new URL(req.url, API_PROXY_TARGET);
+  const headers = { ...req.headers, host: target.host };
+  delete headers['accept-encoding'];
+  const proxy = http.request(
+    {
+      protocol: target.protocol,
+      hostname: target.hostname,
+      port: target.port || 80,
+      path: `${target.pathname}${target.search}`,
+      method: req.method,
+      headers,
+    },
+    (pres) => {
+      res.writeHead(pres.statusCode ?? 502, pres.headers);
+      pres.pipe(res);
+    },
+  );
+  proxy.on('error', () => {
+    if (res.headersSent) return;
+    res.statusCode = 502;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({
+      success: false,
+      message: '국세청 확인 서버에 연결하지 못했습니다. 백엔드(포트 4000)를 실행해주세요.',
+    }));
+  });
+  req.pipe(proxy);
+}
 
 config.server = config.server ?? {};
 config.server.enhanceMiddleware = (metroMiddleware, server) => {
   const inner = previous ? previous(metroMiddleware, server) : metroMiddleware;
   return (req, res, next) => {
+    const url = String(req.url ?? '');
+    if (url.startsWith('/api') || url.startsWith('/health')) {
+      return proxyToBackend(req, res);
+    }
+
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
 
-    const url = String(req.url ?? '');
     const isHtml = url === '/' || url.startsWith('/?') || url.startsWith('/index.html');
     if (!isHtml) {
       return inner(req, res, next);
