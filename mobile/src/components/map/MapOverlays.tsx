@@ -12,6 +12,18 @@ export function MapLegend() {
         <View style={[styles.dot, { backgroundColor: '#16A34A' }]} />
         <Text style={styles.legendText}>제휴업소</Text>
       </View>
+      <View style={styles.legendRow}>
+        <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />
+        <Text style={styles.legendText}>맛집</Text>
+      </View>
+      <View style={styles.legendRow}>
+        <View style={[styles.dot, { backgroundColor: '#7C3AED' }]} />
+        <Text style={styles.legendText}>관광지</Text>
+      </View>
+      <View style={styles.legendRow}>
+        <View style={[styles.dot, { backgroundColor: '#2563EB' }]} />
+        <Text style={styles.legendText}>문화</Text>
+      </View>
     </View>
   );
 }

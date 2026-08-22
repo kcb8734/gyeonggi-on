@@ -5,8 +5,11 @@ export { PROVIDER_GOOGLE };
 export const MapView = RNMapView;
 export type { Region } from 'react-native-maps';
 
-type MarkerProps = MapMarkerProps & { badgeLabel?: string };
+type MarkerProps = Omit<MapMarkerProps, 'pinColor'> & {
+  badgeLabel?: string;
+  pinColor?: string;
+};
 
-export function Marker({ badgeLabel: _badgeLabel, ...props }: MarkerProps) {
-  return <RNMarker {...props} />;
+export function Marker({ badgeLabel: _badgeLabel, pinColor, ...props }: MarkerProps) {
+  return <RNMarker {...props} pinColor={pinColor} />;
 }

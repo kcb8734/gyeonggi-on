@@ -9,6 +9,7 @@ import festivalsRouter from './routes/festivals';
 import merchantsRouter from './routes/merchants';
 import adminRouter from './routes/admin';
 import homeRouter from './routes/home';
+import tourRouter from './routes/tour';
 
 const app = express();
 app.use(helmet());
@@ -32,6 +33,7 @@ app.use('/api/festivals', festivalsRouter);
 app.use('/api/merchants', merchantsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/home', homeRouter);
+app.use('/api/tour', tourRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

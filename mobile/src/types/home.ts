@@ -1,3 +1,5 @@
+export type FestivalCategory = '먹거리' | '문화/예술' | '가족' | '계절축제' | '플리마켓';
+
 export interface HomeFestival {
   id: string;
   title: string;
@@ -8,9 +10,13 @@ export interface HomeFestival {
   end_date?: string;
   municipality_name?: string | null;
   description?: string | null;
-  category?: string;
+  category?: FestivalCategory | string;
   image_url?: string | null;
   is_trending?: boolean;
+  contentId?: string;
+  contentTypeId?: string;
+  source?: 'tour' | 'db';
+  tel?: string;
 }
 
 export interface HomePromotion {

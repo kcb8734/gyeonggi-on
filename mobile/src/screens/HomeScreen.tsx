@@ -13,6 +13,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchHomeFeed } from '../api/home';
+import { fetchTourFestivals, homeFestivalFromTour } from '../api/tour';
 import { issueCoupon } from '../api/coupons';
 import { COMING_SOON_MESSAGE, FESTIVAL_CATEGORIES, METRO_REGIONS } from '../constants/regions';
 import { GYEONGGI_DEFAULT_REGION } from '../constants/map';
@@ -32,10 +33,31 @@ export default function HomeScreen() {
   const [promotions, setPromotions] = useState<HomePromotion[]>([]);
   const [issuingId, setIssuingId] = useState<string | null>(null);
 
+  const openFestival = (festival: HomeFestival) => {
+    if (festival.contentId) {
+      navigation.navigate('TourDetail', {
+        contentId: festival.contentId,
+        contentTypeId: festival.contentTypeId,
+      });
+      return;
+    }
+    navigation.navigate('Nearby', { festivalId: festival.id });
+  };
+
   useEffect(() => {
-    fetchHomeFeed(metro).then((feed) => {
-      setFestivals(feed.festivals);
+    const now = new Date();
+    Promise.all([
+      fetchHomeFeed(metro),
+      metro === 'GYEONGGI'
+        ? fetchTourFestivals({ areaCode: '31', month: now.getMonth() + 1, year: now.getFullYear() })
+        : Promise.resolve([]),
+    ]).then(([feed, tourFestivals]) => {
       setPromotions(feed.promotions);
+      if (tourFestivals.length) {
+        setFestivals(tourFestivals.map(homeFestivalFromTour));
+      } else {
+        setFestivals(feed.festivals);
+      }
       if (!feed.available) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
   }, [metro]);
@@ -53,6 +75,11 @@ export default function HomeScreen() {
       `${item.festival_title} ${item.business_name} ${item.title}`.includes(q),
     );
   }, [promotions, query]);
+
+  const banner = useMemo(
+    () => festivals.filter((item) => item.image_url).slice(0, 5),
+    [festivals],
+  );
 
   const popular = useMemo(() => {
     const q = query.trim();
@@ -109,6 +136,22 @@ export default function HomeScreen() {
             onChangeText={setQuery}
           />
         </View>
+
+        {banner.length ? (
+          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.bannerRow}>
+            {banner.map((festival) => (
+              <TouchableOpacity key={`banner-${festival.id}`} activeOpacity={0.92} onPress={() => openFestival(festival)}>
+                <Image source={{ uri: festival.image_url ?? undefined }} style={styles.banner} />
+                <View style={styles.bannerCaption}>
+                  <Text style={styles.bannerTitle}>{festival.title}</Text>
+                  <Text style={styles.bannerMeta}>
+                    {festival.start_date} ~ {festival.end_date}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : null}
 
         <TouchableOpacity activeOpacity={0.95} onPress={() => navigation.navigate('Nearby')} style={styles.mapCard}>
           <MapView
@@ -167,11 +210,14 @@ export default function HomeScreen() {
           })}
         </ScrollView>
 
+        {popular.length === 0 ? (
+          <Text style={styles.empty}>이 달의 해당 카테고리 축제가 없습니다</Text>
+        ) : null}
         {popular.map((festival) => (
           <TouchableOpacity
             key={festival.id}
             style={styles.festCard}
-            onPress={() => navigation.navigate('Nearby', { festivalId: festival.id })}
+            onPress={() => openFestival(festival)}
           >
             {festival.image_url ? (
               <Image source={{ uri: festival.image_url }} style={styles.festImage} />
@@ -225,6 +271,21 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     fontSize: 14,
   },
+  bannerRow: { marginTop: 12 },
+  banner: { width: 390, height: 180, backgroundColor: '#E5E7EB' },
+  bannerCaption: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 12,
+    backgroundColor: 'rgba(17,24,39,0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  bannerTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  bannerMeta: { color: '#E5E7EB', fontSize: 12, marginTop: 2 },
+  empty: { marginHorizontal: 16, marginTop: 12, color: '#6B7280', fontSize: 13 },
   mapCard: {
     marginHorizontal: 16,
     marginTop: 12,

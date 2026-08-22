@@ -117,12 +117,24 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     Children.forEach(children, (child) => {
       if (!isValidElement(child) || child.type !== Marker) return;
       const marker = child.props as MarkerProps;
-      const color = marker.pinColor === 'green' ? '#16A34A' : '#E0392A';
+      const colorByName: Record<string, string> = {
+        red: '#E0392A',
+        green: '#16A34A',
+        orange: '#F59E0B',
+        blue: '#2563EB',
+        violet: '#7C3AED',
+        teal: '#0D9488',
+        gray: '#6B7280',
+      };
+      const color = colorByName[marker.pinColor ?? 'red'] ?? marker.pinColor ?? '#E0392A';
+      const badge = marker.badgeLabel
+        ? `<div style="min-width:22px;height:22px;padding:0 5px;background:${color};color:#fff;border:2px solid #fff;border-radius:11px;font:700 10px/18px sans-serif;text-align:center">${marker.badgeLabel}</div>`
+        : `<div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%"></div>`;
       const icon = L.divIcon({
         className: 'gyeonggi-pin',
-        html: `<div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
+        html: badge,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
       });
       const pin = L.marker([marker.coordinate.latitude, marker.coordinate.longitude], { icon, title: marker.title });
       if (marker.onPress) pin.on('click', marker.onPress);
