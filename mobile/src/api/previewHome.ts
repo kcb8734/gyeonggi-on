@@ -20,6 +20,7 @@ export const PREVIEW_HOME: HomeFeed = {
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80',
       tel: '031-228-3675',
+      fee: '무료 (일부 유료 공연)',
       description: '세계유산 수원화성을 무대로 펼쳐지는 야간 퍼레이드와 전통 공연, 행궁 야행 프로그램이 이어집니다.',
     },
     {
@@ -37,6 +38,7 @@ export const PREVIEW_HOME: HomeFeed = {
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80',
       tel: '031-288-0000',
+      fee: '입장권 별도 · 공연 무료',
       description: '전통 가옥과 장터 체험, 가족 공연이 하루 종일 이어지는 용인 대표 가족 축제입니다.',
     },
     {
@@ -54,6 +56,7 @@ export const PREVIEW_HOME: HomeFeed = {
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80',
       tel: '031-582-0174',
+      fee: '일권 55,000원',
       description: '북한강 위 자라섬에서 열리는 국내 대표 재즈 페스티벌. 선셋 무대와 푸드존이 함께합니다.',
     },
     {
@@ -71,6 +74,7 @@ export const PREVIEW_HOME: HomeFeed = {
       is_trending: true,
       image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80',
       tel: '031-241-1101',
+      fee: '메뉴별 상이 · 쿠폰 적용가',
       description: '영동시장 골목 상인과 함께하는 먹거리 축제. 온앤온 상생 쿠폰으로 꼬치·분식을 할인받을 수 있습니다.',
     },
     {
@@ -88,6 +92,7 @@ export const PREVIEW_HOME: HomeFeed = {
       is_trending: false,
       image_url: 'https://images.unsplash.com/photo-1515165562839-978bbcf01262?w=800&q=80',
       tel: '031-324-2114',
+      fee: '무료',
       description: '빈티지·수공예 셀러가 모이는 용인 야외 플리마켓. 현장 피드 작성 시 지자체 매칭 포인트가 적립됩니다.',
     },
   ],

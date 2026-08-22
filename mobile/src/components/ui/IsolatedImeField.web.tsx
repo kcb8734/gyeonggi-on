@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { unstable_createElement as createEl } from 'react-native-web';
 
 function escapeHtml(value: string) {
   return value
@@ -10,8 +10,8 @@ function escapeHtml(value: string) {
 }
 
 /**
- * RN-web은 document/#root에서 IME composition을 가로챈다.
- * 필드를 실제 HTML iframe(srcdoc)으로 붙여 React fiber 밖에 둔다.
+ * RN-web renderer는 일반 createElement('iframe')을 호스트로 취급하지 않을 수 있다.
+ * react-native-web의 unstable_createElement로 실제 HTML iframe을 만든다.
  */
 export default function IsolatedImeField({
   valueRef,
@@ -26,21 +26,12 @@ export default function IsolatedImeField({
   maxLength?: number;
   onLiveChange?: (value: string) => void;
 }) {
-  const hostRef = useRef<View>(null);
   const liveRef = useRef(onLiveChange);
   const valueRefStable = useRef(valueRef);
   liveRef.current = onLiveChange;
   valueRefStable.current = valueRef;
 
-  useEffect(() => {
-    const host = hostRef.current as unknown as HTMLElement | null;
-    if (!host || typeof document === 'undefined') return;
-
-    const iframe = document.createElement('iframe');
-    iframe.title = placeholder;
-    iframe.setAttribute('lang', 'ko');
-    iframe.style.cssText = 'width:100%;height:52px;border:0;display:block;background:transparent;';
-    iframe.srcdoc = `<!doctype html><html lang="ko"><head><meta charset="utf-8" />
+  const srcDoc = useMemo(() => `<!doctype html><html lang="ko"><head><meta charset="utf-8" />
 <style>
   html, body { margin: 0; height: 100%; background: transparent; }
   input {
@@ -54,11 +45,13 @@ export default function IsolatedImeField({
 <input lang="ko" type="text" inputmode="${inputMode}" placeholder="${escapeHtml(placeholder)}"
   ${typeof maxLength === 'number' ? `maxlength="${maxLength}"` : ''}
   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-</body></html>`;
-    host.appendChild(iframe);
+</body></html>`, [inputMode, maxLength, placeholder]);
 
-    const onLoad = () => {
-      const input = iframe.contentDocument?.querySelector('input');
+  return createEl('iframe', {
+    title: placeholder,
+    srcDoc,
+    onLoad: (event: { currentTarget: HTMLIFrameElement }) => {
+      const input = event.currentTarget.contentDocument?.querySelector('input');
       if (!input) return;
       if (valueRefStable.current.current) input.value = valueRefStable.current.current;
       const sync = () => {
@@ -67,13 +60,14 @@ export default function IsolatedImeField({
       };
       input.addEventListener('input', sync);
       input.addEventListener('change', sync);
-    };
-    iframe.addEventListener('load', onLoad);
-    return () => {
-      iframe.removeEventListener('load', onLoad);
-      iframe.remove();
-    };
-  }, [inputMode, maxLength, placeholder]);
-
-  return <View ref={hostRef} style={{ height: 52, width: '100%' }} />;
+    },
+    style: {
+      width: '100%',
+      height: 52,
+      borderWidth: 0,
+      borderStyle: 'none',
+      display: 'block',
+      backgroundColor: 'transparent',
+    },
+  });
 }

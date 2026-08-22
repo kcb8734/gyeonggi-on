@@ -838,5 +838,6 @@ export function toHomeFestival(festival: TourFestival) {
     is_trending: Boolean(festival.firstImage),
     source: 'tour' as const,
     tel: festival.tel,
+    fee: festival.fee,
   };
 }

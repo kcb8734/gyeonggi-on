@@ -13,9 +13,11 @@ export interface FeedPost {
   rewarded?: boolean;
   pointsAwarded?: number;
   badge?: '지자체 지원 리워드 지급완료' | '지자체 1:1 매칭 피드';
+  mine?: boolean;
 }
 
-const KEY = 'gyeonggi-on-feed';
+const FEED_KEY = 'onandon-feed-v3';
+const MY_KEY = 'onandon-my-feeds-v1';
 
 const SEEDED: FeedPost[] = [
   {
@@ -73,12 +75,13 @@ const SEEDED: FeedPost[] = [
 ];
 
 type Listener = () => void;
-let posts: FeedPost[] = readJson(KEY, SEEDED);
+let posts: FeedPost[] = readJson(FEED_KEY, SEEDED);
+let myPosts: FeedPost[] = readJson(MY_KEY, []);
 const listeners = new Set<Listener>();
 
-function emit(next: FeedPost[]) {
-  posts = next;
-  writeJson(KEY, posts);
+function emit() {
+  writeJson(FEED_KEY, posts);
+  writeJson(MY_KEY, myPosts);
   listeners.forEach((fn) => fn());
 }
 
@@ -86,14 +89,30 @@ export function getFeedPosts(): FeedPost[] {
   return posts;
 }
 
+export function getMyFeedPosts(): FeedPost[] {
+  return myPosts;
+}
+
 export function getFeedPost(id: string): FeedPost | undefined {
-  return posts.find((item) => item.id === id);
+  return posts.find((item) => item.id === id) ?? myPosts.find((item) => item.id === id);
 }
 
 export function useFeedPosts(): FeedPost[] {
   const [value, setValue] = useState(posts);
   useEffect(() => {
     const listen = () => setValue(getFeedPosts());
+    listeners.add(listen);
+    return () => {
+      listeners.delete(listen);
+    };
+  }, []);
+  return value;
+}
+
+export function useMyFeedPosts(): FeedPost[] {
+  const [value, setValue] = useState(myPosts);
+  useEffect(() => {
+    const listen = () => setValue(getMyFeedPosts());
     listeners.add(listen);
     return () => {
       listeners.delete(listen);
@@ -115,7 +134,16 @@ export function addFeedPost(input: Omit<FeedPost, 'id' | 'likes' | 'createdAt' |
     rewarded: input.rewarded ?? true,
     pointsAwarded: input.pointsAwarded ?? 1000,
     badge: input.badge ?? (input.rewarded === false ? '지자체 1:1 매칭 피드' : '지자체 지원 리워드 지급완료'),
+    mine: true,
   };
-  emit([post, ...posts]);
+  posts = [post, ...posts];
+  myPosts = [post, ...myPosts.filter((item) => item.id !== post.id)];
+  emit();
   return post;
+}
+
+export function deleteMyFeedPost(id: string) {
+  myPosts = myPosts.filter((item) => item.id !== id);
+  posts = posts.filter((item) => item.id !== id);
+  emit();
 }

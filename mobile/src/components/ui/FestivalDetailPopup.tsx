@@ -53,12 +53,15 @@ export default function FestivalDetailPopup({
               <View style={styles.row}>
                 <Text style={styles.dday}>{ddayLabel(festival.start_date, festival.end_date)}</Text>
                 {festival.category ? <Text style={styles.cat}>{festival.category}</Text> : null}
+                <Text style={styles.tourChip}>TourAPI 4.0 자동수집</Text>
               </View>
               <Text style={styles.title}>{festival.title}</Text>
               <Text style={styles.meta}>{formatRange(festival.start_date, festival.end_date)}</Text>
               <Text style={styles.meta}>{festival.location_name ?? '위치 미정'}</Text>
-              <Text style={styles.overview} numberOfLines={5}>
-                {festival.description || '한국관광공사 축제 정보와 온앤온(on&on) 상생 할인을 함께 확인할 수 있습니다.'}
+              {festival.tel ? <Text style={styles.meta}>전화 {festival.tel}</Text> : null}
+              {festival.fee ? <Text style={styles.meta}>이용요금 {festival.fee}</Text> : null}
+              <Text style={styles.overview} numberOfLines={6}>
+                {festival.description || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.'}
               </Text>
 
               <View style={styles.actions}>
@@ -69,7 +72,7 @@ export default function FestivalDetailPopup({
                   <Text style={styles.ghostText}>{saved ? '일정 담김' : '알림 받기'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.primary} onPress={onOpenDetail}>
-                  <Text style={styles.primaryText}>상세 보기</Text>
+                  <Text style={styles.primaryText}>TourAPI 상세</Text>
                 </TouchableOpacity>
               </View>
 
@@ -123,6 +126,16 @@ const styles = StyleSheet.create({
   dday: {
     backgroundColor: '#111827',
     color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  tourChip: {
+    backgroundColor: '#DBEAFE',
+    color: '#1D4ED8',
     fontSize: 11,
     fontWeight: '800',
     paddingHorizontal: 8,

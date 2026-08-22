@@ -17,6 +17,7 @@ export interface HomeFestival {
   contentTypeId?: string;
   source?: 'tour' | 'db';
   tel?: string;
+  fee?: string;
 }
 
 export interface HomePromotion {

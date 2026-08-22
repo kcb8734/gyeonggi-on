@@ -27,6 +27,7 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
     source: 'tour',
     tel: item.tel,
     description: item.overview,
+    fee: item.fee,
   };
 }
 
@@ -44,7 +45,7 @@ function previewFestivals(): TourFestival[] {
     tel: item.tel,
     category: (item.category as TourFestival['category']) ?? '문화/예술',
     overview: item.description ?? `${item.title} 상세 개요`,
-    fee: '현장 문의',
+    fee: item.fee ?? '현장 문의',
   }));
 }
 

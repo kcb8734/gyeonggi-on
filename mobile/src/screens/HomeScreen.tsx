@@ -166,7 +166,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
         <View style={styles.brandBar}>
           <Text style={styles.brandName}>온앤온(on&on)</Text>
-          <Text style={styles.brandLead}>전국 17개 광역 · 권역을 고르면 시·군·구가 열립니다</Text>
+          <Text style={styles.brandLead}>TourAPI 4.0 자동수집 · 현장 피드 1,000P · 한글 IME 분리입력</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
           {METRO_REGIONS.map((region) => {
@@ -228,10 +228,10 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        <Text style={styles.section}>축제 현장 피드</Text>
+        <Text style={styles.section}>축제 현장 피드 · 지자체 1:1 매칭</Text>
         <FeedRail onPress={(postId) => navigation.navigate('FeedView', { postId })} />
 
-        <Text style={styles.section}>현재 인기 축제</Text>
+        <Text style={styles.section}>TourAPI 4.0 자동수집 축제</Text>
         <View style={styles.catBar}>
           {[{ id: ALL, label: ALL }, ...FESTIVAL_CATEGORIES].map((item) => {
             const active = category === item.id;

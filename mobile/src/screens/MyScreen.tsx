@@ -3,12 +3,14 @@ import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { useNavigation } from '@react-navigation/native';
 import { syncRewardBalance, useAppState } from '../stores/appStore';
 import { clearAuthSession, useAuthUser } from '../stores/authStore';
+import { deleteMyFeedPost, useMyFeedPosts } from '../stores/feedStore';
 import { fetchRewardBalance } from '../api/feeds';
 
 export default function MyScreen() {
   const navigation = useNavigation<any>();
   const app = useAppState();
   const user = useAuthUser();
+  const myFeeds = useMyFeedPosts();
 
   useEffect(() => {
     const userId = user?.id ?? '11111111-1111-4111-8111-111111111111';
@@ -74,17 +76,53 @@ export default function MyScreen() {
       </View>
 
       <TouchableOpacity style={styles.feedBtn} onPress={() => navigation.navigate('FeedUpload')}>
-        <Text style={styles.feedBtnKicker}>축제 현장 공유</Text>
+        <Text style={styles.feedBtnKicker}>축제 현장 공유 · 1,000P</Text>
         <Text style={styles.feedBtnTitle}>틱톡형 피드 올리기</Text>
-        <Text style={styles.feedBtnBody}>지금 즐기는 축제를 세로 카드로 올려 홈 피드에 바로 보여주세요</Text>
+        <Text style={styles.feedBtnBody}>GPS·축제 태그 후 올리면 지자체 매칭 포인트가 적립되고, 아래 저장소에 보관됩니다.</Text>
       </TouchableOpacity>
+
+      <View style={styles.vault}>
+        <Text style={styles.merchantKicker}>내가 올린 피드 저장소</Text>
+        <Text style={styles.merchantTitle}>{myFeeds.length}건 보관 중</Text>
+        <Text style={styles.merchantBody}>이 기기 저장소에 남습니다. 카드를 누르면 전체화면으로 다시 볼 수 있습니다.</Text>
+        {myFeeds.length === 0 ? (
+          <Text style={styles.empty}>아직 올린 피드가 없습니다. 위에서 현장 피드를 올려 보세요.</Text>
+        ) : (
+          myFeeds.map((post) => (
+            <TouchableOpacity
+              key={post.id}
+              style={styles.vaultRow}
+              onPress={() => navigation.navigate('FeedView', { postId: post.id })}
+            >
+              <Image source={{ uri: post.imageUrl }} style={styles.thumb} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle} numberOfLines={2}>{post.caption}</Text>
+                <Text style={styles.rowMeta}>{post.festival ?? '축제'} · {post.createdAt}</Text>
+                <Text style={styles.vaultBadge}>
+                  {post.rewarded === false ? '지자체 1:1 매칭 피드' : '🎁 리워드 지급완료'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert('삭제', '이 피드를 저장소에서 지울까요?', [
+                    { text: '취소', style: 'cancel' },
+                    { text: '삭제', style: 'destructive', onPress: () => deleteMyFeedPost(post.id) },
+                  ]);
+                }}
+              >
+                <Text style={styles.deleteText}>삭제</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
 
       <View style={styles.merchant}>
         <Text style={styles.merchantKicker}>사장님 전용 코너</Text>
         <Text style={styles.merchantTitle}>가맹점 쿠폰을 직접 열고 정산하세요</Text>
         <Text style={styles.merchantBody}>국세청 계속사업자 인증 후 자율 할인을 바로 등록할 수 있습니다.</Text>
         <TouchableOpacity style={styles.merchantBtn} onPress={() => navigation.navigate('PromotionRegister')}>
-          <Text style={styles.merchantBtnText}>자율 할인 등록 (국세청 API 인증)</Text>
+          <Text style={styles.merchantBtnText}>자율 할인 등록 · 상호명 한글 입력</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.merchantGhost} onPress={() => navigation.navigate('MerchantSettlement')}>
           <Text style={styles.merchantGhostText}>내 가맹점 쿠폰 사용 내역 / 정산 현황</Text>
@@ -208,6 +246,25 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   couponRow: { marginTop: 10, backgroundColor: '#F9FAFB', borderRadius: 12, padding: 10 },
+  vault: {
+    marginTop: 16,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  vaultRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 10,
+    marginTop: 10,
+  },
+  vaultBadge: { fontSize: 11, fontWeight: '800', color: '#B4530A', marginTop: 4 },
+  deleteText: { fontWeight: '800', color: '#B91C1C', fontSize: 12, padding: 8 },
   section: { fontSize: 16, fontWeight: '800', marginTop: 22, marginBottom: 8, color: '#111827' },
   empty: { color: '#6B7280', fontSize: 13 },
   row: { flexDirection: 'row', gap: 10, backgroundColor: '#fff', borderRadius: 14, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#E5E7EB' },

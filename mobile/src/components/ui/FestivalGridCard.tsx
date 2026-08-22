@@ -29,11 +29,15 @@ export default function FestivalGridCard({ festival, discountRate, onPress }: Pr
             <Text style={styles.dealText}>최대 {discountRate}%</Text>
           </View>
         ) : null}
+        <View style={styles.tour}>
+          <Text style={styles.tourText}>TourAPI 4.0</Text>
+        </View>
       </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>{festival.title}</Text>
         <Text style={styles.place} numberOfLines={1}>{festival.location_name ?? '장소 미정'}</Text>
-        <Text style={styles.cat}>{festival.category ?? '축제'}</Text>
+        <Text style={styles.cat}>{festival.category ?? '축제'}{festival.tel ? ` · ${festival.tel}` : ''}</Text>
+        {festival.fee ? <Text style={styles.fee} numberOfLines={1}>{festival.fee}</Text> : null}
       </View>
     </TouchableOpacity>
   );
@@ -74,8 +78,19 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   dealText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  tour: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#1D4ED8',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  tourText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   body: { padding: 10 },
   title: { fontSize: 13, fontWeight: '800', color: '#111827', minHeight: 34 },
   place: { fontSize: 11, color: '#6B7280', marginTop: 4 },
   cat: { fontSize: 10, color: '#2563EB', fontWeight: '700', marginTop: 4 },
+  fee: { fontSize: 10, color: '#B4530A', fontWeight: '700', marginTop: 4 },
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert } from 'react-native';
+import { unstable_createElement as createEl } from 'react-native-web';
 import axios from 'axios';
 import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
@@ -17,6 +18,7 @@ const FORM = `<!doctype html>
   .wrap { padding: 20px 20px 48px; }
   h1 { font-size: 22px; margin: 0 0 8px; }
   .note { font-size: 12px; color: #6B7280; line-height: 18px; margin-bottom: 8px; }
+  .ime { background: #ECFDF5; border: 1px solid #6EE7B7; color: #065F46; border-radius: 12px; padding: 10px 12px; font-size: 12px; font-weight: 700; margin-bottom: 12px; }
   label { display: block; font-size: 14px; font-weight: 600; margin: 12px 0 6px; }
   input, select { width: 100%; box-sizing: border-box; height: 48px; border: 1px solid #DDD; border-radius: 8px; padding: 0 12px; font-size: 16px; font-family: inherit; background: #fff; }
   .btn { width: 100%; border: 0; border-radius: 10px; padding: 12px; font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer; }
@@ -31,7 +33,8 @@ const FORM = `<!doctype html>
 <body>
 <div class="wrap">
   <h1>사장님 자율 할인 등록</h1>
-  <p class="note">상호명은 브라우저 기본 한글 입력창입니다. React Native Web IME를 거치지 않습니다.</p>
+  <div class="ime">한글 IME 분리 입력창 — 상호명에 ‘온앤온분식’을 그대로 입력해 보세요. 자모가 조합됩니다.</div>
+  <p class="note">이 화면은 React Native Web 밖에 있는 브라우저 기본 입력입니다.</p>
   <label for="bizName">상호명</label>
   <input id="bizName" name="business_name" lang="ko" type="text" inputmode="text" placeholder="예: 화성행궁 한정식" autocomplete="off" autocorrect="off" spellcheck="false" />
   <label for="bizNo">사업자등록번호 (10자리)</label>
@@ -92,7 +95,6 @@ const FORM = `<!doctype html>
 </html>`;
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
-  const hostRef = useRef<View>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [nts, setNts] = useState<MerchantVerifyResult | null>(null);
@@ -103,43 +105,22 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       .catch(() => undefined);
   }, [merchantId]);
 
-  useEffect(() => {
-    const host = hostRef.current as unknown as HTMLElement | null;
-    if (!host || typeof document === 'undefined' || iframeRef.current) return;
-
-    const iframe = document.createElement('iframe');
-    iframe.title = '자율 할인 등록';
-    iframe.setAttribute('lang', 'ko');
-    iframe.setAttribute('srcdoc', FORM);
-    iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;background:#F7F8FA;';
-    host.appendChild(iframe);
-    iframeRef.current = iframe;
-
-    return () => {
-      iframe.remove();
-      iframeRef.current = null;
-    };
-  }, []);
+  const fillFestivals = () => {
+    const select = iframeRef.current?.contentDocument?.getElementById('festival') as HTMLSelectElement | null;
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">축제를 선택하세요</option>';
+    festivals.forEach((item) => {
+      const option = iframeRef.current!.contentDocument!.createElement('option');
+      option.value = item.id;
+      option.textContent = `${item.title} (${item.location_name ?? ''})`;
+      select.appendChild(option);
+    });
+    if (current) select.value = current;
+  };
 
   useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    const fill = () => {
-      const select = iframe.contentDocument?.getElementById('festival') as HTMLSelectElement | null;
-      if (!select) return;
-      const current = select.value;
-      select.innerHTML = '<option value="">축제를 선택하세요</option>';
-      festivals.forEach((item) => {
-        const option = iframe.contentDocument!.createElement('option');
-        option.value = item.id;
-        option.textContent = `${item.title} (${item.location_name ?? ''})`;
-        select.appendChild(option);
-      });
-      if (current) select.value = current;
-    };
-    iframe.addEventListener('load', fill);
-    if (iframe.contentDocument?.getElementById('festival')) fill();
-    return () => iframe.removeEventListener('load', fill);
+    fillFestivals();
   }, [festivals]);
 
   useEffect(() => {
@@ -213,13 +194,19 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     return () => window.removeEventListener('message', onMessage);
   }, [festivals, merchantId, nts]);
 
-  return <View ref={hostRef} style={styles.host} />;
+  return createEl('iframe', {
+    ref: iframeRef,
+    title: '자율 할인 등록',
+    srcDoc: FORM,
+    onLoad: fillFestivals,
+    style: {
+      width: '100%',
+      height: '100%',
+      minHeight: 860,
+      borderWidth: 0,
+      borderStyle: 'none',
+      display: 'block',
+      backgroundColor: '#F7F8FA',
+    },
+  });
 }
-
-const styles = StyleSheet.create({
-  host: {
-    flex: 1,
-    minHeight: 760,
-    backgroundColor: '#F7F8FA',
-  },
-});
