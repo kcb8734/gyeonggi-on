@@ -3,6 +3,8 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Switch,
 } from 'react-native';
+import ImeTextInput from '../components/ui/ImeTextInput';
+import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
 import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import { fetchNearbyFestivals } from '../api/festivals';
@@ -110,7 +112,12 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       <Text style={styles.note}>국세청 계속사업자 확인 후 상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 
       <Text style={styles.label}>상호명</Text>
-      <TextInput style={styles.input} value={businessName} onChangeText={setBusinessName} placeholder="예: 화성행궁 한정식" />
+      <ImeTextInput
+        style={styles.input}
+        value={businessName}
+        onChangeText={setBusinessName}
+        placeholder="예: 화성행궁 한정식"
+      />
 
       <Text style={styles.label}>사업자등록번호 (10자리)</Text>
       <TextInput
@@ -185,11 +192,11 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#F7F8FA' },
-  header: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
-  note: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: '600', marginTop: 12, marginBottom: 6, color: '#333' },
+  header: { fontSize: 22, fontWeight: '700', marginBottom: 8, fontFamily: KOREAN_FONT_FAMILY },
+  note: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 8, fontFamily: KOREAN_FONT_FAMILY },
+  label: { fontSize: 14, fontWeight: '600', marginTop: 12, marginBottom: 6, color: '#333', fontFamily: KOREAN_FONT_FAMILY },
   pickerWrap: { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#DDD' },
-  input: { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#DDD', padding: 12, fontSize: 16 },
+  input: { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#DDD', padding: 12, fontSize: 16, fontFamily: KOREAN_FONT_FAMILY },
   verifyBtn: { backgroundColor: '#111827', borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 10 },
   verifyText: { color: '#fff', fontWeight: '700' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },

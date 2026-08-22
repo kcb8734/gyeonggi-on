@@ -14,6 +14,9 @@ import PromotionRegisterScreen from './src/screens/PromotionRegisterScreen';
 import TourDetailScreen from './src/screens/TourDetailScreen';
 import MerchantSettlementScreen from './src/screens/MerchantSettlementScreen';
 import SupportScreen from './src/screens/SupportScreen';
+import { ensureKoreanWebFont } from './src/utils/koreanFont';
+
+ensureKoreanWebFont();
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
