@@ -3,7 +3,7 @@ const app = require('./app.json');
 const apiUrl = (
   process.env.EXPO_PUBLIC_API_URL
   || process.env.EXPO_PUBLIC_API_BASE_URL
-  || 'https://kdanji.com'
+  || 'https://www.kdanji.com'
 ).replace(/\/$/, '');
 
 module.exports = {

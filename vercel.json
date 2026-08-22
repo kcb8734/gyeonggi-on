@@ -5,9 +5,9 @@
   "buildCommand": "npm run build --prefix backend && npm run export:web --prefix mobile",
   "outputDirectory": "mobile/dist",
   "functions": {
-    "api/index.js": {
+    "api/index.ts": {
       "maxDuration": 15,
-      "includeFiles": "backend/dist/**"
+      "includeFiles": "backend/**"
     }
   },
   "rewrites": [
@@ -30,8 +30,8 @@
     }
   ],
   "env": {
-    "EXPO_PUBLIC_API_URL": "https://kdanji.com",
-    "EXPO_PUBLIC_API_BASE_URL": "https://kdanji.com",
+    "EXPO_PUBLIC_API_URL": "https://www.kdanji.com",
+    "EXPO_PUBLIC_API_BASE_URL": "https://www.kdanji.com",
     "EXPO_PUBLIC_WEB_ORIGIN": "https://kdanji.com"
   }
 }

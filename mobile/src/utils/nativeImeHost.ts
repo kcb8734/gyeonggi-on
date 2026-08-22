@@ -1,5 +1,12 @@
 type Rect = { top: number; left: number; width: number; height: number };
 
+export function setImeModalLock(locked: boolean) {
+  if (typeof document === 'undefined') return;
+  if (locked) document.body.dataset.onandonModal = '1';
+  else delete document.body.dataset.onandonModal;
+  window.dispatchEvent(new Event('resize'));
+}
+
 function applyRect(el: HTMLElement, rect: Rect) {
   el.style.top = `${rect.top}px`;
   el.style.left = `${rect.left}px`;
@@ -120,11 +127,15 @@ export function mountBodyField(options: {
     'font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
     'outline:none',
     'resize:none',
+    'ime-mode:active',
+    '-webkit-user-select:text',
+    'user-select:text',
   ].join(';');
   document.body.appendChild(field);
 
   const place = () => {
     const overlayOpen = !!document.querySelector('[data-onandon-ime-overlay]');
+    const modalOpen = document.body.dataset.onandonModal === '1';
     const rect = options.host.getBoundingClientRect();
     applyRect(field, {
       top: rect.top,
@@ -132,7 +143,7 @@ export function mountBodyField(options: {
       width: Math.max(rect.width, 40),
       height: Math.max(rect.height, options.tag === 'textarea' ? 96 : 48),
     });
-    const hidden = overlayOpen || rect.width < 8;
+    const hidden = overlayOpen || modalOpen || rect.width < 8;
     field.style.display = hidden ? 'none' : 'block';
     field.style.visibility = hidden ? 'hidden' : 'visible';
     field.style.pointerEvents = hidden ? 'none' : 'auto';

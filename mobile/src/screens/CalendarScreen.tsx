@@ -55,6 +55,8 @@ export default function CalendarScreen() {
       navigation.navigate('TourDetail', {
         contentId: festival.contentId,
         contentTypeId: festival.contentTypeId,
+        tel: festival.tel,
+        title: festival.title,
       });
     }
   };

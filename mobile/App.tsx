@@ -20,6 +20,7 @@ import FeedViewScreen from './src/screens/FeedViewScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 import { installImeGuard } from './src/utils/imeGuard';
+import TabGlyph from './src/components/ui/TabGlyph';
 
 ensureKoreanWebFont();
 installImeGuard();
@@ -38,9 +39,9 @@ export type RootTabParamList = {
 export type RootStackParamList = {
   Tabs: undefined;
   PromotionRegister: undefined;
-  TourDetail: { contentId: string; contentTypeId?: string };
+  TourDetail: { contentId: string; contentTypeId?: string; tel?: string; title?: string };
   MerchantSettlement: undefined;
-  Support: { topic?: 'notice' | 'help' };
+  Support: { topic?: 'notice' | 'help' | 'privacy' };
   FeedUpload: undefined;
   FeedView: { postId: string };
   Login: undefined;
@@ -58,23 +59,16 @@ function StackBack() {
   );
 }
 
-function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <Text style={{ fontSize: 16 }}>{emoji}</Text>
-      <Text style={{ fontSize: 10, fontWeight: '800', color: focused ? '#111827' : '#9CA3AF' }}>{label}</Text>
-    </View>
-  );
-}
-
 function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerTitleAlign: 'center',
-        tabBarActiveTintColor: '#111827',
+        tabBarActiveTintColor: '#E0392A',
+        tabBarInactiveTintColor: '#9CA3AF',
         tabBarShowLabel: false,
-        tabBarStyle: { height: 64, paddingBottom: 8, paddingTop: 8 },
+        tabBarStyle: { height: 68, paddingBottom: 10, paddingTop: 8 },
+        tabBarItemStyle: { flex: 1 },
       }}
     >
       <Tab.Screen
@@ -88,30 +82,37 @@ function Tabs() {
               <Text style={{ fontSize: 10, fontWeight: '800', color: '#6B7280' }}>온앤온</Text>
             </View>
           ),
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="홈" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabGlyph name="home" label="홈" focused={focused} />,
         }}
       />
       <Tab.Screen
         name="Nearby"
-        options={{ title: '내주변', tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" label="내주변" focused={focused} /> }}
+        options={{ title: '내주변', tabBarIcon: ({ focused }) => <TabGlyph name="nearby" label="내주변" focused={focused} /> }}
       >
         {({ route }) => (
           <FestivalMerchantMapScreen festivalId={route.params?.festivalId} userId={DEV_USER_ID} />
         )}
       </Tab.Screen>
-      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: '달력', tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="달력" focused={focused} /> }} />
-      <Tab.Screen name="Coupons" component={CouponsScreen} options={{ title: '쿠폰함', tabBarIcon: ({ focused }) => <TabIcon emoji="🎟️" label="쿠폰" focused={focused} /> }} />
-      <Tab.Screen name="My" component={MyScreen} options={{ title: '마이', tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="마이" focused={focused} /> }} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: '달력', tabBarIcon: ({ focused }) => <TabGlyph name="calendar" label="달력" focused={focused} /> }} />
+      <Tab.Screen name="Coupons" component={CouponsScreen} options={{ title: '쿠폰함', tabBarIcon: ({ focused }) => <TabGlyph name="coupons" label="쿠폰" focused={focused} /> }} />
+      <Tab.Screen name="My" component={MyScreen} options={{ title: '마이', tabBarIcon: ({ focused }) => <TabGlyph name="my" label="마이" focused={focused} /> }} />
     </Tab.Navigator>
   );
 }
 
+function isDeployedWeb() {
+  if (typeof window === 'undefined') return !__DEV__;
+  const host = window.location.hostname;
+  return host === 'kdanji.com' || host === 'www.kdanji.com' || host.endsWith('.vercel.app') || !__DEV__;
+}
+
 function AppShell({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
+  const framed = !isDeployedWeb();
   return (
-    <View style={styles.webPage}>
-      {__DEV__ ? <Text style={styles.liveBanner}>미리보기 · 나가기 버튼 · 한글 IME 가드</Text> : null}
-      <View nativeID="onandon-phone" style={styles.phone}>{children}</View>
+    <View style={framed ? styles.webPage : styles.webPageLive}>
+      {framed ? <Text style={styles.liveBanner}>미리보기 · 나가기 버튼 · 한글 IME 가드</Text> : null}
+      <View nativeID="onandon-phone" style={framed ? styles.phone : styles.appContainer} {...(!framed ? { className: 'app-container' } : null)}>{children}</View>
     </View>
   );
 }
@@ -135,11 +136,19 @@ export default function App() {
                 <FestivalDetailScreen
                   contentId={route.params.contentId}
                   contentTypeId={route.params.contentTypeId}
+                  fallbackTel={route.params.tel}
+                  fallbackTitle={route.params.title}
                 />
               )}
             </Stack.Screen>
             <Stack.Screen name="MerchantSettlement" options={{ title: '정산 현황' }} component={MerchantSettlementScreen} />
-            <Stack.Screen name="Support" options={({ route }) => ({ title: route.params?.topic === 'help' ? '고객센터' : '공지사항' })}>
+            <Stack.Screen options={({ route }) => ({
+              title: route.params?.topic === 'help'
+                ? '고객센터'
+                : route.params?.topic === 'privacy'
+                  ? '개인정보처리방침'
+                  : '공지사항',
+            })} name="Support">
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
             <Stack.Screen
@@ -187,5 +196,22 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 10,
     borderColor: '#111827',
+  },
+  webPageLive: {
+    flex: 1,
+    width: '100%',
+    minHeight: '100%' as unknown as number,
+    backgroundColor: '#fff',
+  },
+  appContainer: {
+    width: '100%',
+    maxWidth: '100%' as unknown as number,
+    minHeight: '100%' as unknown as number,
+    flex: 1,
+    margin: 0,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+    borderWidth: 0,
+    borderRadius: 0,
   },
 });

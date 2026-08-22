@@ -6,7 +6,7 @@ import * as Location from 'expo-location';
 import { addFeedPost } from '../stores/feedStore';
 import { addLocalCurrencyCoupon, addPoints } from '../stores/appStore';
 import { getAuthUser } from '../stores/authStore';
-import { pickFromCamera, pickFromGallery } from '../utils/pickImage';
+import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
 import { fetchTourFestivals } from '../api/tour';
 import { submitFeedReward } from '../api/feeds';
 import type { TourFestival } from '../types/tour';
@@ -44,6 +44,7 @@ export default function FeedUploadScreen() {
   const navigation = useNavigation<any>();
   const captionRef = useRef('');
   const [imageUrl, setImageUrl] = useState(PRESETS[0]);
+  const [previewNonce, setPreviewNonce] = useState(0);
   const [festivals, setFestivals] = useState<TourFestival[]>([]);
   const [festivalId, setFestivalId] = useState('');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -147,19 +148,26 @@ export default function FeedUploadScreen() {
 
       <Text style={styles.title}>축제 피드 올리기</Text>
       <Text style={styles.lead}>GPS 위치 인증과 축제 태그가 있어야 보상이 지급됩니다.</Text>
-      <Image source={{ uri: imageUrl }} style={styles.preview} />
+      <Image key={`${previewNonce}-${imageUrl.slice(0, 48)}`} source={{ uri: imageUrl }} style={styles.preview} />
+      <Text style={styles.previewHint}>선택한 촬영/갤러리 이미지가 위에 바로 미리보기됩니다.</Text>
       <View style={styles.pickRow}>
         <TouchableOpacity style={styles.pickBtn} onPress={async () => {
           const uri = await pickFromCamera();
-          if (uri) setImageUrl(uri);
+          if (uri) {
+            setImageUrl(uri);
+            setPreviewNonce((n) => n + 1);
+          }
         }}>
           <Text style={styles.pickText}>카메라 촬영</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.pickBtn} onPress={async () => {
-          const uri = await pickFromGallery();
-          if (uri) setImageUrl(uri);
+          const uri = await pickPhotoFromGallery();
+          if (uri) {
+            setImageUrl(uri);
+            setPreviewNonce((n) => n + 1);
+          }
         }}>
-          <Text style={styles.pickText}>갤러리 사진/영상</Text>
+          <Text style={styles.pickText}>갤러리 사진</Text>
         </TouchableOpacity>
       </View>
 
@@ -184,7 +192,7 @@ export default function FeedUploadScreen() {
       <Text style={styles.label}>썸네일 선택</Text>
       <View style={styles.presets}>
         {PRESETS.map((url) => (
-          <TouchableOpacity key={url} onPress={() => setImageUrl(url)}>
+          <TouchableOpacity key={url} onPress={() => { setImageUrl(url); setPreviewNonce((n) => n + 1); }}>
             <Image source={{ uri: url }} style={[styles.preset, imageUrl === url && styles.presetOn]} />
           </TouchableOpacity>
         ))}
@@ -216,6 +224,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800' },
   lead: { fontSize: 13, color: '#6B7280', marginTop: 6, marginBottom: 14 },
   preview: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#E5E7EB' },
+  previewHint: { fontSize: 12, color: '#6B7280', marginTop: 8, marginBottom: 4 },
   label: { fontSize: 14, fontWeight: '700', marginTop: 16, marginBottom: 8 },
   gps: { fontSize: 13, color: '#2563EB', fontWeight: '700' },
   festList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
