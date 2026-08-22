@@ -84,10 +84,16 @@ export const verifyMerchant = async (req: Request, res: Response) => {
     });
   } catch (err) {
     if (err instanceof NtsLookupError) {
-      return res.status(err.statusCode).json({ success: false, message: err.message });
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message,
+      });
     }
-    console.error('[verifyMerchant] Error:', err);
-    return res.status(500).json({ success: false, message: '사업자 상태 확인 중 서버 오류가 발생했습니다.' });
+    console.error('[verifyMerchant] Error:', err instanceof Error ? err.message : err);
+    return res.status(500).json({
+      success: false,
+      message: '사업자 상태 확인 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+    });
   }
 };
 

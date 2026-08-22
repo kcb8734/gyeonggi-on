@@ -72,6 +72,20 @@ test('fetchBusinessStatus throws on missing service key', async () => {
   if (prev !== undefined) process.env.NTS_SERVICE_KEY = prev;
 });
 
+test('fetchBusinessStatus rejects invalid NTS_SERVICE_KEY with HTTP 401', async () => {
+  const fetchImpl: typeof fetch = async () =>
+    new Response(JSON.stringify({ code: 401, msg: 'UNAUTHORIZED' }), { status: 401 });
+
+  await assert.rejects(
+    () => fetchBusinessStatus('1234567890', { serviceKey: 'bad-key', fetchImpl }),
+    (err: unknown) =>
+      err instanceof NtsLookupError
+      && err.statusCode === 401
+      && /NTS_SERVICE_KEY/.test(err.message)
+      && !/bad-key/.test(err.message),
+  );
+});
+
 test('fetchBusinessStatus posts b_no array to NTS status endpoint', async () => {
   let calledUrl = '';
   let calledBody = '';

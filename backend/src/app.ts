@@ -13,11 +13,24 @@ import tourRouter from './routes/tour';
 import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
 
+const ALLOWED_ORIGINS = [
+  'https://kdanji.com',
+  'https://www.kdanji.com',
+  'http://localhost:3000',
+];
+
 const app = express();
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, !origin || ALLOWED_ORIGINS.includes(origin));
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+}));
 app.use(express.json());
 
 // 헬스체크
@@ -42,8 +55,11 @@ app.use('/api/auth', authRouter);
 app.use('/api/feeds', feedsRouter);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`경기온 API 서버 실행 중: ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`경기온 API 서버 실행 중: ${PORT}`);
+  });
+}
 
 export default app;
+module.exports = app;
