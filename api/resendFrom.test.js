@@ -9,5 +9,6 @@ assert.ok(fromEnv.includes('Onandon <noreply@kdanji.com>'));
 assert.equal(new Set(fromEnv).size, fromEnv.length);
 
 const empty = resendFromCandidates('  ');
-assert.equal(empty[0], RESEND_TEST_FROM);
+assert.equal(empty[0], 'Onandon <noreply@kdanji.com>');
+assert.ok(empty.includes(RESEND_TEST_FROM));
 assert.ok(empty.includes(RESEND_ACCOUNT_EMAIL));

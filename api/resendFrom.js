@@ -8,10 +8,10 @@ export function resendFromCandidates(envFrom) {
     if (value && values.indexOf(value) === -1) values.push(value);
   };
   add(configured);
+  add('Onandon <noreply@kdanji.com>');
   add(RESEND_TEST_FROM);
   add('Onandon <' + RESEND_TEST_FROM + '>');
   add(RESEND_ACCOUNT_EMAIL);
   add('Onandon <' + RESEND_ACCOUNT_EMAIL + '>');
-  add('Onandon <noreply@kdanji.com>');
   return values;
 }

@@ -207,8 +207,29 @@ async function resendApi(pathname, method, body) {
   return { status: response.status, payload: payload || {} };
 }
 
+function resendDnsRecords(domain) {
+  const rows = Array.isArray(domain && domain.records) ? domain.records : [];
+  return rows.map((item) => {
+    const type = String((item && (item.record || item.type)) || '').toUpperCase();
+    let name = String((item && item.name) || '').trim();
+    name = name.replace(/\.kdanji\.com\.?$/i, '');
+    if (name === '@' || name === 'kdanji.com') name = '';
+    return {
+      type: type,
+      name: name,
+      value: String((item && item.value) || '').trim(),
+      priority: item && item.priority != null ? Number(item.priority) : undefined,
+      status: item && item.status ? String(item.status) : '',
+    };
+  }).filter((item) => item.type && item.value);
+}
+
 async function setupResendDomain(req, res) {
   const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
   if (!resendConfigured()) {
     send(res, 500, { success: false, message: 'RESEND_API_KEY가 없습니다.' }, headers);
     return;
@@ -240,13 +261,21 @@ async function setupResendDomain(req, res) {
     }
     domain = created.payload;
   }
+  const wantVerify = /verify=1|verify=true/i.test(String(req.url || ''))
+    || String((readBody(req) || {}).action || '').toLowerCase() === 'verify';
+  if (wantVerify && domain && domain.id) {
+    await resendApi('/domains/' + domain.id + '/verify', 'POST');
+  }
   const detail = domain && domain.id ? await resendApi('/domains/' + domain.id, 'GET') : { payload: domain };
+  const payload = detail.payload || {};
   send(res, 200, {
     success: true,
     from: resendFrom(),
     accountEmail: RESEND_ACCOUNT_EMAIL,
     canManageDomains: true,
-    domain: detail.payload,
+    status: payload.status || domain.status || '',
+    records: resendDnsRecords(payload),
+    domain: payload,
   }, headers);
 }
 
