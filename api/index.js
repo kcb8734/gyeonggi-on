@@ -181,10 +181,18 @@ async function handler(req, res) {
       return;
     }
 
-    send(res, 200, {
-      status: 'ok',
-      service: 'gyeonggi-on-api',
-      nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
+    if (/health/i.test(path) || path.trim() === '/api' || path.trim() === '/') {
+      send(res, 200, {
+        status: 'ok',
+        service: 'gyeonggi-on-api',
+        nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
+      }, corsHeaders(req));
+      return;
+    }
+
+    send(res, 404, {
+      success: false,
+      message: '이 API는 미리보기 데이터로 동작합니다.',
     }, corsHeaders(req));
   } catch (err) {
     send(res, 500, {
