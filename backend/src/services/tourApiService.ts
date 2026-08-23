@@ -4,6 +4,7 @@ import { filterFallbackFestivals, findFallbackFestival } from './tourFallback';
 
 /** KorService1은 폐기됨. TourAPI 4.0은 KorService2 엔드포인트를 사용한다. */
 export const DEFAULT_TOUR_API_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
+export const KOR_SERVICE1_BASE_URL = 'https://apis.data.go.kr/B551011/KorService1';
 
 export const CONTENT_TYPE = {
   ATTRACTION: '12',
@@ -644,6 +645,33 @@ export async function searchFestivals(
     console.warn('[searchFestivals] fallback mock:', err instanceof Error ? err.message : err);
     return fallbackFestivals({ ...params, year, month });
   }
+}
+
+/**
+ * GET KorService1/searchFestival1
+ * 사용자 지정 수집 엔드포인트. areaCode=31, MobileApp=kdanji.
+ */
+export async function searchFestival1(
+  params: { areaCode?: string; eventStartDate?: string; numOfRows?: number } = {},
+  options: TourApiOptions = {},
+): Promise<TourFestival[]> {
+  const now = new Date();
+  const eventStartDate = params.eventStartDate
+    ?? ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const areaCode = params.areaCode ?? '31';
+  const items = await tourGet<FestivalItem>('/searchFestival1', {
+    contentTypeId: CONTENT_TYPE.FESTIVAL,
+    areaCode,
+    eventStartDate,
+    numOfRows: params.numOfRows ?? 200,
+    pageNo: 1,
+    arrange: 'C',
+  }, {
+    ...options,
+    baseUrl: options.baseUrl ?? KOR_SERVICE1_BASE_URL,
+    mobileApp: options.mobileApp ?? 'kdanji',
+  });
+  return items.map((item) => toFestival(item)).filter((item): item is TourFestival => item != null);
 }
 
 /**

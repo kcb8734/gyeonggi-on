@@ -11,6 +11,7 @@ import {
 import type { HomePromotion } from '../../types/home';
 import { couponRateColor } from '../../utils/couponColors';
 import { setImeModalLock } from '../../utils/nativeImeHost';
+import ModalExitButton from './ModalExitButton';
 
 interface Props {
   promotion: HomePromotion | null;
@@ -37,6 +38,7 @@ export default function MerchantDetailModal({ promotion, issuing, onClose, onDow
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.sheet}>
+          <ModalExitButton onPress={onClose} />
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={[styles.rateBanner, { backgroundColor: rateColor }]}>
               <Text style={styles.rateKicker}>{promotion.municipality_name ?? '제휴 상가'}</Text>

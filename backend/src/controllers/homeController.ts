@@ -39,6 +39,7 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
          f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+         f.tour_content_id, f.tel, f.source,
          mu.name AS municipality_name
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id
@@ -70,25 +71,40 @@ export const getHomeFeed = async (req: Request, res: Response) => {
     );
 
     const dbFestivals = festivalResult.rows.map((row) => ({
-      ...row,
+      id: row.tour_content_id ? `tour-${row.tour_content_id}` : row.id,
+      contentId: row.tour_content_id ?? row.id,
+      contentTypeId: '15',
+      title: row.title,
+      location_name: row.location_name,
       latitude: toNumber(row.latitude),
       longitude: toNumber(row.longitude),
-      source: 'db' as const,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      municipality_name: row.municipality_name ?? null,
+      description: row.description ?? null,
+      category: row.category,
+      image_url: row.image_url,
+      is_trending: Boolean(row.is_trending),
+      source: row.source === 'tour' ? 'tour' : 'db',
+      tel: row.tel ?? undefined,
     }));
 
-    let festivals = dbFestivals;
-    try {
-      const now = new Date();
-      const tourFestivals = await searchFestivals({
-        areaCode: '31',
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
-      });
-      if (tourFestivals.length) {
-        festivals = tourFestivals.map(toHomeFestival);
+    const synced = dbFestivals.filter((item) => item.source === 'tour');
+    let festivals = synced.length ? synced : dbFestivals;
+    if (!synced.length) {
+      try {
+        const now = new Date();
+        const tourFestivals = await searchFestivals({
+          areaCode: '31',
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        });
+        if (tourFestivals.length) {
+          festivals = tourFestivals.map(toHomeFestival);
+        }
+      } catch (err) {
+        console.warn('[getHomeFeed] TourAPI fallback to DB festivals:', err);
       }
-    } catch (err) {
-      console.warn('[getHomeFeed] TourAPI fallback to DB festivals:', err);
     }
 
     const popular = category

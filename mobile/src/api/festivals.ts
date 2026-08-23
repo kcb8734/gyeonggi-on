@@ -1,6 +1,18 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
+import type { HomeFestival } from '../types/home';
 import type { FestivalMapResponse, FestivalPin, NearbyFestivalsResponse } from '../types/map';
+
+export async function fetchListedFestivals(): Promise<HomeFestival[]> {
+  try {
+    const res = await api.get<{ festivals?: HomeFestival[]; data?: HomeFestival[] }>('/api/festivals');
+    const rows = res.data?.festivals?.length ? res.data.festivals : res.data?.data;
+    if (rows?.length) return rows;
+  } catch {
+    // 미리보기 폴백
+  }
+  return [];
+}
 
 export async function fetchNearbyFestivals(params?: {
   latitude?: number;

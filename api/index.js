@@ -167,29 +167,247 @@ async function verifyNts(req, res) {
   }, headers);
 }
 
+const emailCodes = new Map();
+const EMAIL_TTL_MS = 3 * 60 * 1000;
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function todayYmd() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return now.getFullYear() + month + day;
+}
+
+function formatYmd(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length !== 8) return '';
+  return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
+}
+
+function asList(value) {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function tourToHome(item) {
+  const contentId = String(item.contentid || item.contentId || '');
+  const start = formatYmd(item.eventstartdate) || formatYmd(item.eventStartDate);
+  const end = formatYmd(item.eventenddate) || start;
+  return {
+    id: contentId ? 'tour-' + contentId : '',
+    contentId: contentId,
+    contentTypeId: String(item.contenttypeid || '15'),
+    title: String(item.title || ''),
+    location_name: [item.addr1, item.addr2].filter(Boolean).join(' '),
+    latitude: Number(item.mapy) || 0,
+    longitude: Number(item.mapx) || 0,
+    start_date: start,
+    end_date: end,
+    municipality_name: String(item.addr1 || '').split(' ')[1] || null,
+    description: null,
+    category: '문화/예술',
+    image_url: String(item.firstimage || item.firstimage2 || '').replace(/^http:\/\//i, 'https://') || null,
+    is_trending: Boolean(item.firstimage),
+    source: 'tour',
+    tel: item.tel || undefined,
+  };
+}
+
+async function fetchTourItems(baseUrl, path) {
+  const key = String(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY || '').trim();
+  if (!key) throw new Error('TOUR_API_SERVICE_KEY 가 없습니다.');
+  const params = new URLSearchParams();
+  params.set('serviceKey', key);
+  params.set('MobileOS', 'ETC');
+  params.set('MobileApp', 'kdanji');
+  params.set('_type', 'json');
+  params.set('areaCode', '31');
+  params.set('eventStartDate', todayYmd());
+  params.set('numOfRows', '80');
+  params.set('pageNo', '1');
+  params.set('arrange', 'C');
+  const url = baseUrl.replace(/\/$/, '') + path + '?' + params.toString();
+  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error('TourAPI HTTP ' + response.status);
+  const payload = await response.json();
+  const code = payload && payload.response && payload.response.header && payload.response.header.resultCode;
+  if (code && code !== '0000') {
+    throw new Error(payload.response.header.resultMsg || code);
+  }
+  const items = payload && payload.response && payload.response.body && payload.response.body.items;
+  if (!items || typeof items === 'string') return [];
+  return asList(items.item).map(tourToHome).filter((item) => item.contentId && item.title);
+}
+
+async function listFestivalsLive(req, res) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  let festivals = [];
+  let source = 'none';
+  try {
+    festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService1', '/searchFestival1');
+    source = festivals.length ? 'searchFestival1' : source;
+  } catch (err) {
+    console.error('[api] searchFestival1', err && err.message ? err.message : err);
+  }
+  if (!festivals.length) {
+    try {
+      festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService2', '/searchFestival2');
+      source = festivals.length ? 'searchFestival2' : source;
+    } catch (err) {
+      console.error('[api] searchFestival2', err && err.message ? err.message : err);
+    }
+  }
+  send(res, 200, {
+    success: true,
+    metro: 'GYEONGGI',
+    count: festivals.length,
+    source: source,
+    festivals: festivals,
+    data: festivals,
+    message: festivals.length ? '경기도 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
+  }, headers);
+}
+
+async function sendEmailCode(req, res) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  const body = readBody(req);
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  if (!isValidEmail(email)) {
+    send(res, 400, { success: false, message: '담당자 메일 형식을 확인해주세요.' }, headers);
+    return;
+  }
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  emailCodes.set(normalizeEmail(email), { code: code, expiresAt: Date.now() + EMAIL_TTL_MS });
+  const key = String(process.env.RESEND_API_KEY || '').trim();
+  if (key) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM || '온앤온 <noreply@kdanji.com>',
+          to: [email],
+          subject: '[온앤온] 지자체 담당자 인증번호',
+          html: '<p>인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
+        }),
+      });
+      if (!response.ok) {
+        send(res, 502, { success: false, message: '인증 메일 발송에 실패했습니다.' }, headers);
+        return;
+      }
+    } catch (_err) {
+      send(res, 502, { success: false, message: '인증 메일 서버에 연결하지 못했습니다.' }, headers);
+      return;
+    }
+    send(res, 200, { success: true, message: email + '으로 인증번호를 보냈습니다. 3분 안에 입력해주세요.' }, headers);
+    return;
+  }
+  console.log('[api] email code', email, code);
+  send(res, 200, {
+    success: true,
+    message: '메일 서버 키가 없어 개발용 인증번호를 반환합니다.',
+    devCode: code,
+  }, headers);
+}
+
+async function verifyEmailCode(req, res) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  const body = readBody(req);
+  const email = normalizeEmail(body.email);
+  const code = String(body.code || '').trim();
+  const record = emailCodes.get(email);
+  if (!record) {
+    send(res, 400, { success: false, message: '인증번호를 먼저 받아주세요.' }, headers);
+    return;
+  }
+  if (record.expiresAt < Date.now()) {
+    emailCodes.delete(email);
+    send(res, 400, { success: false, message: '인증번호가 만료되었습니다. 다시 받아주세요.' }, headers);
+    return;
+  }
+  if (record.code !== code) {
+    send(res, 400, { success: false, message: '인증번호가 일치하지 않습니다.' }, headers);
+    return;
+  }
+  emailCodes.delete(email);
+  send(res, 200, { success: true, message: '담당자 메일이 확인되었습니다.' }, headers);
+}
+
+function cronAuthorized(req) {
+  const secret = String(process.env.CRON_SECRET || '').trim();
+  if (!secret) return true;
+  return String(req.headers.authorization || '') === 'Bearer ' + secret;
+}
+
 async function handler(req, res) {
   try {
     const method = String(req.method || 'GET').toUpperCase();
     const path = requestPath(req);
     const body = readBody(req);
-    const looksVerify = /merchants\/verify/i.test(path)
-      || (method === 'POST' && typeof body.business_number === 'string')
-      || method === 'OPTIONS';
 
-    if (looksVerify) {
+    if (/auth\/send-email-code/i.test(path)) {
+      await sendEmailCode(req, res);
+      return;
+    }
+    if (/auth\/verify-email-code/i.test(path)) {
+      await verifyEmailCode(req, res);
+      return;
+    }
+    if (/\/api\/festivals\/?(\?|$)/i.test(path) || /\/api\/festivals["\s]/i.test(path) || /(^|[^\w])\/api\/festivals([^\w]|$)/i.test(path)) {
+      if (!/festivals\/(nearby|sync|[^/]+\/map)/i.test(path)) {
+        await listFestivalsLive(req, res);
+        return;
+      }
+    }
+    if (/cron\/festivals|festivals\/sync/i.test(path)) {
+      if (!cronAuthorized(req)) {
+        send(res, 401, { success: false, message: 'cron 인증이 필요합니다.' }, corsHeaders(req));
+        return;
+      }
+      await listFestivalsLive(req, res);
+      return;
+    }
+
+    const looksVerify = /merchants\/verify/i.test(path)
+      || (method === 'POST' && typeof body.business_number === 'string');
+    if (looksVerify || (method === 'OPTIONS' && /merchants\/verify/i.test(path))) {
       await verifyNts(req, res);
       return;
     }
 
-    send(res, 200, {
-      status: 'ok',
-      service: 'gyeonggi-on-api',
-      nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
-    }, corsHeaders(req));
+    if (/\/health|\/api\/health/i.test(path)) {
+      send(res, 200, {
+        status: 'ok',
+        service: 'gyeonggi-on-api',
+        nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
+      }, corsHeaders(req));
+      return;
+    }
+
+    send(res, 404, { success: false, message: '지원하지 않는 API입니다.' }, corsHeaders(req));
   } catch (err) {
     send(res, 500, {
       success: false,
-      message: err && err.message ? err.message : '국세청 상태조회에 실패했습니다.',
+      message: err && err.message ? err.message : '요청 처리에 실패했습니다.',
     }, corsHeaders(req));
   }
 }

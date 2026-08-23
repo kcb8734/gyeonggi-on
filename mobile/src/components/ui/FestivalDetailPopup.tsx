@@ -14,6 +14,7 @@ import { isFavorite, isScheduled } from '../../stores/appStore';
 import { ddayLabel, formatRange } from '../../utils/date';
 import { formatTel, telHref } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
+import ModalExitButton from './ModalExitButton';
 
 interface Props {
   festival: HomeFestival | null;
@@ -53,6 +54,7 @@ export default function FestivalDetailPopup({
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
+          <ModalExitButton onPress={onClose} />
           <ScrollView showsVerticalScrollIndicator={false}>
             {festival.image_url ? (
               <Image source={{ uri: festival.image_url }} style={styles.hero} />

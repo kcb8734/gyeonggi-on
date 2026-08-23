@@ -8,6 +8,7 @@ import {
   overlapsMonth,
   placeKind,
   resolveLDongRegnCd,
+  searchFestival1,
   searchFestivals,
   searchNearby,
   secureImageUrl,
@@ -272,4 +273,33 @@ test('searchFestivals falls back when TourAPI times out', async () => {
   );
   assert.ok(list.length > 0);
   assert.equal(list[0].contentTypeId, '15');
+});
+
+test('searchFestival1 calls KorService1 with areaCode 31 and kdanji app', async () => {
+  let calledUrl = '';
+  const fetchImpl: typeof fetch = async (input) => {
+    calledUrl = String(input);
+    return jsonResponse(festivalEnvelope({
+      contentid: '5555',
+      contenttypeid: '15',
+      title: '수원화성문화제',
+      addr1: '경기도 수원시 팔달구',
+      eventstartdate: '20260821',
+      eventenddate: '20260911',
+      firstimage: 'http://tong.visitkorea.or.kr/b.jpg',
+      mapx: '127.01',
+      mapy: '37.28',
+      tel: '031-228-3675',
+    }));
+  };
+  const list = await searchFestival1(
+    { areaCode: '31', eventStartDate: '20260823' },
+    { serviceKey: 'k', fetchImpl, cache: new TtlCache() },
+  );
+  assert.equal(list.length, 1);
+  assert.equal(list[0].contentId, '5555');
+  assert.match(calledUrl, /KorService1\/searchFestival1/);
+  assert.match(calledUrl, /areaCode=31/);
+  assert.match(calledUrl, /MobileApp=kdanji/);
+  assert.match(calledUrl, /eventStartDate=20260823/);
 });

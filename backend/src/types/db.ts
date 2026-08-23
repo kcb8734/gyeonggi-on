@@ -21,6 +21,9 @@ export interface Festival {
   category?: string;
   image_url?: string | null;
   is_trending?: boolean;
+  tour_content_id?: string | null;
+  tel?: string | null;
+  source?: string;
   created_at: string;
 }
 

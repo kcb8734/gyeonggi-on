@@ -12,6 +12,8 @@ import homeRouter from './routes/home';
 import tourRouter from './routes/tour';
 import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
+import { startFestivalCron } from './jobs/festivalCron';
+import { runFestivalSync } from './controllers/festivalListController';
 
 const ALLOWED_ORIGINS = [
   'https://kdanji.com',
@@ -53,11 +55,14 @@ app.use('/api/home', homeRouter);
 app.use('/api/tour', tourRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/feeds', feedsRouter);
+app.get('/api/cron/festivals', runFestivalSync);
+app.post('/api/cron/festivals', runFestivalSync);
 
 const PORT = process.env.PORT || 4000;
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`경기온 API 서버 실행 중: ${PORT}`);
+    startFestivalCron();
   });
 }
 

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import IsolatedImeField from './IsolatedImeField';
+import ModalExitButton from './ModalExitButton';
 import { getLocalities, type Locality, type MetroRegion } from '../../constants/regions';
 
 const ALL = '전체';
@@ -41,6 +42,7 @@ export default function LocalityFilter({ metro, value, onChange }: Props) {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
+            <ModalExitButton onPress={() => setOpen(false)} />
             <Text style={styles.sheetTitle}>{metro.label} 시·군·구</Text>
             <Text style={styles.sheetLead}>{metro.covers} · 가나다순으로 찾고 고를 수 있습니다</Text>
             <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
@@ -98,7 +100,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  sheetTitle: { fontSize: 17, fontWeight: '800', paddingHorizontal: 16 },
+  sheetTitle: { fontSize: 17, fontWeight: '800', paddingHorizontal: 16, paddingRight: 48 },
   sheetLead: { fontSize: 12, color: '#6B7280', paddingHorizontal: 16, marginTop: 4, marginBottom: 10 },
   list: { paddingHorizontal: 12 },
   item: {

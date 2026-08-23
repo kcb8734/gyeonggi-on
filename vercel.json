@@ -6,10 +6,16 @@
   "outputDirectory": "mobile/dist",
   "functions": {
     "api/index.js": {
-      "maxDuration": 15,
+      "maxDuration": 30,
       "memory": 256
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/festivals",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/api/merchants/verify", "destination": "/api" },
     { "source": "/api/health", "destination": "/api" },
