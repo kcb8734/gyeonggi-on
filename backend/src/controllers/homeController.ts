@@ -1,38 +1,21 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
+import { REGION_PRESETS, regionById } from '../constants/regionTour';
 import { searchFestivals, toHomeFestival } from '../services/tourApiService';
 import { toNumber } from '../utils/geo';
 
-const READY_METROS = new Set(['GYEONGGI']);
-
-export const METRO_REGIONS = [
-  { id: 'GYEONGGI', label: '경기온', ready: true },
-  { id: 'SEOUL', label: '서울온', ready: false },
-  { id: 'INCHEON', label: '인천온', ready: false },
-  { id: 'GANGWON', label: '강원온', ready: false },
-  { id: 'CHUNGCHEONG', label: '충청온', ready: false },
-  { id: 'JEOLLA', label: '전라온', ready: false },
-  { id: 'GYEONGSANG', label: '경상온', ready: false },
-  { id: 'JEJU', label: '제주온', ready: false },
-];
+export const METRO_REGIONS = REGION_PRESETS.map((item) => ({
+  id: item.id,
+  label: item.label,
+  ready: true,
+}));
 
 /** GET /api/home — 메인 피드 (광역 탭 + 쿠폰 캐러셀 + 인기 축제) */
 export const getHomeFeed = async (req: Request, res: Response) => {
   const metro = String(req.query.metro ?? 'GYEONGGI').toUpperCase();
   const category = typeof req.query.category === 'string' ? req.query.category : null;
 
-  if (!READY_METROS.has(metro)) {
-    return res.json({
-      success: true,
-      available: false,
-      message: '해당 지역 서비스 준비 중입니다',
-      metro,
-      regions: METRO_REGIONS,
-      festivals: [],
-      promotions: [],
-      popular: [],
-    });
-  }
+  const preset = regionById(metro);
 
   try {
     const festivalResult = await pool.query(
@@ -95,7 +78,7 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       try {
         const now = new Date();
         const tourFestivals = await searchFestivals({
-          areaCode: '31',
+          areaCode: preset.code,
           month: now.getMonth() + 1,
           year: now.getFullYear(),
         });

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import CourseGuideModal from '../components/ui/CourseGuideModal';
 import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
@@ -44,6 +45,7 @@ export default function FestivalDetailScreen({
   useAppState();
   const [detail, setDetail] = useState<TourDetail | null>(null);
   const [course, setCourse] = useState<FestivalCourse | null>(null);
+  const [guideFocus, setGuideFocus] = useState<'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,6 +157,17 @@ export default function FestivalDetailScreen({
                 {step.step}. [{step.category}] {step.place_name} · {step.estimated_time}{'\n'}{step.description}
               </Text>
             ))}
+            <TouchableOpacity style={styles.courseBtn} onPress={() => setGuideFocus('all')}>
+              <Text style={styles.courseBtnText}>ON&ON 추천코스 살펴보기</Text>
+            </TouchableOpacity>
+            <View style={styles.courseRow}>
+              <TouchableOpacity style={styles.courseGhost} onPress={() => setGuideFocus('전통시장 먹거리')}>
+                <Text style={styles.courseGhostText}>전통시장 먹거리 살펴보기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.courseGhost} onPress={() => setGuideFocus('캠핑장/숙박')}>
+                <Text style={styles.courseGhostText}>캠핑장 숙박 살펴보기</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.overview}>{course.local_benefit_tip}</Text>
           </View>
         ) : null}
@@ -214,6 +227,12 @@ export default function FestivalDetailScreen({
           </View>
         ) : null}
       </View>
+      <CourseGuideModal
+        visible={Boolean(guideFocus)}
+        course={course}
+        focus={guideFocus ?? 'all'}
+        onClose={() => setGuideFocus(null)}
+      />
     </ScrollView>
   );
 }
@@ -262,6 +281,25 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '800', color: '#6B7280', marginBottom: 4 },
   value: { fontSize: 15, color: '#111827', fontWeight: '600' },
   overview: { fontSize: 14, lineHeight: 22, color: '#374151' },
+  courseBtn: {
+    marginTop: 12,
+    backgroundColor: '#0F766E',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  courseBtnText: { color: '#fff', fontWeight: '800' },
+  courseRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  courseGhost: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#0F766E',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+  },
+  courseGhostText: { color: '#065F46', fontWeight: '800', fontSize: 12, textAlign: 'center' },
   callBtn: {
     marginTop: 12,
     backgroundColor: '#111827',

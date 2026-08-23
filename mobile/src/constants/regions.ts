@@ -17,13 +17,13 @@ export interface Locality {
 
 export const METRO_REGIONS: MetroRegion[] = [
   { id: 'GYEONGGI', label: '경기온', ready: true, covers: '경기도 31개 시·군', governments: ['경기도'] },
-  { id: 'SEOUL', label: '서울온', ready: false, covers: '서울특별시 25개 자치구', governments: ['서울특별시'] },
-  { id: 'INCHEON', label: '인천온', ready: false, covers: '인천광역시 8구 2군', governments: ['인천광역시'] },
-  { id: 'GANGWON', label: '강원온', ready: false, covers: '강원특별자치도 18개 시·군', governments: ['강원특별자치도'] },
-  { id: 'CHUNGCHEONG', label: '충청온', ready: false, covers: '충북·충남·세종·대전', governments: ['충청북도', '충청남도', '세종특별자치시', '대전광역시'] },
-  { id: 'JEOLLA', label: '전라온', ready: false, covers: '전북·전남·광주', governments: ['전북특별자치도', '전라남도', '광주광역시'] },
-  { id: 'GYEONGSANG', label: '경상온', ready: false, covers: '경북·경남·대구·울산·부산', governments: ['경상북도', '경상남도', '대구광역시', '울산광역시', '부산광역시'] },
-  { id: 'JEJU', label: '제주온', ready: false, covers: '제주특별자치도 제주시·서귀포시', governments: ['제주특별자치도'] },
+  { id: 'SEOUL', label: '서울온', ready: true, covers: '서울특별시 25개 자치구', governments: ['서울특별시'] },
+  { id: 'INCHEON', label: '인천온', ready: true, covers: '인천광역시 8구 2군', governments: ['인천광역시'] },
+  { id: 'GANGWON', label: '강원온', ready: true, covers: '강원특별자치도 18개 시·군', governments: ['강원특별자치도'] },
+  { id: 'CHUNGCHEONG', label: '충청온', ready: true, covers: '충북·충남·세종·대전', governments: ['충청북도', '충청남도', '세종특별자치시', '대전광역시'] },
+  { id: 'JEOLLA', label: '전라온', ready: true, covers: '전북·전남·광주', governments: ['전북특별자치도', '전라남도', '광주광역시'] },
+  { id: 'GYEONGSANG', label: '경상온', ready: true, covers: '경북·경남·대구·울산·부산', governments: ['경상북도', '경상남도', '대구광역시', '울산광역시', '부산광역시'] },
+  { id: 'JEJU', label: '제주온', ready: true, covers: '제주특별자치도 제주시·서귀포시', governments: ['제주특별자치도'] },
 ];
 
 function city(name: string, area?: string, areaTokens?: string[]): Locality {

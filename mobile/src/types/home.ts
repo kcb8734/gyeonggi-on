@@ -47,6 +47,7 @@ export interface HomePromotion {
   remaining_quantity: number;
   total_quantity?: number;
   funding_type?: 'MERCHANT_ONLY' | 'MATCHED';
+  coupon_type?: 'OFFICIAL' | 'SELF';
   matching_status?: string;
   metro?: string;
   municipality_name?: string | null;

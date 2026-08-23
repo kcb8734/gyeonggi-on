@@ -21,7 +21,8 @@ import {
   getLocalities,
   localityMatches,
 } from '../constants/regions';
-import { GYEONGGI_DEFAULT_REGION } from '../constants/map';
+import { regionById } from '../constants/regionTour';
+import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
@@ -48,7 +49,8 @@ const ALL = '전체';
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const [metro, setMetro] = useState('GYEONGGI');
+  const selectedPreset = useSelectedRegionPreset();
+  const metro = selectedPreset.id;
   const [localityId, setLocalityId] = useState<string | null>(null);
   const [category, setCategory] = useState<string>(ALL);
   const [query, setQuery] = useState('');
@@ -71,9 +73,7 @@ export default function HomeScreen() {
     Promise.all([
       fetchHomeFeed(metro),
       metro === 'GYEONGGI' ? fetchListedFestivals() : Promise.resolve([]),
-      metro === 'GYEONGGI'
-        ? fetchTourFestivals({ areaCode: '31', month: now.getMonth() + 1, year: now.getFullYear() })
-        : Promise.resolve([]),
+      fetchTourFestivals({ areaCode: selectedPreset.code, month: now.getMonth() + 1, year: now.getFullYear() }),
     ]).then(([feed, listed, tourFestivals]) => {
       const extra = app.localPromotions.filter((item) => !feed.promotions.some((promo) => promo.id === item.id));
       setPromotions([...extra, ...feed.promotions.map((item) => ({ ...item, metro }))]);
@@ -84,7 +84,7 @@ export default function HomeScreen() {
       setFestivals([...extras, ...incoming]);
       if (!feed.available) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
-  }, [metro, app.localPromotions, app.localFestivals]);
+  }, [metro, selectedPreset.code, app.localPromotions, app.localFestivals]);
 
   useEffect(() => {
     if (!toast) return;
@@ -143,10 +143,10 @@ export default function HomeScreen() {
     );
   }, [promotions, selected]);
 
-  const handleRegion = (id: string, ready: boolean) => {
-    setMetro(id);
+  const handleRegion = (id: string) => {
+    const preset = regionById(id);
+    setRegion({ code: preset.code, name: preset.name, id: preset.id, label: preset.label });
     setLocalityId(null);
-    if (!ready) setToast(COMING_SOON_MESSAGE);
   };
 
   const handleIssue = async (promotion: HomePromotion) => {
@@ -193,7 +193,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={region.id}
                 style={[styles.regionTab, active && styles.regionTabActive]}
-                onPress={() => handleRegion(region.id, region.ready)}
+                onPress={() => handleRegion(region.id)}
               >
                 <Text style={[styles.regionText, active && styles.regionTextActive]}>{region.label}</Text>
               </TouchableOpacity>
@@ -215,7 +215,12 @@ export default function HomeScreen() {
         <TouchableOpacity activeOpacity={0.95} onPress={() => navigation.navigate('Nearby')} style={styles.mapCard}>
           <MapView
             style={styles.map}
-            initialRegion={GYEONGGI_DEFAULT_REGION}
+            initialRegion={{
+              latitude: selectedPreset.latitude,
+              longitude: selectedPreset.longitude,
+              latitudeDelta: selectedPreset.latitudeDelta,
+              longitudeDelta: selectedPreset.longitudeDelta,
+            }}
             pointerEvents={Platform.OS === 'web' ? 'auto' : 'none'}
           >
             {festivals.map((festival) => (
@@ -269,7 +274,13 @@ export default function HomeScreen() {
         </ScrollView>
 
         {popular.length === 0 ? (
-          <Text style={styles.empty}>이 달의 해당 카테고리 축제가 없습니다</Text>
+          <View style={styles.emptyBox}>
+            <Text style={styles.empty}>
+              {locatedFestivals.length === 0
+                ? '선택하신 권역에 등록된 축제가 없습니다. 다른 권역을 선택해보세요'
+                : '이 달의 해당 카테고리 축제가 없습니다'}
+            </Text>
+          </View>
         ) : (
           <View style={styles.grid}>
             {popular.map((festival) => (
@@ -351,7 +362,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     fontSize: 14,
   },
-  empty: { marginHorizontal: 16, marginTop: 12, color: '#6B7280', fontSize: 13 },
+  empty: { marginHorizontal: 16, marginTop: 12, color: '#6B7280', fontSize: 13, lineHeight: 20, fontWeight: '600' },
+  emptyBox: { marginHorizontal: 16, marginTop: 8, backgroundColor: '#F3F4F6', borderRadius: 12, paddingVertical: 8 },
   mapCard: {
     marginHorizontal: 16,
     marginTop: 12,

@@ -6,6 +6,8 @@ export type CourseItinerary = {
   place_name: string;
   description: string;
   estimated_time: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type FestivalCourse = {

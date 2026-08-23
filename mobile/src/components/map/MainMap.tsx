@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { issueCoupon } from '../../api/coupons';
 import { FESTIVAL_FOCUS_DELTA, GYEONGGI_DEFAULT_REGION } from '../../constants/map';
+import { useSelectedRegionPreset } from '../../stores/regionStore';
 import { useFestivalMap } from '../../hooks/useFestivalMap';
 import type { MapRegion, MerchantPin } from '../../types/map';
 import type { FestivalPin } from '../../types/map';
@@ -74,6 +75,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
+  const regionPreset = useSelectedRegionPreset();
   const {
     festivals,
     selectedFestivalId,
@@ -111,8 +113,13 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         ...FESTIVAL_FOCUS_DELTA,
       };
     }
-    return GYEONGGI_DEFAULT_REGION;
-  }, [selectedFestival]);
+    return {
+      latitude: regionPreset.latitude,
+      longitude: regionPreset.longitude,
+      latitudeDelta: regionPreset.latitudeDelta,
+      longitudeDelta: regionPreset.longitudeDelta,
+    };
+  }, [selectedFestival, regionPreset]);
 
   useEffect(() => {
     if (!mapRef.current) return;

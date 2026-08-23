@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchHomeFeed } from '../api/home';
+import { useSelectedRegionPreset } from '../stores/regionStore';
 import { fetchMyCoupons, issueCoupon } from '../api/coupons';
 import type { HomePromotion } from '../types/home';
 import { TicketCouponCard, ticketFromPromotion, ticketFromWallet } from '../components/ui/TicketCouponCard';
@@ -39,15 +40,16 @@ export default function CouponsScreen() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [merchant, setMerchant] = useState<HomePromotion | null>(null);
   const app = useAppState();
+  const region = useSelectedRegionPreset();
 
   useEffect(() => {
-    fetchHomeFeed('GYEONGGI').then((feed) => {
+    fetchHomeFeed(region.id).then((feed) => {
       setPromotions([...app.localPromotions, ...feed.promotions.filter((item) => !app.localPromotions.some((local) => local.id === item.id))]);
     });
     fetchMyCoupons(DEV_USER_ID).then((items) => {
       items.forEach((item) => addWalletCoupon(item));
     }).catch(() => undefined);
-  }, [app.localPromotions]);
+  }, [app.localPromotions, region.id]);
 
   const handleIssue = async (promo: HomePromotion) => {
     setIssuingId(promo.id);
@@ -97,6 +99,9 @@ export default function CouponsScreen() {
         {tab === 'available' ? (
           <>
             <Text style={styles.lead}>상가 상세를 확인한 뒤 쿠폰을 다운로드하세요. 지자체별로 할인율 색이 다릅니다.</Text>
+            {promotions.length === 0 ? (
+              <Text style={styles.empty}>선택하신 권역에 등록된 쿠폰이 없습니다. 다른 권역을 선택해보세요</Text>
+            ) : null}
             {promotions.map((promo) => (
               <TicketCouponCard
                 key={promo.id}

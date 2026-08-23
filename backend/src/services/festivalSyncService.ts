@@ -40,15 +40,19 @@ async function withRetry<T>(label: string, fn: () => Promise<T>, retries = MAX_R
   throw last instanceof Error ? last : new Error(String(last));
 }
 
-export async function collectGyeonggiFestivals(): Promise<{ items: TourFestival[]; source: FestivalSyncResult['source'] }> {
+export async function collectRegionFestivals(areaCode = '31'): Promise<{ items: TourFestival[]; source: FestivalSyncResult['source'] }> {
   const now = new Date();
   const eventStartDate = ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const items = await withRetry('searchFestival2', () => searchFestival1({
-    areaCode: '31',
+  const items = await withRetry(`searchFestival2:${areaCode}`, () => searchFestival1({
+    areaCode,
     eventStartDate,
-    numOfRows: 200,
+    numOfRows: 120,
   }));
   return { items, source: items.length ? 'searchFestival2' : 'none' };
+}
+
+export async function collectGyeonggiFestivals() {
+  return collectRegionFestivals('31');
 }
 
 export async function ensureMunicipalityId(address: string): Promise<string | null> {
@@ -162,6 +166,34 @@ export async function syncGyeonggiFestivals(): Promise<FestivalSyncResult> {
       message,
     };
   }
+}
+
+export async function syncNationwideFestivals(): Promise<FestivalSyncResult> {
+  const { ALL_TOUR_AREA_CODES } = await import('../constants/regionTour');
+  let fetched = 0;
+  let upserted = 0;
+  let skipped = 0;
+  let source: FestivalSyncResult['source'] = 'none';
+  for (const areaCode of ALL_TOUR_AREA_CODES) {
+    try {
+      const collected = await collectRegionFestivals(areaCode);
+      fetched += collected.items.length;
+      if (collected.items.length) source = collected.source;
+      const result = await upsertTourFestivals(collected.items);
+      upserted += result.upserted;
+      skipped += result.skipped;
+    } catch (err) {
+      console.error('[festival-sync] 권역 동기화 실패', areaCode, err);
+    }
+  }
+  return {
+    success: fetched > 0,
+    source,
+    fetched,
+    upserted,
+    skipped,
+    message: `전국 권역 축제 ${upserted}건을 동기화했습니다.`,
+  };
 }
 
 export function tourItemsToHome(items: TourFestival[]) {
