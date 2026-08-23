@@ -71,7 +71,7 @@ export default function MerchantAuthPanel() {
       <Text style={styles.kicker}>사장님 확인</Text>
       <Text style={styles.title}>사업자 확인 후 간편 로그인</Text>
       <Text style={styles.lead}>
-        국세청에서 계속사업자를 확인한 뒤 상호와 비밀번호만 저장하면, 다음부터는 그 둘로 로그인해서 QR 촬영과 정산을 바로 할 수 있습니다.
+        국세청에서 계속사업자를 확인한 뒤 상호와 비밀번호만 저장하면, 다음부터는 그 둘로 로그인해서 QR 쿠폰 스캔과 정산을 바로 할 수 있습니다.
       </Text>
 
       <View style={styles.card}>

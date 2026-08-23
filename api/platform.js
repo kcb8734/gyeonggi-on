@@ -13,18 +13,61 @@ const coupons = [
   { id: 'coupon-used-2', code: 'GYON-USED-0002', title: '전통시장 먹거리 쿠폰', discountAmount: 2000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(30), expiresAt: daysFromNow(20), settlementId: null },
   { id: 'coupon-used-3', code: 'GYON-USED-0003', title: '온앤온 현장 결제 할인', discountAmount: 4500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(80), expiresAt: daysFromNow(20), settlementId: null },
   { id: 'coupon-scan-1', code: 'GYON-SCAN-0001', title: '온앤온 현장 할인', discountAmount: 1500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: false, usedAt: null, expiresAt: daysFromNow(40), settlementId: null },
+  { id: 'coupon-wallet-1', code: 'GGON-SW-1042', title: '수원화성문화제 제휴 한정식 할인', discountAmount: 3000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: false, usedAt: null, expiresAt: daysFromNow(40), settlementId: null },
 ];
+
+function normalizeCouponCode(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  try {
+    const url = new URL(text);
+    const fromQuery = url.searchParams.get('code') || url.searchParams.get('coupon') || url.searchParams.get('coupon_code');
+    if (fromQuery) return normalizeCouponCode(fromQuery);
+  } catch (_err) {
+    // 쿠폰 코드
+  }
+  const matched = text.toUpperCase().match(/\b((?:GYON|GGON)[-A-Z0-9]{3,})\b/);
+  return ((matched && matched[1]) || text).trim().toUpperCase();
+}
+
+function isIssuedCouponCode(code) {
+  return /^(GYON|GGON)[-A-Z0-9]{3,}$/i.test(String(code || '').trim());
+}
 
 const settlements = [];
 const engine = { festivalWeight: 40, campingDistanceWeight: 25, marketRatioWeight: 20, historyWeight: 15 };
 const CITIES = ['수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시', '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시', '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시', '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군'];
 
 function findCoupon(code) {
-  return coupons.find((item) => item.code === String(code || '').trim()) || null;
+  const token = normalizeCouponCode(code);
+  return coupons.find((item) => item.code.toUpperCase() === token) || null;
+}
+
+function enrollCoupon(code, title, discountAmount) {
+  const existing = findCoupon(code);
+  if (existing) return existing;
+  const row = {
+    id: 'auto-' + code,
+    code: code,
+    title: title || '온앤온 모바일 쿠폰',
+    discountAmount: discountAmount || 3000,
+    municipalityId: 'yongin',
+    merchantId: DEV_MERCHANT_ID,
+    isUsed: false,
+    usedAt: null,
+    expiresAt: daysFromNow(40),
+    settlementId: null,
+  };
+  coupons.push(row);
+  return row;
 }
 
 function verifyCoupon(code) {
-  const coupon = findCoupon(code);
+  const token = normalizeCouponCode(code);
+  if (!token || (!isIssuedCouponCode(token) && !findCoupon(token))) {
+    return { status: 400, body: { success: false, message: '쿠폰 QR이 아닙니다. 손님 쿠폰함의 QR을 스캔해 주세요.' } };
+  }
+  const coupon = findCoupon(token) || (isIssuedCouponCode(token) ? enrollCoupon(token) : null);
   if (!coupon) return { status: 404, body: { success: false, message: '등록되지 않은 쿠폰 코드입니다.' } };
   if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) {
     return { status: 410, body: { success: false, message: '만료된 쿠폰입니다.' } };
