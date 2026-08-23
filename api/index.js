@@ -210,7 +210,7 @@ async function resendApi(pathname, method, body) {
 function resendDnsRecords(domain) {
   const rows = Array.isArray(domain && domain.records) ? domain.records : [];
   return rows.map((item) => {
-    const type = String((item && (item.record || item.type)) || '').toUpperCase();
+    const type = String((item && (item.type || item.record)) || '').toUpperCase();
     let name = String((item && item.name) || '').trim();
     name = name.replace(/\.kdanji\.com\.?$/i, '');
     if (name === '@' || name === 'kdanji.com') name = '';
