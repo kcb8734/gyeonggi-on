@@ -21,7 +21,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
-import { BUILD_ID } from './src/buildInfo';
+import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
 
 ensureKoreanWebFont();
 installImeGuard();
@@ -77,12 +77,16 @@ function Tabs() {
         component={HomeScreen}
         options={{
           title: 'on&on',
-          headerTitle: () => (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 20, fontWeight: '900', color: '#111827', letterSpacing: 0.3 }}>on&on</Text>
-              <Text style={{ fontSize: 10, fontWeight: '800', color: '#6B7280' }}>온앤온 · {BUILD_ID}</Text>
-            </View>
-          ),
+          headerTitleAlign: 'center',
+          headerLeft: () => null,
+          headerRight: () => null,
+          headerTitleContainerStyle: {
+            left: 10,
+            right: 10,
+            width: undefined,
+            maxWidth: '100%',
+          },
+          headerTitle: () => <HomeHeaderBar />,
           tabBarIcon: ({ focused }) => <TabGlyph name="home" label="홈" focused={focused} />,
         }}
       />

@@ -43,8 +43,9 @@ export default function FestivalDetailPopup({
   if (!festival) return null;
   const liked = isFavorite(festival.id);
   const saved = isScheduled(festival.id);
-  const callUrl = telHref(festival.tel);
-  const telLabel = formatTel(festival.tel) || festival.tel;
+  const inquiry = festival.inquiryTel || festival.tel;
+  const callUrl = telHref(inquiry);
+  const telLabel = formatTel(inquiry) || inquiry;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -69,11 +70,14 @@ export default function FestivalDetailPopup({
               <Text style={styles.meta}>{festival.location_name ?? '위치 미정'}</Text>
               {telLabel ? (
                 <TouchableOpacity disabled={!callUrl} onPress={() => callUrl && Linking.openURL(callUrl)}>
-                  <Text style={[styles.meta, callUrl ? styles.telLink : null]}>전화 {telLabel}</Text>
+                  <Text style={[styles.meta, callUrl ? styles.telLink : null]}>행사 문의 {telLabel}</Text>
                 </TouchableOpacity>
               ) : (
-                <Text style={styles.meta}>전화 정보 없음</Text>
+                <Text style={styles.meta}>행사 문의 전화번호 없음</Text>
               )}
+              {festival.managerEmail ? (
+                <Text style={styles.meta}>담당자 메일 {festival.managerEmail}</Text>
+              ) : null}
               {festival.fee ? <Text style={styles.meta}>이용요금 {festival.fee}</Text> : null}
               <Text style={styles.overview} numberOfLines={6}>
                 {festival.description || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.'}

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
+  LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -13,51 +14,74 @@ import {
 import type { HomeFestival } from '../../types/home';
 import { ddayLabel, formatRange } from '../../utils/date';
 
-const PAGE = Math.min(Dimensions.get('window').width, 370);
-
 interface Props {
   items: HomeFestival[];
   onPress: (item: HomeFestival) => void;
 }
 
 export default function BannerCarousel({ items, onPress }: Props) {
-  const ref = useRef<ScrollView>(null);
+  const listRef = useRef<ScrollView>(null);
+  const [width, setWidth] = useState(() => Math.max(280, Dimensions.get('window').width - 32));
   const [index, setIndex] = useState(0);
+  const widthRef = useRef(width);
+  const indexRef = useRef(index);
+  widthRef.current = width;
+  indexRef.current = index;
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const next = Math.round(event.nativeEvent.layout.width);
+    if (next > 0 && next !== widthRef.current) {
+      setWidth(next);
+      requestAnimationFrame(() => {
+        listRef.current?.scrollTo({ x: next * indexRef.current, animated: false });
+      });
+    }
+  };
 
   useEffect(() => {
-    if (items.length < 2) return;
+    if (items.length < 2 || width <= 0) return;
     const timer = setInterval(() => {
-      setIndex((prev) => {
-        const next = (prev + 1) % items.length;
-        ref.current?.scrollTo({ x: PAGE * next, animated: true });
-        return next;
-      });
+      const next = (indexRef.current + 1) % items.length;
+      listRef.current?.scrollTo({ x: widthRef.current * next, animated: true });
+      setIndex(next);
     }, 4200);
     return () => clearInterval(timer);
-  }, [items.length]);
+  }, [items.length, width]);
 
   if (!items.length) return null;
 
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(event.nativeEvent.contentOffset.x / PAGE);
-    if (next !== index) setIndex(next);
+  const syncIndex = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.max(1, widthRef.current);
+    const next = Math.round(event.nativeEvent.contentOffset.x / page);
+    if (next !== indexRef.current) setIndex(next);
   };
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} onLayout={onLayout}>
       <ScrollView
-        ref={ref}
+        ref={listRef}
         horizontal
         pagingEnabled
+        decelerationRate="fast"
+        snapToInterval={width}
+        snapToAlignment="start"
+        disableIntervalMomentum
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScroll}
+        onMomentumScrollEnd={syncIndex}
+        onScrollEndDrag={syncIndex}
+        style={{ width }}
       >
         {items.map((item) => (
-          <TouchableOpacity key={item.id} activeOpacity={0.92} onPress={() => onPress(item)}>
+          <TouchableOpacity
+            key={item.id}
+            activeOpacity={0.92}
+            onPress={() => onPress(item)}
+            style={[styles.card, { width }]}
+          >
             {item.image_url ? (
-              <Image source={{ uri: item.image_url }} style={styles.image} />
+              <Image source={{ uri: item.image_url }} style={[styles.image, { width }]} />
             ) : (
-              <View style={[styles.image, styles.fallback]} />
+              <View style={[styles.image, styles.fallback, { width }]} />
             )}
             <View style={styles.scrim} />
             <View style={styles.caption}>
@@ -81,8 +105,18 @@ export default function BannerCarousel({ items, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 12 },
-  image: { width: PAGE, height: 210, backgroundColor: '#1F2937' },
+  wrap: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#1F2937',
+  },
+  card: {
+    height: 210,
+    overflow: 'hidden',
+  },
+  image: { height: 210, backgroundColor: '#1F2937' },
   fallback: { backgroundColor: '#334155' },
   scrim: {
     ...StyleSheet.absoluteFillObject,
