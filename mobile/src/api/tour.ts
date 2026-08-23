@@ -31,6 +31,27 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
   };
 }
 
+export function homeFestivalFromDetail(item: TourDetail): HomeFestival {
+  return {
+    id: `tour-${item.contentId}`,
+    contentId: item.contentId,
+    contentTypeId: item.contentTypeId,
+    title: item.title,
+    location_name: item.address,
+    latitude: item.mapY,
+    longitude: item.mapX,
+    start_date: item.eventStartDate,
+    end_date: item.eventEndDate,
+    category: item.category,
+    image_url: item.firstImage ?? item.images[0]?.originUrl,
+    is_trending: Boolean(item.firstImage || item.images[0]?.originUrl),
+    source: 'tour',
+    tel: item.tel,
+    description: item.overview,
+    fee: item.fee,
+  };
+}
+
 function previewFestivals(): TourFestival[] {
   return PREVIEW_HOME.festivals.map((item) => ({
     contentId: item.contentId ?? item.id,

@@ -8,11 +8,19 @@
     "api/index.ts": {
       "maxDuration": 15,
       "includeFiles": "backend/**"
+    },
+    "api/merchants/verify.ts": {
+      "maxDuration": 10
+    },
+    "api/health.ts": {
+      "maxDuration": 5
     }
   },
   "rewrites": [
+    { "source": "/api/merchants/verify", "destination": "/api/merchants/verify" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/health", "destination": "/api/health" },
     { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/health", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -32,6 +40,7 @@
   "env": {
     "EXPO_PUBLIC_API_URL": "https://www.kdanji.com",
     "EXPO_PUBLIC_API_BASE_URL": "https://www.kdanji.com",
-    "EXPO_PUBLIC_WEB_ORIGIN": "https://kdanji.com"
+    "EXPO_PUBLIC_WEB_ORIGIN": "https://kdanji.com",
+    "NTS_SERVICE_KEY": "ef117e7bebbcea7586234f85acd8292dba6a6d95230131aec62a10b5b2610885"
   }
 }

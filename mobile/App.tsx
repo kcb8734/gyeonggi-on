@@ -67,7 +67,7 @@ function Tabs() {
         tabBarActiveTintColor: '#E0392A',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarShowLabel: false,
-        tabBarStyle: { height: 68, paddingBottom: 10, paddingTop: 8 },
+        tabBarStyle: { height: 74, paddingBottom: 10, paddingTop: 8 },
         tabBarItemStyle: { flex: 1 },
       }}
     >
