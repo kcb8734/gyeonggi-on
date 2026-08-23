@@ -8,6 +8,7 @@ import {
   issueEmailChallenge,
   normalizeEmail,
 } from './emailChallenge.js';
+import { RESEND_ACCOUNT_EMAIL, RESEND_TEST_FROM, resendFromCandidates } from './resendFrom.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -184,7 +185,7 @@ function resendConfigured() {
 }
 
 function resendFrom() {
-  return String(process.env.RESEND_FROM || '').trim() || 'Onandon <noreply@kdanji.com>';
+  return resendFromCandidates(process.env.RESEND_FROM)[0] || RESEND_TEST_FROM;
 }
 
 async function resendApi(pathname, method, body) {
@@ -213,6 +214,17 @@ async function setupResendDomain(req, res) {
     return;
   }
   const listed = await resendApi('/domains', 'GET');
+  if (listed.status === 401 || listed.status === 403) {
+    send(res, 200, {
+      success: true,
+      from: resendFrom(),
+      fromCandidates: resendFromCandidates(process.env.RESEND_FROM),
+      accountEmail: RESEND_ACCOUNT_EMAIL,
+      canManageDomains: false,
+      message: (listed.payload && listed.payload.message) || '이 API 키는 메일 발송만 가능합니다.',
+    }, headers);
+    return;
+  }
   const rows = Array.isArray(listed.payload && listed.payload.data) ? listed.payload.data : [];
   let domain = rows.find((item) => item && item.name === 'kdanji.com');
   if (!domain) {
@@ -220,6 +232,8 @@ async function setupResendDomain(req, res) {
     if (created.status >= 400) {
       send(res, created.status, {
         success: false,
+        from: resendFrom(),
+        accountEmail: RESEND_ACCOUNT_EMAIL,
         message: (created.payload && created.payload.message) || 'Resend 도메인을 추가하지 못했습니다.',
       }, headers);
       return;
@@ -230,6 +244,8 @@ async function setupResendDomain(req, res) {
   send(res, 200, {
     success: true,
     from: resendFrom(),
+    accountEmail: RESEND_ACCOUNT_EMAIL,
+    canManageDomains: true,
     domain: detail.payload,
   }, headers);
 }
@@ -335,6 +351,58 @@ async function listFestivalsLive(req, res) {
   }, headers);
 }
 
+async function sendResendEmail({ key, to, subject, html }) {
+  const candidates = resendFromCandidates(process.env.RESEND_FROM);
+  let lastDetail = '';
+  let lastStatus = 0;
+  let lastFrom = '';
+  for (const from of candidates) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: from,
+          to: [to],
+          reply_to: RESEND_ACCOUNT_EMAIL,
+          subject: subject,
+          html: html,
+        }),
+      });
+      if (response.ok) {
+        return { ok: true, from: from };
+      }
+      let detail = '';
+      try {
+        const payload = await response.json();
+        detail = payload && payload.message ? String(payload.message) : '';
+      } catch (_err) {
+        detail = '';
+      }
+      lastDetail = detail;
+      lastStatus = response.status;
+      lastFrom = from;
+      console.error('[api] Resend 실패', response.status, detail, 'from=' + from);
+    } catch (_err) {
+      lastDetail = 'connect';
+      lastFrom = from;
+      console.error('[api] Resend 연결 실패', from);
+    }
+  }
+  if (lastDetail === 'connect') {
+    return { ok: false, message: '인증 메일 서버에 연결하지 못했습니다.' };
+  }
+  const ownInbox = /own email|testing emails/i.test(lastDetail);
+  return {
+    ok: false,
+    message: ownInbox
+      ? 'Resend 테스트 발신은 계정 메일(' + RESEND_ACCOUNT_EMAIL + ')로만 보낼 수 있습니다.'
+      : '발신 메일 주소가 Resend에서 확인되지 않았습니다. kdanji.com 도메인을 인증하거나 RESEND_FROM을 확인해주세요.',
+    status: lastStatus,
+    from: lastFrom,
+  };
+}
+
 async function sendEmailCode(req, res) {
   const headers = corsHeaders(req);
   if (String(req.method || '').toUpperCase() === 'OPTIONS') {
@@ -352,37 +420,18 @@ async function sendEmailCode(req, res) {
   emailCodes.set(normalizeEmail(email), { code: code, expiresAt: issued.expiresAt, challenge: issued.challenge });
   const key = String(process.env.RESEND_API_KEY || '').trim();
   if (key) {
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'Onandon <beth.t@example.com>',
-          to: [email],
-          subject: '[온앤온] 지자체 담당자 인증번호',
-          html: '<p>온앤온 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
-        }),
-      });
-      if (!response.ok) {
-        let detail = '';
-        try {
-          const payload = await response.json();
-          detail = payload && payload.message ? String(payload.message) : '';
-        } catch (_err) {
-          detail = '';
-        }
-        console.error('[api] Resend 실패', response.status, detail, 'from=' + resendFrom());
-        const domainFail = /domain|from/i.test(detail);
-        send(res, 502, {
-          success: false,
-          message: domainFail
-            ? '발신 메일 주소가 Resend에서 확인되지 않았습니다. RESEND_FROM을 확인해주세요.'
-            : '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
-        }, headers);
-        return;
-      }
-    } catch (_err) {
-      send(res, 502, { success: false, message: '인증 메일 서버에 연결하지 못했습니다.' }, headers);
+    const html = '<p>온앤온 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>';
+    const sent = await sendResendEmail({
+      key: key,
+      to: email,
+      subject: '[온앤온] 지자체 담당자 인증번호',
+      html: html,
+    });
+    if (!sent.ok) {
+      send(res, 502, {
+        success: false,
+        message: sent.message,
+      }, headers);
       return;
     }
     send(res, 200, {
