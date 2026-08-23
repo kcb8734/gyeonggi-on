@@ -14,6 +14,7 @@ interface ManagerState {
 }
 
 const KEY = 'onandon-festival-managers';
+export const DEFAULT_FESTIVAL_MANAGER_EMAIL = 'pizon8113@gmail.com';
 const INITIAL: ManagerState = { accounts: [], sessionEmail: null };
 const loaded = readJson<Partial<ManagerState>>(KEY, INITIAL);
 let state: ManagerState = {
@@ -54,6 +55,22 @@ export function useManagerState(): ManagerState {
     };
   }, []);
   return value;
+}
+
+export function rememberVerifiedManager(email: string, phone: string) {
+  const key = email.trim().toLowerCase();
+  if (!key) return;
+  const existing = state.accounts.find((item) => item.email === key);
+  const account: FestivalManagerAccount = {
+    email: key,
+    phone: phone.trim() || existing?.phone || '',
+    passwordHash: existing?.passwordHash ?? '',
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+  };
+  emit({
+    accounts: [...state.accounts.filter((item) => item.email !== key), account],
+    sessionEmail: state.sessionEmail,
+  });
 }
 
 export function registerFestivalManager(input: { email: string; phone: string; password: string }) {

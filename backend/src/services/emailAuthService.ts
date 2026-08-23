@@ -1,3 +1,4 @@
+import { checkEmailChallenge, issueEmailChallenge } from './emailChallenge';
 import { generateEmailCode, saveEmailCode, verifyEmailCode } from './emailCodeStore';
 
 const RESEND_URL = 'https://api.resend.com/emails';
@@ -9,6 +10,7 @@ export async function sendManagerEmailCode(email: string) {
   }
   const code = generateEmailCode();
   saveEmailCode(trimmed, code);
+  const issued = issueEmailChallenge(trimmed, code);
   const subject = '[온앤온] 지자체 담당자 인증번호';
   const html = `
     <div style="font-family:sans-serif;line-height:1.6">
@@ -28,7 +30,7 @@ export async function sendManagerEmailCode(email: string) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.RESEND_FROM || '온앤온 <noreply@kdanji.com>',
+          from: process.env.RESEND_FROM || '온앤온 <beth.t@example.com>',
           to: [trimmed],
           subject,
           html,
@@ -43,20 +45,27 @@ export async function sendManagerEmailCode(email: string) {
       console.error('[email-auth] Resend 연결 실패', err);
       return { success: false, status: 502, message: '인증 메일 서버에 연결하지 못했습니다.' };
     }
-    return { success: true, status: 200, message: `${trimmed}으로 인증번호를 보냈습니다. 3분 안에 입력해주세요.` };
+    return {
+      success: true,
+      status: 200,
+      message: `${trimmed}으로 인증번호를 보냈습니다. 메일함을 확인한 뒤 3분 안에 입력해주세요.`,
+      challenge: issued.challenge,
+    };
   }
 
   console.log(`[email-auth] RESEND_API_KEY 없음. ${trimmed} 인증번호 ${code}`);
   return {
     success: true,
     status: 200,
-    message: '메일 서버 키가 없어 개발용 인증번호를 반환합니다.',
+    message: '메일 서버 키(RESEND_API_KEY)가 없어 메일은 나가지 않았습니다. 화면에 표시된 개발용 코드를 입력하세요.',
     devCode: code,
+    challenge: issued.challenge,
   };
 }
 
-export function confirmManagerEmailCode(email: string, code: string) {
-  const result = verifyEmailCode(email, code);
+export function confirmManagerEmailCode(email: string, code: string, challenge?: string) {
+  const signed = checkEmailChallenge(email, code, challenge ?? '');
+  const result = signed.ok ? signed : verifyEmailCode(email, code);
   return {
     success: result.ok,
     status: result.ok ? 200 : 400,

@@ -2,6 +2,12 @@
  * Express/TypeScript 없이 동작하는 단일 Vercel Function.
  * /api/* rewrite 가 이 파일로 들어오므로 국세청 조회·헬스를 여기서 처리한다.
  */
+import {
+  checkEmailChallenge,
+  generateEmailCode,
+  issueEmailChallenge,
+  normalizeEmail,
+} from './emailChallenge.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -170,12 +176,16 @@ async function verifyNts(req, res) {
 const emailCodes = new Map();
 const EMAIL_TTL_MS = 3 * 60 * 1000;
 
-function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase();
-}
-
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function resendConfigured() {
+  return Boolean(String(process.env.RESEND_API_KEY || '').trim());
+}
+
+function resendFrom() {
+  return String(process.env.RESEND_FROM || '').trim() || '온앤온 <beth.t@example.com>';
 }
 
 function todayYmd() {
@@ -291,8 +301,9 @@ async function sendEmailCode(req, res) {
     send(res, 400, { success: false, message: '담당자 메일 형식을 확인해주세요.' }, headers);
     return;
   }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  emailCodes.set(normalizeEmail(email), { code: code, expiresAt: Date.now() + EMAIL_TTL_MS });
+  const code = generateEmailCode();
+  const issued = issueEmailChallenge(email, code);
+  emailCodes.set(normalizeEmail(email), { code: code, expiresAt: issued.expiresAt, challenge: issued.challenge });
   const key = String(process.env.RESEND_API_KEY || '').trim();
   if (key) {
     try {
@@ -300,28 +311,47 @@ async function sendEmailCode(req, res) {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: process.env.RESEND_FROM || '온앤온 <noreply@kdanji.com>',
+          from: resendFrom(),
           to: [email],
           subject: '[온앤온] 지자체 담당자 인증번호',
-          html: '<p>인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
+          html: '<p>온앤온 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
         }),
       });
       if (!response.ok) {
-        send(res, 502, { success: false, message: '인증 메일 발송에 실패했습니다.' }, headers);
+        let detail = '';
+        try {
+          const payload = await response.json();
+          detail = payload && payload.message ? String(payload.message) : '';
+        } catch (_err) {
+          detail = '';
+        }
+        console.error('[api] Resend 실패', response.status, detail);
+        const domainFail = /domain|from/i.test(detail);
+        send(res, 502, {
+          success: false,
+          message: domainFail
+            ? '발신 메일 주소가 Resend에서 확인되지 않았습니다. RESEND_FROM을 확인해주세요.'
+            : '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
+        }, headers);
         return;
       }
     } catch (_err) {
       send(res, 502, { success: false, message: '인증 메일 서버에 연결하지 못했습니다.' }, headers);
       return;
     }
-    send(res, 200, { success: true, message: email + '으로 인증번호를 보냈습니다. 3분 안에 입력해주세요.' }, headers);
+    send(res, 200, {
+      success: true,
+      message: email + '으로 인증번호를 보냈습니다. 메일함을 확인한 뒤 3분 안에 입력해주세요.',
+      challenge: issued.challenge,
+    }, headers);
     return;
   }
   console.log('[api] email code', email, code);
   send(res, 200, {
     success: true,
-    message: '메일 서버 키가 없어 개발용 인증번호를 반환합니다.',
+    message: '메일 서버 키(RESEND_API_KEY)가 없어 메일은 나가지 않았습니다. 화면에 표시된 개발용 코드를 입력하세요.',
     devCode: code,
+    challenge: issued.challenge,
   }, headers);
 }
 
@@ -334,22 +364,21 @@ async function verifyEmailCode(req, res) {
   const body = readBody(req);
   const email = normalizeEmail(body.email);
   const code = String(body.code || '').trim();
+  const challenge = typeof body.challenge === 'string' ? body.challenge : '';
+  const signed = checkEmailChallenge(email, code, challenge);
   const record = emailCodes.get(email);
-  if (!record) {
-    send(res, 400, { success: false, message: '인증번호를 먼저 받아주세요.' }, headers);
-    return;
-  }
-  if (record.expiresAt < Date.now()) {
-    emailCodes.delete(email);
-    send(res, 400, { success: false, message: '인증번호가 만료되었습니다. 다시 받아주세요.' }, headers);
-    return;
-  }
-  if (record.code !== code) {
-    send(res, 400, { success: false, message: '인증번호가 일치하지 않습니다.' }, headers);
+  const memoryOk = record
+    && record.expiresAt >= Date.now()
+    && record.code === code;
+  if (!signed.ok && !memoryOk) {
+    send(res, 400, {
+      success: false,
+      message: signed.reason || (record ? '인증번호가 일치하지 않습니다.' : '인증번호를 먼저 받아주세요.'),
+    }, headers);
     return;
   }
   emailCodes.delete(email);
-  send(res, 200, { success: true, message: '담당자 메일이 확인되었습니다.' }, headers);
+  send(res, 200, { success: true, message: '담당자 메일이 확인되었습니다.', email: email }, headers);
 }
 
 function cronAuthorized(req) {
@@ -399,6 +428,7 @@ async function handler(req, res) {
         status: 'ok',
         service: 'gyeonggi-on-api',
         nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
+        email: resendConfigured(),
       }, corsHeaders(req));
       return;
     }
