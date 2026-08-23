@@ -2,7 +2,7 @@ import { pool } from '../db/pool';
 import { municipalityFromAddress, municipalityRegionCode } from '../constants/gyeonggiCities';
 import {
   searchFestival1,
-  searchFestivals,
+  TourApiError,
   toHomeFestival,
   ymd,
   type TourFestival,
@@ -31,7 +31,9 @@ async function withRetry<T>(label: string, fn: () => Promise<T>, retries = MAX_R
     } catch (err) {
       last = err;
       const message = err instanceof Error ? err.message : String(err);
+      const status = err instanceof TourApiError ? err.statusCode : 0;
       console.error(`[festival-sync] ${label} ${attempt}회 실패: ${message}`);
+      if (status >= 400 && status < 500) break;
       if (attempt <= retries) await sleep(400 * attempt);
     }
   }
@@ -41,22 +43,10 @@ async function withRetry<T>(label: string, fn: () => Promise<T>, retries = MAX_R
 export async function collectGyeonggiFestivals(): Promise<{ items: TourFestival[]; source: FestivalSyncResult['source'] }> {
   const now = new Date();
   const eventStartDate = ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  try {
-    const items = await withRetry('searchFestival1', () => searchFestival1({
-      areaCode: '31',
-      eventStartDate,
-      numOfRows: 200,
-    }));
-    if (items.length) return { items, source: 'searchFestival1' };
-  } catch (err) {
-    console.error('[festival-sync] searchFestival1 최종 실패, KorService2로 재시도합니다.', err);
-  }
-
-  const items = await withRetry('searchFestival2', () => searchFestivals({
+  const items = await withRetry('searchFestival2', () => searchFestival1({
     areaCode: '31',
     eventStartDate,
     numOfRows: 200,
-    enrichLimit: 20,
   }));
   return { items, source: items.length ? 'searchFestival2' : 'none' };
 }

@@ -361,7 +361,7 @@ async function tourGet<T>(
   }
 
   if (!response.ok) {
-    throw new TourApiError(`한국관광공사 API가 실패했습니다. (HTTP ${response.status})`);
+    throw new TourApiError(`한국관광공사 API가 실패했습니다. (HTTP ${response.status})`, response.status);
   }
 
   let payload: TourEnvelope<T>;
@@ -648,30 +648,22 @@ export async function searchFestivals(
 }
 
 /**
- * GET KorService1/searchFestival1
- * 사용자 지정 수집 엔드포인트. areaCode=31, MobileApp=kdanji.
+ * 경기 축제 수집. KorService1/searchFestival1 은 폐기(NO_OPENAPI_SERVICE_ERROR, HTTP 400)되어
+ * TourAPI 4.0 KorService2/searchFestival2 로 동일 조건(areaCode=31, MobileApp=kdanji)을 조회한다.
  */
 export async function searchFestival1(
   params: { areaCode?: string; eventStartDate?: string; numOfRows?: number } = {},
   options: TourApiOptions = {},
 ): Promise<TourFestival[]> {
-  const now = new Date();
-  const eventStartDate = params.eventStartDate
-    ?? ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const areaCode = params.areaCode ?? '31';
-  const items = await tourGet<FestivalItem>('/searchFestival1', {
-    contentTypeId: CONTENT_TYPE.FESTIVAL,
-    areaCode,
-    eventStartDate,
+  return searchFestivals({
+    areaCode: params.areaCode ?? '31',
+    eventStartDate: params.eventStartDate,
     numOfRows: params.numOfRows ?? 200,
-    pageNo: 1,
-    arrange: 'C',
+    enrichLimit: 20,
   }, {
     ...options,
-    baseUrl: options.baseUrl ?? KOR_SERVICE1_BASE_URL,
     mobileApp: options.mobileApp ?? 'kdanji',
   });
-  return items.map((item) => toFestival(item)).filter((item): item is TourFestival => item != null);
 }
 
 /**
