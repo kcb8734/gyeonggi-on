@@ -34,9 +34,26 @@ export function shouldUseSsl(url = connectionString): boolean {
   return isNeonHost(host) || /sslmode=require/i.test(url) || host.length > 0;
 }
 
+export function resolvePoolConfig(url = connectionString) {
+  const useSsl = shouldUseSsl(url);
+  let next = url;
+  if (useSsl && url) {
+    try {
+      const parsed = new URL(url);
+      parsed.searchParams.delete('sslmode');
+      next = parsed.toString();
+    } catch {
+      next = url.replace(/([?&])sslmode=[^&]+/, '$1').replace(/[?&]$/, '');
+    }
+  }
+  return {
+    connectionString: next || undefined,
+    ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+  };
+}
+
 export const pool = new Pool({
-  connectionString: connectionString || undefined,
-  ssl: shouldUseSsl() ? { rejectUnauthorized: false } : undefined,
+  ...resolvePoolConfig(),
   max: process.env.VERCEL ? 2 : 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,

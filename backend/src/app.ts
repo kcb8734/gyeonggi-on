@@ -16,6 +16,7 @@ import { startFestivalCron } from './jobs/festivalCron';
 import { runFestivalSync } from './controllers/festivalListController';
 import { pool, connectionString } from './db/pool';
 import { databaseChecks, errorText } from './db/diagnose';
+import { ensureCoreSchema } from './db/migrate';
 
 const ALLOWED_ORIGINS = [
   'https://kdanji.com',
@@ -89,10 +90,14 @@ app.post('/api/cron/festivals', runFestivalSync);
 
 const PORT = process.env.PORT || 4000;
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`경기온 API 서버 실행 중: ${PORT}`);
-    startFestivalCron();
-  });
+  void ensureCoreSchema()
+    .catch((err) => console.error('[db] 마이그레이션 실패', err))
+    .finally(() => {
+      app.listen(PORT, () => {
+        console.log(`경기온 API 서버 실행 중: ${PORT}`);
+        startFestivalCron();
+      });
+    });
 }
 
 export default app;

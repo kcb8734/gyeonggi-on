@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { databaseHost, isNeonHost, shouldUseSsl } from './pool';
+import { databaseHost, isNeonHost, resolvePoolConfig, shouldUseSsl } from './pool';
 import { errorText } from './diagnose';
 
 test('databaseHost and Neon SSL detection', () => {
@@ -10,6 +10,9 @@ test('databaseHost and Neon SSL detection', () => {
   assert.equal(shouldUseSsl(neon), true);
   assert.equal(shouldUseSsl('postgresql://postgres:postgres@localhost:5432/gyeonggi_on'), false);
   assert.equal(shouldUseSsl('postgresql://u:p@db.example.com/app?sslmode=disable'), false);
+  const neonCfg = resolvePoolConfig(neon);
+  assert.equal(Boolean(neonCfg.ssl), true);
+  assert.equal(String(neonCfg.connectionString).includes('sslmode='), false);
 });
 
 test('errorText never returns an empty string', () => {
