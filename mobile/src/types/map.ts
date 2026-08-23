@@ -20,6 +20,7 @@ export interface FestivalPin {
   contentTypeId?: string;
   tel?: string;
   image_url?: string | null;
+  managerEmail?: string;
 }
 
 export interface MerchantPin {

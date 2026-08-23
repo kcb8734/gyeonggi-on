@@ -19,6 +19,9 @@ export interface HomeFestival {
   summary?: string;
   rewardEnabled?: boolean;
   tel?: string;
+  inquiryTel?: string;
+  managerEmail?: string;
+  managerPhone?: string;
   fee?: string;
 }
 
@@ -46,6 +49,13 @@ export interface HomePromotion {
   longitude?: number;
   gps_confirmed?: boolean;
   tel?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankHolder?: string;
+  qrConfirmCount?: number;
+  lastQrAt?: string;
+  managerEmail?: string;
+  maxDiscountAmount?: number;
 }
 
 export interface HomeFeed {

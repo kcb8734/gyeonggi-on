@@ -14,8 +14,9 @@ import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
-import { addLocalPromotion } from '../stores/appStore';
+import { addLocalPromotion, incrementPromotionQr, useAppState } from '../stores/appStore';
 import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
+import { matchingAmountWon, openSettlementMail } from '../utils/settlementMail';
 
 interface PromotionResponse {
   success: boolean;
@@ -31,8 +32,46 @@ interface PromotionResponse {
 
 const GOV_MATCH_CAP = 10;
 
+function ShopPhotoSlot({
+  label,
+  uri,
+  onChange,
+}: {
+  label: string;
+  uri: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <View style={styles.photoCol}>
+      {uri ? <Image source={{ uri }} style={styles.shopPhoto} /> : <View style={styles.shopPhoto} />}
+      <Text style={styles.photoCaption}>{label}</Text>
+      <View style={styles.photoActions}>
+        <TouchableOpacity
+          style={styles.photoBtn}
+          onPress={async () => {
+            const next = await pickFromCamera();
+            if (next) onChange(next);
+          }}
+        >
+          <Text style={styles.photoBtnText}>사진 촬영</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.photoBtnGhost}
+          onPress={async () => {
+            const next = await pickPhotoFromGallery();
+            if (next) onChange(next);
+          }}
+        >
+          <Text style={styles.photoBtnGhostText}>갤러리 선택</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
   const navigation = useNavigation<any>();
+  const app = useAppState();
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
   const businessNameRef = useRef('');
@@ -53,12 +92,37 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const [gps, setGps] = useState<{ latitude: number; longitude: number } | null>(null);
   const [gpsConfirmed, setGpsConfirmed] = useState(false);
   const [gpsLabel, setGpsLabel] = useState('위치 확인 중...');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankHolder, setBankHolder] = useState('');
+  const [settlementEmail, setSettlementEmail] = useState('');
+  const [qrCount, setQrCount] = useState(0);
+  const [lastQrNote, setLastQrNote] = useState('');
+  const [savedPromoId, setSavedPromoId] = useState('');
 
   useEffect(() => {
     fetchNearbyFestivals(merchantId ? { merchantId } : undefined)
-      .then(setFestivals)
+      .then((pins) => {
+        const locals = app.localFestivals.map((item) => ({
+          id: item.id,
+          title: item.title,
+          location_name: item.location_name,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          municipality_name: item.municipality_name,
+          managerEmail: item.managerEmail,
+          tel: item.inquiryTel || item.tel,
+        }));
+        const extra = locals.filter((item) => !pins.some((pin) => pin.id === item.id));
+        setFestivals([...extra, ...pins]);
+      })
       .catch(() => Alert.alert('오류', '주변 축제 목록을 불러오지 못했습니다.'));
-  }, [merchantId]);
+  }, [merchantId, app.localFestivals]);
+
+  useEffect(() => {
+    const selected = festivals.find((item) => item.id === selectedFestivalId);
+    if (selected?.managerEmail) setSettlementEmail(selected.managerEmail);
+  }, [selectedFestivalId, festivals]);
 
   useEffect(() => {
     const apply = (latitude: number, longitude: number) => {
@@ -91,6 +155,15 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     const gov = Math.min(rate, GOV_MATCH_CAP);
     return { merchant: rate, gov, total: rate + gov };
   }, [discountRate, requestMatching]);
+
+  const matchPreview = useMemo(
+    () => matchingAmountWon({
+      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
+      govRate: preview.gov,
+      qrCount,
+    }),
+    [maxDiscountAmount, preview.gov, qrCount],
+  );
 
   const handleVerify = async () => {
     if (typeof document !== 'undefined') {
@@ -153,6 +226,16 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       Alert.alert('알림', '연계할 축제를 선택해주세요.');
       return;
     }
+    if (requestMatching) {
+      if (!bankName.trim() || !bankAccount.replace(/\D/g, '') || !bankHolder.trim()) {
+        Alert.alert('알림', '지자체 매칭 시 사업자 통장 은행·계좌·예금주를 입력해주세요.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settlementEmail.trim())) {
+        Alert.alert('알림', '정산을 받을 지자체 담당자 메일을 입력해주세요.');
+        return;
+      }
+    }
     setLoading(true);
     try {
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
@@ -176,10 +259,16 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         gps_confirmed: gpsConfirmed,
         exterior_image_url: exteriorUrl,
         interior_image_url: interiorUrl,
+        bank_name: bankName.trim(),
+        bank_account: bankAccount.trim(),
+        bank_holder: bankHolder.trim(),
+        manager_email: settlementEmail.trim(),
+        qr_confirm_count: qrCount,
       });
       const festival = festivals.find((f) => f.id === selectedFestivalId);
+      const promoId = `local-${Date.now()}`;
       addLocalPromotion({
-        id: `local-${Date.now()}`,
+        id: promoId,
         title: `${festival?.title ?? ''} 제휴 할인`,
         festival_id: selectedFestivalId,
         festival_title: festival?.title,
@@ -201,13 +290,21 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         latitude: gps.latitude,
         longitude: gps.longitude,
         gps_confirmed: true,
+        bankName: bankName.trim(),
+        bankAccount: bankAccount.trim(),
+        bankHolder: bankHolder.trim(),
+        managerEmail: settlementEmail.trim(),
+        qrConfirmCount: qrCount,
+        maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
       });
+      setSavedPromoId(promoId);
       setResultBadge(res.data);
       Alert.alert('등록 완료', res.data.message);
     } catch (err: any) {
       const festival = festivals.find((f) => f.id === selectedFestivalId);
+      const promoId = `local-${Date.now()}`;
       addLocalPromotion({
-        id: `local-${Date.now()}`,
+        id: promoId,
         title: `${festival?.title ?? businessName} 제휴 할인`,
         festival_id: selectedFestivalId,
         festival_title: festival?.title,
@@ -229,7 +326,14 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         latitude: gps?.latitude,
         longitude: gps?.longitude,
         gps_confirmed: gpsConfirmed,
+        bankName: bankName.trim(),
+        bankAccount: bankAccount.trim(),
+        bankHolder: bankHolder.trim(),
+        managerEmail: settlementEmail.trim(),
+        qrConfirmCount: qrCount,
+        maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
       });
+      setSavedPromoId(promoId);
       Alert.alert('미리보기 등록', err?.response?.data?.message ?? '서버 미연결 시에도 홈 할인쿠폰에 미리보기로 올렸습니다.');
     } finally {
       setLoading(false);
@@ -292,37 +396,10 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
             multiline
           />
           <Text style={styles.label}>가게 사진 (외부 · 내부 각 1장)</Text>
+          <Text style={styles.note}>촬영은 카메라, 갤러리 선택은 앨범에서 고를 수 있습니다.</Text>
           <View style={styles.photoRow}>
-            <View style={styles.photoCol}>
-              {exteriorUrl ? <Image source={{ uri: exteriorUrl }} style={styles.shopPhoto} /> : <View style={styles.shopPhoto} />}
-              <TouchableOpacity style={styles.photoBtn} onPress={async () => {
-                const uri = await pickPhotoFromGallery();
-                if (uri) setExteriorUrl(uri);
-              }}>
-                <Text style={styles.photoBtnText}>외부 사진</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={async () => {
-                const uri = await pickFromCamera();
-                if (uri) setExteriorUrl(uri);
-              }}>
-                <Text style={styles.photoLink}>카메라</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.photoCol}>
-              {interiorUrl ? <Image source={{ uri: interiorUrl }} style={styles.shopPhoto} /> : <View style={styles.shopPhoto} />}
-              <TouchableOpacity style={styles.photoBtn} onPress={async () => {
-                const uri = await pickPhotoFromGallery();
-                if (uri) setInteriorUrl(uri);
-              }}>
-                <Text style={styles.photoBtnText}>내부 사진</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={async () => {
-                const uri = await pickFromCamera();
-                if (uri) setInteriorUrl(uri);
-              }}>
-                <Text style={styles.photoLink}>카메라</Text>
-              </TouchableOpacity>
-            </View>
+            <ShopPhotoSlot label="외부 사진" uri={exteriorUrl} onChange={setExteriorUrl} />
+            <ShopPhotoSlot label="내부 사진" uri={interiorUrl} onChange={setInteriorUrl} />
           </View>
           <Text style={styles.label}>위치 등록 주소</Text>
           <IsolatedImeField
@@ -365,6 +442,88 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       <Text style={styles.note}>
         끄면 상가가 할인 전액을 부담하고 즉시 쿠폰을 발행합니다. 켜면 관리자 승인 후 매칭률이 붙습니다.
       </Text>
+
+      {requestMatching ? (
+        <View style={styles.matchBox}>
+          <Text style={styles.matchTitle}>사업자 통장 · 매칭 정산</Text>
+          <Text style={styles.note}>QR 확인 건수만큼 지자체 담당자 메일로 정산 입금 요청을 보냅니다.</Text>
+          <Text style={styles.label}>은행명</Text>
+          <TextInput style={styles.input} value={bankName} onChangeText={setBankName} placeholder="예: 농협" />
+          <Text style={styles.label}>계좌번호</Text>
+          <TextInput
+            style={styles.input}
+            value={bankAccount}
+            onChangeText={setBankAccount}
+            placeholder="숫자만 입력"
+            keyboardType="number-pad"
+          />
+          <Text style={styles.label}>예금주</Text>
+          <TextInput style={styles.input} value={bankHolder} onChangeText={setBankHolder} placeholder="사업자 통장 예금주" />
+          <Text style={styles.label}>지자체 담당자 메일</Text>
+          <TextInput
+            style={styles.input}
+            value={settlementEmail}
+            onChangeText={setSettlementEmail}
+            placeholder="축제 등록 시 확인한 담당자 메일"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          <View style={styles.qrBox}>
+            <Text style={styles.matchTitle}>쿠폰 확인 QR 촬영</Text>
+            <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건</Text>
+            <Text style={styles.note}>카운터에서 손님 QR을 촬영하면 확인 건수가 올라갑니다.</Text>
+            <View style={styles.photoActions}>
+              <TouchableOpacity style={styles.photoBtn} onPress={async () => {
+                const uri = await pickFromCamera();
+                if (!uri) return;
+                setQrCount((prev) => prev + 1);
+                setLastQrNote(`카메라 확인 ${new Date().toLocaleTimeString('ko-KR')}`);
+                if (savedPromoId) incrementPromotionQr(savedPromoId);
+              }}>
+                <Text style={styles.photoBtnText}>QR 촬영</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.photoBtnGhost} onPress={async () => {
+                const uri = await pickPhotoFromGallery();
+                if (!uri) return;
+                setQrCount((prev) => prev + 1);
+                setLastQrNote(`갤러리 QR ${new Date().toLocaleTimeString('ko-KR')}`);
+                if (savedPromoId) incrementPromotionQr(savedPromoId);
+              }}>
+                <Text style={styles.photoBtnGhostText}>갤러리 QR</Text>
+              </TouchableOpacity>
+            </View>
+            {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
+            <View style={styles.settleRow}>
+              <Text style={styles.settleLabel}>건당 매칭</Text>
+              <Text style={styles.settleValue}>{matchPreview.perUse.toLocaleString('ko-KR')}원</Text>
+            </View>
+            <View style={styles.settleRow}>
+              <Text style={styles.settleLabel}>정산 요청액</Text>
+              <Text style={styles.settleValue}>{matchPreview.total.toLocaleString('ko-KR')}원</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.mailBtn}
+              onPress={() => {
+                const festival = festivals.find((item) => item.id === selectedFestivalId);
+                const businessName = (readLiveImeValue('businessName') || businessNameRef.current).trim() || '제휴상가';
+                openSettlementMail({
+                  to: settlementEmail,
+                  businessName,
+                  festivalTitle: festival?.title,
+                  bankName,
+                  bankAccount,
+                  bankHolder,
+                  qrCount,
+                  amountWon: matchPreview.total,
+                }).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. 담당자 메일을 확인해주세요.'));
+              }}
+            >
+              <Text style={styles.mailBtnText}>담당자 메일로 정산 입금 요청</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.badge}>
         <Text style={styles.badgeText}>
@@ -423,6 +582,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   photoBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-  photoLink: { marginTop: 6, fontWeight: '800', color: '#2563EB', fontSize: 12 },
+  photoBtnGhost: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 10,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  photoBtnGhostText: { color: '#111827', fontWeight: '800', fontSize: 12 },
+  photoCaption: { marginTop: 8, fontWeight: '800', color: '#111827', fontSize: 12 },
+  photoActions: { width: '100%' },
   gps: { fontSize: 13, color: '#2563EB', fontWeight: '700', marginBottom: 4 },
+  matchBox: {
+    marginTop: 16,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  matchTitle: { fontSize: 15, fontWeight: '800', color: '#065F46' },
+  qrBox: {
+    marginTop: 14,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  qrCount: { fontSize: 28, fontWeight: '900', color: '#111827', marginTop: 4 },
+  verifyHint: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#047857' },
+  settleRow: { marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
+  settleLabel: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
+  settleValue: { fontSize: 14, fontWeight: '800', color: '#111827' },
+  mailBtn: {
+    marginTop: 12,
+    backgroundColor: '#047857',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  mailBtnText: { color: '#fff', fontWeight: '800' },
 });

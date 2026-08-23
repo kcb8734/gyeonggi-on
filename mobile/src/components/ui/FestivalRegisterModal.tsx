@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -13,12 +13,12 @@ import {
   View,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import IsolatedImeField from './IsolatedImeField';
 import { FESTIVAL_CATEGORIES, GYEONGGI_CITY_COORDS, METRO_LOCALITIES } from '../../constants/regions';
 import { addLocalFestival } from '../../stores/appStore';
 import type { HomeFestival } from '../../types/home';
 import { pickPhotoFromGallery } from '../../utils/pickImage';
-import { readLiveImeValue, setImeModalLock } from '../../utils/nativeImeHost';
+import { formatTel } from '../../utils/phone';
+import { setImeModalLock } from '../../utils/nativeImeHost';
 
 const CITIES = METRO_LOCALITIES.GYEONGGI;
 
@@ -46,6 +46,7 @@ function DateField({
           fontWeight: 600,
           color: '#111827',
           background: '#fff',
+          boxSizing: 'border-box',
         }}
       />
     );
@@ -60,6 +61,78 @@ function DateField({
   );
 }
 
+function InModalField({
+  value,
+  onChange,
+  placeholder,
+  multiline,
+  keyboardType,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder: string;
+  multiline?: boolean;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
+}) {
+  if (Platform.OS === 'web') {
+    const webStyle: React.CSSProperties = {
+      width: '100%',
+      boxSizing: 'border-box',
+      border: '1px solid #E5E7EB',
+      borderRadius: 12,
+      padding: '12px 14px',
+      fontSize: 15,
+      fontWeight: 600,
+      color: '#111827',
+      background: '#fff',
+      minHeight: multiline ? 110 : 46,
+      resize: multiline ? 'vertical' : 'none',
+      fontFamily: 'inherit',
+    };
+    if (multiline) {
+      return (
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          rows={4}
+          style={webStyle}
+        />
+      );
+    }
+    const type = keyboardType === 'email-address' ? 'email' : keyboardType === 'phone-pad' ? 'tel' : 'text';
+    return (
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        style={webStyle}
+      />
+    );
+  }
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      multiline={multiline}
+      keyboardType={keyboardType}
+      style={[styles.input, multiline ? styles.area : null]}
+      textAlignVertical={multiline ? 'top' : 'center'}
+    />
+  );
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 9 && digits.length <= 11;
+}
+
 export default function FestivalRegisterModal({
   visible,
   onClose,
@@ -67,10 +140,14 @@ export default function FestivalRegisterModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const titleRef = useRef('');
-  const addressRef = useRef('');
-  const summaryRef = useRef('');
-  const overviewRef = useRef('');
+  const [title, setTitle] = useState('');
+  const [address, setAddress] = useState('');
+  const [summary, setSummary] = useState('');
+  const [overview, setOverview] = useState('');
+  const [managerEmail, setManagerEmail] = useState('');
+  const [managerPhone, setManagerPhone] = useState('');
+  const [inquiryTel, setInquiryTel] = useState('');
+  const [contactVerified, setContactVerified] = useState(false);
   const [localityId, setLocalityId] = useState(CITIES[0]?.id ?? '수원시');
   const [category, setCategory] = useState<string>('먹거리');
   const [startDate, setStartDate] = useState('');
@@ -84,11 +161,19 @@ export default function FestivalRegisterModal({
     return () => setImeModalLock(false);
   }, [visible]);
 
+  useEffect(() => {
+    setContactVerified(false);
+  }, [managerEmail, managerPhone]);
+
   const reset = () => {
-    titleRef.current = '';
-    addressRef.current = '';
-    summaryRef.current = '';
-    overviewRef.current = '';
+    setTitle('');
+    setAddress('');
+    setSummary('');
+    setOverview('');
+    setManagerEmail('');
+    setManagerPhone('');
+    setInquiryTel('');
+    setContactVerified(false);
     setLocalityId(CITIES[0]?.id ?? '수원시');
     setCategory('먹거리');
     setStartDate('');
@@ -102,17 +187,31 @@ export default function FestivalRegisterModal({
     if (uri) setPosterUrl(uri);
   };
 
+  const verifyContact = () => {
+    if (!isValidEmail(managerEmail)) {
+      Alert.alert('확인', '담당자 메일 형식을 확인해주세요.');
+      return;
+    }
+    if (!isValidPhone(managerPhone)) {
+      Alert.alert('확인', '연락처는 숫자 9~11자리로 입력해주세요.');
+      return;
+    }
+    setContactVerified(true);
+    Alert.alert('확인 완료', `${managerEmail.trim()}\n${formatTel(managerPhone)}\n담당자 메일·연락처가 확인되었습니다.`);
+  };
+
   const handleSave = async () => {
-    const title = (readLiveImeValue('govFestivalTitle') || titleRef.current).trim();
-    const address = (readLiveImeValue('govFestivalAddress') || addressRef.current).trim();
-    const summary = (readLiveImeValue('govFestivalSummary') || summaryRef.current).trim();
-    const overview = (readLiveImeValue('govFestivalOverview') || overviewRef.current).trim();
+    const nextTitle = title.trim();
+    const nextAddress = address.trim();
+    const nextSummary = summary.trim();
+    const nextOverview = overview.trim();
+    const nextInquiry = (inquiryTel || managerPhone).trim();
     const locality = CITIES.find((item) => item.id === localityId) ?? CITIES[0];
-    if (!title) {
+    if (!nextTitle) {
       Alert.alert('알림', '축제명을 입력해주세요.');
       return;
     }
-    if (!address) {
+    if (!nextAddress) {
       Alert.alert('알림', '장소/주소를 입력해주세요.');
       return;
     }
@@ -120,20 +219,28 @@ export default function FestivalRegisterModal({
       Alert.alert('알림', '축제 기간을 선택해주세요.');
       return;
     }
+    if (!isValidEmail(managerEmail) || !isValidPhone(managerPhone) || !contactVerified) {
+      Alert.alert('알림', '담당자 메일·연락처를 입력하고 확인을 눌러주세요.');
+      return;
+    }
+    if (!nextInquiry) {
+      Alert.alert('알림', '행사 문의 전화번호를 입력해주세요.');
+      return;
+    }
     setSaving(true);
     const coords = GYEONGGI_CITY_COORDS[locality.label] ?? { lat: 37.2636, lng: 127.0286 };
     const contentId = `gov-${Date.now()}`;
     const festival: HomeFestival = {
       id: contentId,
-      title,
-      location_name: `${locality.label} ${address}`,
+      title: nextTitle,
+      location_name: `${locality.label} ${nextAddress}`,
       latitude: coords.lat,
       longitude: coords.lng,
       start_date: startDate,
       end_date: endDate,
       municipality_name: locality.label,
-      description: overview || summary,
-      summary,
+      description: nextOverview || nextSummary,
+      summary: nextSummary,
       category,
       image_url: posterUrl || null,
       is_trending: true,
@@ -141,6 +248,10 @@ export default function FestivalRegisterModal({
       contentTypeId: '15',
       source: 'gov',
       rewardEnabled,
+      managerEmail: managerEmail.trim(),
+      managerPhone: managerPhone.trim(),
+      inquiryTel: nextInquiry,
+      tel: nextInquiry,
     };
     addLocalFestival(festival);
     try {
@@ -156,9 +267,13 @@ export default function FestivalRegisterModal({
           eventEndDate: endDate,
           firstImage: posterUrl,
           category,
-          eventPlace: address,
+          eventPlace: nextAddress,
           mapX: coords.lng,
           mapY: coords.lat,
+          managerEmail: festival.managerEmail,
+          managerPhone: festival.managerPhone,
+          inquiryTel: festival.inquiryTel,
+          tel: festival.tel,
         }),
       });
     } catch {
@@ -187,7 +302,7 @@ export default function FestivalRegisterModal({
             <Text style={styles.lead}>31개 시·군 축제를 직접 올리고 지역화폐 쿠폰과 매칭할 수 있습니다.</Text>
 
             <Text style={styles.label}>축제명</Text>
-            <IsolatedImeField fieldKey="govFestivalTitle" valueRef={titleRef} placeholder="예: 수원화성문화제" />
+            <InModalField value={title} onChange={setTitle} placeholder="예: 수원화성문화제" />
 
             <Text style={styles.label}>지자체 지역 (경기도 31개 시·군)</Text>
             <View style={styles.pickerWrap}>
@@ -199,7 +314,34 @@ export default function FestivalRegisterModal({
             </View>
 
             <Text style={styles.label}>장소 / 주소</Text>
-            <IsolatedImeField fieldKey="govFestivalAddress" valueRef={addressRef} placeholder="예: 팔달구 정조로 825 행궁광장" />
+            <InModalField value={address} onChange={setAddress} placeholder="예: 팔달구 정조로 825 행궁광장" />
+
+            <Text style={styles.label}>담당자 메일</Text>
+            <InModalField
+              value={managerEmail}
+              onChange={setManagerEmail}
+              placeholder="예: festival@suwon.go.kr"
+              keyboardType="email-address"
+            />
+
+            <Text style={styles.label}>연락처 등록</Text>
+            <InModalField
+              value={managerPhone}
+              onChange={setManagerPhone}
+              placeholder="예: 031-228-0000"
+              keyboardType="phone-pad"
+            />
+            <TouchableOpacity
+              style={[styles.verifyBtn, contactVerified && styles.verifyBtnOn]}
+              onPress={verifyContact}
+            >
+              <Text style={[styles.verifyText, contactVerified && styles.verifyTextOn]}>
+                {contactVerified ? '담당자 연락처 확인 완료' : '메일·연락처 확인'}
+              </Text>
+            </TouchableOpacity>
+            {contactVerified ? (
+              <Text style={styles.verifyHint}>확인된 메일로 매칭 정산 안내를 받을 수 있습니다.</Text>
+            ) : null}
 
             <Text style={styles.label}>축제 기간</Text>
             <View style={styles.dateRow}>
@@ -236,15 +378,24 @@ export default function FestivalRegisterModal({
             {posterUrl ? <Image source={{ uri: posterUrl }} style={styles.poster} /> : null}
 
             <Text style={styles.label}>한 줄 소개</Text>
-            <IsolatedImeField fieldKey="govFestivalSummary" valueRef={summaryRef} placeholder="시민과 함께하는 우리 지역 대표 축제" />
+            <InModalField value={summary} onChange={setSummary} placeholder="시민과 함께하는 우리 지역 대표 축제" />
 
             <Text style={styles.label}>상세 내용</Text>
-            <IsolatedImeField
-              fieldKey="govFestivalOverview"
-              valueRef={overviewRef}
+            <InModalField
+              value={overview}
+              onChange={setOverview}
               placeholder="프로그램, 입장 안내, 교통편을 적어 주세요"
               multiline
             />
+
+            <Text style={styles.label}>행사 문의 전화번호</Text>
+            <InModalField
+              value={inquiryTel}
+              onChange={setInquiryTel}
+              placeholder="예: 031-228-3675"
+              keyboardType="phone-pad"
+            />
+            <Text style={styles.dateHint}>비워 두면 위에서 확인한 담당자 연락처를 사용합니다.</Text>
 
             <View style={styles.toggleRow}>
               <View style={{ flex: 1 }}>
@@ -318,6 +469,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     backgroundColor: '#fff',
   },
+  area: { minHeight: 110, textAlignVertical: 'top' },
   dateRow: { flexDirection: 'row', gap: 10 },
   dateHint: { fontSize: 12, fontWeight: '700', color: '#555555', marginBottom: 6 },
   catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -340,6 +492,17 @@ const styles = StyleSheet.create({
   },
   posterBtnText: { fontWeight: '700', color: '#111827' },
   poster: { width: '100%', height: 160, borderRadius: 14, marginTop: 10, backgroundColor: '#E5E7EB' },
+  verifyBtn: {
+    marginTop: 10,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  verifyBtnOn: { backgroundColor: '#047857' },
+  verifyText: { color: '#fff', fontWeight: '800' },
+  verifyTextOn: { color: '#ECFDF5' },
+  verifyHint: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#047857' },
   toggleRow: {
     marginTop: 18,
     backgroundColor: '#F0FDFA',

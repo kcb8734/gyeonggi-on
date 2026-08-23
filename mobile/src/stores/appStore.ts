@@ -209,6 +209,21 @@ export function addLocalPromotion(promo: HomePromotion) {
   });
 }
 
+export function incrementPromotionQr(id: string) {
+  emit({
+    ...state,
+    localPromotions: state.localPromotions.map((item) =>
+      item.id === id
+        ? {
+          ...item,
+          qrConfirmCount: (item.qrConfirmCount ?? 0) + 1,
+          lastQrAt: new Date().toISOString(),
+        }
+        : item,
+    ),
+  });
+}
+
 export function promotionToWallet(promo: HomePromotion, couponCode: string, proofImageUrl?: string): WalletCoupon {
   return {
     id: `${promo.id}-${couponCode}`,
