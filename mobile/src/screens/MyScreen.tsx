@@ -5,6 +5,7 @@ import FestivalRegisterModal from '../components/ui/FestivalRegisterModal';
 import ProfileEditModal from '../components/ui/ProfileEditModal';
 import { syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
 import { clearAuthSession, useAuthUser } from '../stores/authStore';
+import { logoutFestivalManager, useManagerState } from '../stores/managerStore';
 import { deleteMyFeedPost, useMyFeedPosts } from '../stores/feedStore';
 import { fetchRewardBalance } from '../api/feeds';
 
@@ -15,6 +16,7 @@ export default function MyScreen() {
   const myFeeds = useMyFeedPosts();
   const [festivalModal, setFestivalModal] = useState(false);
   const [profileModal, setProfileModal] = useState(false);
+  const manager = useManagerState();
 
   useEffect(() => {
     const userId = user?.id ?? '11111111-1111-4111-8111-111111111111';
@@ -145,6 +147,13 @@ export default function MyScreen() {
         <TouchableOpacity style={styles.govBtn} onPress={() => setFestivalModal(true)}>
           <Text style={styles.govBtnText}>지자체 축제 등록하기</Text>
         </TouchableOpacity>
+        {manager.sessionEmail ? (
+          <TouchableOpacity style={styles.merchantGhost} onPress={logoutFestivalManager}>
+            <Text style={styles.merchantGhostText}>{manager.sessionEmail} 담당자 로그아웃</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.govMeta}>메일 인증과 비밀번호로 담당자를 등록하면 다시 관리할 수 있습니다.</Text>
+        )}
         {app.localFestivals.length ? (
           <Text style={styles.govMeta}>이 기기에서 등록한 축제 {app.localFestivals.length}건 · 홈 리스트에 바로 반영</Text>
         ) : null}

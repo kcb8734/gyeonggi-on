@@ -3,7 +3,6 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, Switch, Image, Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import IsolatedImeField from '../components/ui/IsolatedImeField';
 import { readLiveImeValue } from '../utils/nativeImeHost';
 import { KOREAN_FONT_FAMILY } from '../utils/koreanFont';
@@ -14,9 +13,12 @@ import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
-import { addLocalPromotion, incrementPromotionQr, useAppState } from '../stores/appStore';
+import { addLocalPromotion, incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
+import type { HomePromotion, QrScanRecord } from '../types/home';
+import { isScheduleEnded } from '../utils/festivalSchedule';
 import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
-import { matchingAmountWon, openSettlementMail } from '../utils/settlementMail';
+import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
+import { matchingAmountWon } from '../utils/settlementMail';
 
 interface PromotionResponse {
   success: boolean;
@@ -70,7 +72,6 @@ function ShopPhotoSlot({
 }
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
-  const navigation = useNavigation<any>();
   const app = useAppState();
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
@@ -96,7 +97,9 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const [bankAccount, setBankAccount] = useState('');
   const [bankHolder, setBankHolder] = useState('');
   const [settlementEmail, setSettlementEmail] = useState('');
+  const [shopTel, setShopTel] = useState('');
   const [qrCount, setQrCount] = useState(0);
+  const [qrScans, setQrScans] = useState<QrScanRecord[]>([]);
   const [lastQrNote, setLastQrNote] = useState('');
   const [savedPromoId, setSavedPromoId] = useState('');
 
@@ -112,6 +115,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           municipality_name: item.municipality_name,
           managerEmail: item.managerEmail,
           tel: item.inquiryTel || item.tel,
+          start_date: item.start_date,
+          end_date: item.end_date,
         }));
         const extra = locals.filter((item) => !pins.some((pin) => pin.id === item.id));
         setFestivals([...extra, ...pins]);
@@ -123,6 +128,15 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     const selected = festivals.find((item) => item.id === selectedFestivalId);
     if (selected?.managerEmail) setSettlementEmail(selected.managerEmail);
   }, [selectedFestivalId, festivals]);
+
+  useEffect(() => {
+    if (!savedPromoId) return;
+    const promo = app.localPromotions.find((item) => item.id === savedPromoId);
+    if (!promo) return;
+    setQrCount(promo.qrConfirmCount ?? 0);
+    setQrScans(promo.qrScans ?? []);
+    if (promo.lastQrAt) setLastQrNote(`카메라 확인 ${new Date(promo.lastQrAt).toLocaleString('ko-KR')}`);
+  }, [savedPromoId, app.localPromotions]);
 
   useEffect(() => {
     const apply = (latitude: number, longitude: number) => {
@@ -236,6 +250,43 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         return;
       }
     }
+    const festival = festivals.find((f) => f.id === selectedFestivalId);
+    const buildLocalPromo = (promoId: string): HomePromotion => ({
+      id: promoId,
+      title: `${festival?.title ?? businessName} 제휴 할인`,
+      festival_id: selectedFestivalId,
+      festival_title: festival?.title,
+      festivalStartDate: festival?.start_date,
+      festivalEndDate: festival?.end_date,
+      business_name: businessName,
+      businessNumber,
+      merchant_discount_rate: parseFloat(discountRate) || 0,
+      gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
+      total_discount_rate: requestMatching
+        ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
+        : (parseFloat(discountRate) || 0),
+      remaining_quantity: parseInt(quantity, 10) || 0,
+      funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+      metro: 'GYEONGGI',
+      municipality_name: festival?.municipality_name,
+      main_menu: mainMenu,
+      features,
+      exterior_image_url: exteriorUrl,
+      interior_image_url: interiorUrl,
+      address,
+      latitude: gps?.latitude,
+      longitude: gps?.longitude,
+      gps_confirmed: gpsConfirmed,
+      tel: shopTel.trim(),
+      bankName: bankName.trim(),
+      bankAccount: bankAccount.trim(),
+      bankHolder: bankHolder.trim(),
+      managerEmail: settlementEmail.trim(),
+      qrConfirmCount: qrCount,
+      qrScans,
+      lastQrAt: qrScans[qrScans.length - 1]?.at,
+      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
+    });
     setLoading(true);
     try {
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
@@ -254,8 +305,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         request_matching: requestMatching,
         funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
         address,
-        latitude: gps.latitude,
-        longitude: gps.longitude,
+        latitude: gps?.latitude,
+        longitude: gps?.longitude,
         gps_confirmed: gpsConfirmed,
         exterior_image_url: exteriorUrl,
         interior_image_url: interiorUrl,
@@ -265,74 +316,14 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         manager_email: settlementEmail.trim(),
         qr_confirm_count: qrCount,
       });
-      const festival = festivals.find((f) => f.id === selectedFestivalId);
       const promoId = `local-${Date.now()}`;
-      addLocalPromotion({
-        id: promoId,
-        title: `${festival?.title ?? ''} 제휴 할인`,
-        festival_id: selectedFestivalId,
-        festival_title: festival?.title,
-        business_name: businessName,
-        merchant_discount_rate: parseFloat(discountRate) || 0,
-        gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
-        total_discount_rate: requestMatching
-          ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
-          : (parseFloat(discountRate) || 0),
-        remaining_quantity: parseInt(quantity, 10) || 0,
-        funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
-        metro: 'GYEONGGI',
-        municipality_name: festival?.municipality_name,
-        main_menu: mainMenu,
-        features,
-        exterior_image_url: exteriorUrl,
-        interior_image_url: interiorUrl,
-        address,
-        latitude: gps.latitude,
-        longitude: gps.longitude,
-        gps_confirmed: true,
-        bankName: bankName.trim(),
-        bankAccount: bankAccount.trim(),
-        bankHolder: bankHolder.trim(),
-        managerEmail: settlementEmail.trim(),
-        qrConfirmCount: qrCount,
-        maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-      });
+      addLocalPromotion(buildLocalPromo(promoId));
       setSavedPromoId(promoId);
       setResultBadge(res.data);
       Alert.alert('등록 완료', res.data.message);
     } catch (err: any) {
-      const festival = festivals.find((f) => f.id === selectedFestivalId);
       const promoId = `local-${Date.now()}`;
-      addLocalPromotion({
-        id: promoId,
-        title: `${festival?.title ?? businessName} 제휴 할인`,
-        festival_id: selectedFestivalId,
-        festival_title: festival?.title,
-        business_name: businessName,
-        merchant_discount_rate: parseFloat(discountRate) || 0,
-        gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
-        total_discount_rate: requestMatching
-          ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
-          : (parseFloat(discountRate) || 0),
-        remaining_quantity: parseInt(quantity, 10) || 0,
-        funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
-        metro: 'GYEONGGI',
-        municipality_name: festival?.municipality_name,
-        main_menu: mainMenu,
-        features,
-        exterior_image_url: exteriorUrl,
-        interior_image_url: interiorUrl,
-        address,
-        latitude: gps?.latitude,
-        longitude: gps?.longitude,
-        gps_confirmed: gpsConfirmed,
-        bankName: bankName.trim(),
-        bankAccount: bankAccount.trim(),
-        bankHolder: bankHolder.trim(),
-        managerEmail: settlementEmail.trim(),
-        qrConfirmCount: qrCount,
-        maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-      });
+      addLocalPromotion(buildLocalPromo(promoId));
       setSavedPromoId(promoId);
       Alert.alert('미리보기 등록', err?.response?.data?.message ?? '서버 미연결 시에도 홈 할인쿠폰에 미리보기로 올렸습니다.');
     } finally {
@@ -342,10 +333,6 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', backgroundColor: '#111827', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 }}>
-        <Text style={{ color: '#fff', fontWeight: '800' }}>‹ 나가기</Text>
-      </TouchableOpacity>
-      <Text style={styles.header}>할인 쿠폰 등록</Text>
       <Text style={styles.note}>국세청 계속사업자 확인 후 상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 
       <Text style={styles.label}>상호명</Text>
@@ -459,6 +446,14 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           />
           <Text style={styles.label}>예금주</Text>
           <TextInput style={styles.input} value={bankHolder} onChangeText={setBankHolder} placeholder="사업자 통장 예금주" />
+          <Text style={styles.label}>상가 연락처</Text>
+          <TextInput
+            style={styles.input}
+            value={shopTel}
+            onChangeText={setShopTel}
+            placeholder="예: 031-228-0000"
+            keyboardType="phone-pad"
+          />
           <Text style={styles.label}>지자체 담당자 메일</Text>
           <TextInput
             style={styles.input}
@@ -472,27 +467,26 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           <View style={styles.qrBox}>
             <Text style={styles.matchTitle}>쿠폰 확인 QR 촬영</Text>
             <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건</Text>
-            <Text style={styles.note}>카운터에서 손님 QR을 촬영하면 확인 건수가 올라갑니다.</Text>
-            <View style={styles.photoActions}>
-              <TouchableOpacity style={styles.photoBtn} onPress={async () => {
-                const uri = await pickFromCamera();
-                if (!uri) return;
-                setQrCount((prev) => prev + 1);
-                setLastQrNote(`카메라 확인 ${new Date().toLocaleTimeString('ko-KR')}`);
-                if (savedPromoId) incrementPromotionQr(savedPromoId);
-              }}>
-                <Text style={styles.photoBtnText}>QR 촬영</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.photoBtnGhost} onPress={async () => {
-                const uri = await pickPhotoFromGallery();
-                if (!uri) return;
-                setQrCount((prev) => prev + 1);
-                setLastQrNote(`갤러리 QR ${new Date().toLocaleTimeString('ko-KR')}`);
-                if (savedPromoId) incrementPromotionQr(savedPromoId);
-              }}>
-                <Text style={styles.photoBtnGhostText}>갤러리 QR</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.note}>카운터에서 손님 QR을 촬영하면 일시와 정산액이 기록됩니다. 정산은 행사 종료 후 한 번에 합니다.</Text>
+            <TouchableOpacity style={styles.photoBtn} onPress={async () => {
+              const uri = await pickFromCamera();
+              if (!uri) return;
+              const at = new Date().toISOString();
+              const amountWon = matchingAmountWon({
+                maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
+                govRate: preview.gov,
+                qrCount: 1,
+              }).perUse;
+              if (savedPromoId) {
+                incrementPromotionQr(savedPromoId, { at, amountWon });
+                return;
+              }
+              setQrScans((prev) => [...prev, { at, amountWon }]);
+              setQrCount((prev) => prev + 1);
+              setLastQrNote(`카메라 확인 ${new Date(at).toLocaleString('ko-KR')}`);
+            }}>
+              <Text style={styles.photoBtnText}>QR 촬영</Text>
+            </TouchableOpacity>
             {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
             <View style={styles.settleRow}>
               <Text style={styles.settleLabel}>건당 매칭</Text>
@@ -502,25 +496,51 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
               <Text style={styles.settleLabel}>정산 요청액</Text>
               <Text style={styles.settleValue}>{matchPreview.total.toLocaleString('ko-KR')}원</Text>
             </View>
-            <TouchableOpacity
-              style={styles.mailBtn}
-              onPress={() => {
-                const festival = festivals.find((item) => item.id === selectedFestivalId);
-                const businessName = (readLiveImeValue('businessName') || businessNameRef.current).trim() || '제휴상가';
-                openSettlementMail({
-                  to: settlementEmail,
-                  businessName,
-                  festivalTitle: festival?.title,
-                  bankName,
-                  bankAccount,
-                  bankHolder,
-                  qrCount,
-                  amountWon: matchPreview.total,
-                }).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. 담당자 메일을 확인해주세요.'));
-              }}
-            >
-              <Text style={styles.mailBtnText}>담당자 메일로 정산 입금 요청</Text>
-            </TouchableOpacity>
+            {(() => {
+              const festival = festivals.find((item) => item.id === selectedFestivalId);
+              const saved = app.localPromotions.find((item) => item.id === savedPromoId);
+              const endDate = saved?.festivalEndDate ?? festival?.end_date;
+              const ended = isScheduleEnded(endDate);
+              const alreadySettled = Boolean(saved?.settledAt);
+              return (
+                <>
+                  <Text style={styles.note}>
+                    {endDate
+                      ? `행사 종료일 ${endDate}. ${ended ? '종료되어 일괄 정산할 수 있습니다.' : '종료 후에 공문서 PDF로 한 번에 정산합니다.'}`
+                      : '연계 축제 종료일이 확인되면 그 이후 한 번에 정산합니다.'}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.mailBtn, (!saved || !ended) && styles.mailBtnOff]}
+                    disabled={!saved || !ended}
+                    onPress={() => {
+                      if (!saved) return;
+                      settlePromotion(saved.id, matchPreview.total);
+                      const latest = { ...saved, settledAt: saved.settledAt ?? new Date().toISOString(), settlementAmount: saved.settlementAmount ?? matchPreview.total };
+                      sendSettlementDocumentMail(latest).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. PDF는 내려받을 수 있습니다.'));
+                    }}
+                  >
+                    <Text style={styles.mailBtnText}>
+                      {alreadySettled ? '정산 공문 다시 보내기' : '종료 후 일괄 정산 · 담당자 공문 발송'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pdfBtn}
+                    disabled={!saved}
+                    onPress={() => {
+                      if (!saved) {
+                        Alert.alert('알림', '쿠폰을 먼저 등록하면 공문 PDF를 받을 수 있습니다.');
+                        return;
+                      }
+                      if (!downloadSettlementPdf(saved)) {
+                        Alert.alert('알림', '웹에서 공문서 PDF를 내려받을 수 있습니다.');
+                      }
+                    }}
+                  >
+                    <Text style={styles.pdfBtnText}>상가 사장님 공문서 PDF 내려받기</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
           </View>
         </View>
       ) : null}
@@ -548,7 +568,6 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#F7F8FA' },
-  header: { fontSize: 22, fontWeight: '700', marginBottom: 8, fontFamily: KOREAN_FONT_FAMILY },
   note: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 8, fontFamily: KOREAN_FONT_FAMILY },
   label: { fontSize: 14, fontWeight: '600', marginTop: 12, marginBottom: 6, color: '#333', fontFamily: KOREAN_FONT_FAMILY },
   pickerWrap: { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#DDD' },
@@ -625,5 +644,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
+  mailBtnOff: { backgroundColor: '#9CA3AF' },
   mailBtnText: { color: '#fff', fontWeight: '800' },
+  pdfBtn: {
+    marginTop: 8,
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  pdfBtnText: { color: '#fff', fontWeight: '800' },
 });

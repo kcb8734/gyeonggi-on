@@ -25,12 +25,20 @@ export interface HomeFestival {
   fee?: string;
 }
 
+export interface QrScanRecord {
+  at: string;
+  amountWon: number;
+}
+
 export interface HomePromotion {
   id: string;
   title: string;
   festival_id?: string | null;
   festival_title?: string | null;
+  festivalStartDate?: string;
+  festivalEndDate?: string;
   business_name?: string;
+  businessNumber?: string;
   merchant_discount_rate: number;
   gov_matching_rate: number;
   total_discount_rate: number;
@@ -54,6 +62,9 @@ export interface HomePromotion {
   bankHolder?: string;
   qrConfirmCount?: number;
   lastQrAt?: string;
+  qrScans?: QrScanRecord[];
+  settledAt?: string;
+  settlementAmount?: number;
   managerEmail?: string;
   maxDiscountAmount?: number;
 }

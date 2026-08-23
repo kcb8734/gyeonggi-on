@@ -20,9 +20,16 @@ import { pickPhotoFromGallery } from '../../utils/pickImage';
 import { formatTel } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
 import { sendManagerEmailCode, verifyManagerEmailCode } from '../../api/emailAuth';
+import {
+  getManagerState,
+  loginFestivalManager,
+  logoutFestivalManager,
+  registerFestivalManager,
+  useManagerState,
+} from '../../stores/managerStore';
 import ModalExitButton from './ModalExitButton';
 
-const CITIES = METRO_LOCALITIES.GYEONGGI;
+const CITIES = [...METRO_LOCALITIES.GYEONGGI].sort((a, b) => a.label.localeCompare(b.label, 'ko'));
 
 function DateField({
   value,
@@ -69,12 +76,14 @@ function InModalField({
   placeholder,
   multiline,
   keyboardType,
+  secure,
 }: {
   value: string;
   onChange: (next: string) => void;
   placeholder: string;
   multiline?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  secure?: boolean;
 }) {
   if (Platform.OS === 'web') {
     const webStyle: React.CSSProperties = {
@@ -102,7 +111,13 @@ function InModalField({
         />
       );
     }
-    const type = keyboardType === 'email-address' ? 'email' : keyboardType === 'phone-pad' ? 'tel' : 'text';
+    const type = secure
+      ? 'password'
+      : keyboardType === 'email-address'
+        ? 'email'
+        : keyboardType === 'phone-pad'
+          ? 'tel'
+          : 'text';
     return (
       <input
         type={type}
@@ -120,6 +135,7 @@ function InModalField({
       placeholder={placeholder}
       multiline={multiline}
       keyboardType={keyboardType}
+      secureTextEntry={secure}
       style={[styles.input, multiline ? styles.area : null]}
       textAlignVertical={multiline ? 'top' : 'center'}
     />
@@ -162,6 +178,12 @@ export default function FestivalRegisterModal({
   const [posterUrl, setPosterUrl] = useState('');
   const [rewardEnabled, setRewardEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const manager = useManagerState();
+  const session = manager.accounts.find((item) => item.email === manager.sessionEmail) ?? null;
 
   useEffect(() => {
     setImeModalLock(visible);
@@ -193,6 +215,8 @@ export default function FestivalRegisterModal({
     setEndDate('');
     setPosterUrl('');
     setRewardEnabled(true);
+    setPassword('');
+    setPasswordConfirm('');
   };
 
   const pickPoster = async () => {
@@ -257,8 +281,19 @@ export default function FestivalRegisterModal({
       return;
     }
     if (!isValidEmail(managerEmail) || !isValidPhone(managerPhone) || !contactVerified) {
-      Alert.alert('알림', '담당자 메일·연락처를 입력하고 확인을 눌러주세요.');
+      Alert.alert('알림', '담당자 메일·연락처를 입력하고 인증번호를 확인해 주세요.');
       return;
+    }
+    const sameLoggedIn = session && session.email === managerEmail.trim().toLowerCase();
+    if (!sameLoggedIn) {
+      if (password.trim().length < 4) {
+        Alert.alert('알림', '관리용 비밀번호를 4자 이상 설정해 주세요.');
+        return;
+      }
+      if (password !== passwordConfirm) {
+        Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
+        return;
+      }
     }
     if (!nextInquiry) {
       Alert.alert('알림', '행사 문의 전화번호를 입력해주세요.');
@@ -290,6 +325,13 @@ export default function FestivalRegisterModal({
       inquiryTel: nextInquiry,
       tel: nextInquiry,
     };
+    if (!sameLoggedIn) {
+      registerFestivalManager({
+        email: managerEmail.trim(),
+        phone: managerPhone.trim(),
+        password,
+      });
+    }
     addLocalFestival(festival);
     try {
       await fetch('/api/admin/festivals', {
@@ -338,6 +380,51 @@ export default function FestivalRegisterModal({
             <Text style={styles.kicker}>지자체 축제 관리</Text>
             <Text style={styles.title}>지자체 축제 등록</Text>
             <Text style={styles.lead}>31개 시·군 축제를 직접 올리고 지역화폐 쿠폰과 매칭할 수 있습니다.</Text>
+
+            <View style={styles.loginBox}>
+              <Text style={styles.loginTitle}>등록 담당자 관리</Text>
+              {session ? (
+                <>
+                  <Text style={styles.verifyHint}>{session.email} 로그인됨 · 축제 등록을 이어서 관리할 수 있습니다.</Text>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={logoutFestivalManager}>
+                    <Text style={styles.cancelText}>담당자 로그아웃</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.dateHint}>이미 비밀번호를 설정했다면 메일과 비밀번호로 들어옵니다.</Text>
+                  <InModalField
+                    value={loginEmail}
+                    onChange={setLoginEmail}
+                    placeholder="등록한 담당자 메일"
+                    keyboardType="email-address"
+                  />
+                  <View style={{ height: 8 }} />
+                  <InModalField
+                    value={loginPassword}
+                    onChange={setLoginPassword}
+                    placeholder="관리 비밀번호"
+                    secure
+                  />
+                  <TouchableOpacity
+                    style={styles.verifyBtn}
+                    onPress={() => {
+                      const result = loginFestivalManager(loginEmail, loginPassword);
+                      Alert.alert(result.success ? '로그인' : '확인', result.message);
+                      if (result.success) {
+                        const email = loginEmail.trim().toLowerCase();
+                        setManagerEmail(email);
+                        const account = getManagerState().accounts.find((item) => item.email === email);
+                        if (account) setManagerPhone(account.phone);
+                        setContactVerified(true);
+                      }
+                    }}
+                  >
+                    <Text style={styles.verifyText}>담당자 로그인</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
 
             <Text style={styles.label}>축제명</Text>
             <InModalField value={title} onChange={setTitle} placeholder="예: 수원화성문화제" />
@@ -400,7 +487,26 @@ export default function FestivalRegisterModal({
               </>
             ) : null}
             {contactVerified ? (
-              <Text style={styles.verifyHint}>확인된 메일로 매칭 정산 안내를 받을 수 있습니다.</Text>
+              <>
+                <Text style={styles.verifyHint}>
+                  {session && session.email === managerEmail.trim().toLowerCase()
+                    ? '로그인된 담당자로 축제를 등록합니다.'
+                    : '확인된 메일로 담당자를 등록합니다. 관리 비밀번호를 설정하세요.'}
+                </Text>
+                {session && session.email === managerEmail.trim().toLowerCase() ? null : (
+                  <>
+                    <Text style={styles.label}>관리 비밀번호</Text>
+                    <InModalField value={password} onChange={setPassword} placeholder="4자 이상" secure />
+                    <Text style={styles.label}>비밀번호 확인</Text>
+                    <InModalField
+                      value={passwordConfirm}
+                      onChange={setPasswordConfirm}
+                      placeholder="비밀번호를 한 번 더 입력"
+                      secure
+                    />
+                  </>
+                )}
+              </>
             ) : null}
 
             <Text style={styles.label}>축제 기간</Text>
@@ -510,6 +616,15 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
   title: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4 },
   lead: { fontSize: 13, color: '#374151', marginTop: 6, lineHeight: 20, fontWeight: '600' },
+  loginBox: {
+    marginTop: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  loginTitle: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 6 },
   label: { fontSize: 13, fontWeight: '700', color: '#111827', marginTop: 16, marginBottom: 8 },
   pickerWrap: {
     borderWidth: 1,
