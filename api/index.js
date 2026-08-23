@@ -357,7 +357,7 @@ async function sendEmailCode(req, res) {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: resendFrom(),
+          from: 'Onandon <beth.t@example.com>',
           to: [email],
           subject: '[온앤온] 지자체 담당자 인증번호',
           html: '<p>온앤온 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
