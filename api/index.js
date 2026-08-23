@@ -184,7 +184,54 @@ function resendConfigured() {
 }
 
 function resendFrom() {
-  return String(process.env.RESEND_FROM || '').trim() || 'Onandon <beth.t@example.com>';
+  return String(process.env.RESEND_FROM || '').trim() || 'Onandon <noreply@kdanji.com>';
+}
+
+async function resendApi(pathname, method, body) {
+  const key = String(process.env.RESEND_API_KEY || '').trim();
+  const response = await fetch('https://api.resend.com' + pathname, {
+    method: method || 'GET',
+    headers: {
+      Authorization: 'Bearer ' + key,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (_err) {
+    payload = null;
+  }
+  return { status: response.status, payload: payload || {} };
+}
+
+async function setupResendDomain(req, res) {
+  const headers = corsHeaders(req);
+  if (!resendConfigured()) {
+    send(res, 500, { success: false, message: 'RESEND_API_KEY가 없습니다.' }, headers);
+    return;
+  }
+  const listed = await resendApi('/domains', 'GET');
+  const rows = Array.isArray(listed.payload && listed.payload.data) ? listed.payload.data : [];
+  let domain = rows.find((item) => item && item.name === 'kdanji.com');
+  if (!domain) {
+    const created = await resendApi('/domains', 'POST', { name: 'kdanji.com' });
+    if (created.status >= 400) {
+      send(res, created.status, {
+        success: false,
+        message: (created.payload && created.payload.message) || 'Resend 도메인을 추가하지 못했습니다.',
+      }, headers);
+      return;
+    }
+    domain = created.payload;
+  }
+  const detail = domain && domain.id ? await resendApi('/domains/' + domain.id, 'GET') : { payload: domain };
+  send(res, 200, {
+    success: true,
+    from: resendFrom(),
+    domain: detail.payload,
+  }, headers);
 }
 
 function todayYmd() {
@@ -324,7 +371,7 @@ async function sendEmailCode(req, res) {
         } catch (_err) {
           detail = '';
         }
-        console.error('[api] Resend 실패', response.status, detail);
+        console.error('[api] Resend 실패', response.status, detail, 'from=' + resendFrom());
         const domainFail = /domain|from/i.test(detail);
         send(res, 502, {
           success: false,
@@ -398,6 +445,10 @@ async function handler(req, res) {
     }
     if (/auth\/verify-email-code/i.test(path)) {
       await verifyEmailCode(req, res);
+      return;
+    }
+    if (/auth\/email-setup/i.test(path)) {
+      await setupResendDomain(req, res);
       return;
     }
     if (/\/api\/festivals\/?(\?|$)/i.test(path) || /\/api\/festivals["\s]/i.test(path) || /(^|[^\w])\/api\/festivals([^\w]|$)/i.test(path)) {
