@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { HomeFestival, HomePromotion, QrScanRecord } from '../types/home';
 import type { LocalCurrencyCoupon } from '../api/feeds';
-import { matchingAmountWon } from '../utils/settlementMail';
+import { matchingAmountWon } from '../utils/settlementAmounts';
 import { readJson, writeJson } from '../utils/storage';
 
 export type AttendanceProofKind = 'qr' | 'venue' | 'upload';

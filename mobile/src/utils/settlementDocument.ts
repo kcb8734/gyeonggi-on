@@ -1,7 +1,7 @@
 import { Linking, Platform } from 'react-native';
 import type { HomePromotion, QrScanRecord } from '../types/home';
 import { formatKoDate, formatKoDateTime } from './festivalSchedule';
-import { matchingAmountWon } from './settlementMail';
+import { matchingAmountWon, settlementFromScans } from './settlementAmounts';
 
 export interface SettlementDocumentInput {
   promo: HomePromotion;
@@ -37,15 +37,17 @@ function scansOf(promo: HomePromotion): QrScanRecord[] {
 
 export function buildSettlementInput(promo: HomePromotion): SettlementDocumentInput {
   const scans = scansOf(promo);
-  const money = matchingAmountWon({
+  const scanned = settlementFromScans(scans);
+  const fallback = matchingAmountWon({
     maxDiscountAmount: promo.maxDiscountAmount ?? 5000,
-    govRate: promo.gov_matching_rate,
+    govRate: promo.gov_matching_rate || promo.merchant_discount_rate || 10,
     qrCount: scans.length || (promo.qrConfirmCount ?? 0),
   });
-  const amountWon = promo.settlementAmount ?? money.total;
+  const amountWon = scanned.total || promo.settlementAmount || fallback.total;
   const issuedAt = promo.settledAt ?? new Date().toISOString();
   const stamp = issuedAt.slice(0, 10).replace(/-/g, '');
-  const documentNo = `ONON-정산-${stamp}-${promo.id.slice(-4).toUpperCase()}`;
+  const suffix = promo.id ? promo.id.slice(-4).toUpperCase() : 'SCAN';
+  const documentNo = `ONON-정산-${stamp}-${suffix}`;
   return { promo, scans, amountWon, documentNo, issuedAt };
 }
 
@@ -56,9 +58,10 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
         <tr>
           <td class="c">${index + 1}</td>
           <td>${escapeHtml(formatKoDateTime(scan.at))}</td>
+          <td>${escapeHtml(scan.title || scan.code || '모바일 쿠폰')}</td>
           <td class="r">${scan.amountWon.toLocaleString('ko-KR')}원</td>
         </tr>`).join('')
-    : `<tr><td class="c" colspan="3">QR 촬영 내역이 없습니다.</td></tr>`;
+    : `<tr><td class="c" colspan="4">QR 스캔 내역이 없습니다.</td></tr>`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -123,13 +126,13 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
       <tr><th>QR 확인 건수</th><td>${(scans.length || promo.qrConfirmCount || 0).toLocaleString('ko-KR')}건</td></tr>
       <tr><th>정산 요청액</th><td class="sum">${amountWon.toLocaleString('ko-KR')}원</td></tr>
     </table>
-    <p><strong>붙임. QR 촬영 일시 및 건당 정산금액</strong></p>
+    <p><strong>붙임. QR 스캔 일시 및 할인·정산금액</strong></p>
     <table class="data">
-      <thead><tr><th class="c">연번</th><th>QR 촬영 일시</th><th class="r">건당 정산금액</th></tr></thead>
+      <thead><tr><th class="c">연번</th><th>QR 스캔 일시</th><th>쿠폰</th><th class="r">할인·정산금액</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot>
         <tr class="sum">
-          <td class="c" colspan="2">합계</td>
+          <td class="c" colspan="3">합계</td>
           <td class="r">${amountWon.toLocaleString('ko-KR')}원</td>
         </tr>
       </tfoot>
@@ -142,9 +145,9 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
 </html>`;
 }
 
-function downloadTextFile(filename: string, contents: string, mime: string) {
+function downloadBlob(filename: string, data: BlobPart, mime: string) {
   if (typeof document === 'undefined') return false;
-  const blob = new Blob([contents], { type: mime });
+  const blob = new Blob([data], { type: mime });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -156,22 +159,77 @@ function downloadTextFile(filename: string, contents: string, mime: string) {
   return true;
 }
 
+function escapePdf(text: string) {
+  return String(text || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+export function buildSettlementPdfBytes(input: SettlementDocumentInput): Uint8Array {
+  const lines = [
+    'On&On Official Settlement Form',
+    `Doc: ${input.documentNo}`,
+    `Merchant: ${input.promo.business_name ?? input.promo.title}`,
+    `Festival: ${input.promo.festival_title ?? '-'}`,
+    `Bank: ${input.promo.bankName ?? '-'} ${input.promo.bankAccount ?? ''}`,
+    `Count: ${input.scans.length}`,
+    `Total: ${input.amountWon} KRW`,
+    '',
+    'QR scans (discount = settlement)',
+    ...input.scans.map((scan, index) => `${index + 1}. ${scan.at} ${scan.title ?? scan.code ?? ''} ${scan.amountWon} KRW`),
+  ];
+  const content = lines
+    .map((line, index) => `BT /F1 11 Tf 40 ${800 - index * 16} Td (${escapePdf(line)}) Tj ET`)
+    .join('\n');
+  const objects = [
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
+    `4 0 obj << /Length ${new TextEncoder().encode(content).length} >> stream\n${content}\nendstream endobj`,
+    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+  ];
+  let offset = 9;
+  const offsets = [0];
+  const body = objects.map((obj) => {
+    offsets.push(offset);
+    const chunk = `${obj}\n`;
+    offset += new TextEncoder().encode(chunk).length;
+    return chunk;
+  }).join('');
+  const xref = `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((n) => `${String(n).padStart(10, '0')} 00000 n `).join('\n')}\n`;
+  const pdf = `%PDF-1.4\n${body}${xref}trailer << /Size 6 /Root 1 0 R >>\nstartxref\n${offset}\n%%EOF`;
+  return new TextEncoder().encode(pdf);
+}
+
+function printOfficialForm(html: string) {
+  if (typeof document === 'undefined') return;
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument;
+  if (!doc) return;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    setTimeout(() => iframe.remove(), 2000);
+  }, 300);
+}
+
 export function downloadSettlementPdf(promo: HomePromotion): boolean {
   const input = buildSettlementInput(promo);
   const html = buildOfficialDocumentHtml(input);
-  const filename = `${input.documentNo.replace(/\s+/g, '_')}.html`;
+  const stem = input.documentNo.replace(/\s+/g, '_');
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    downloadTextFile(filename, html, 'text/html;charset=utf-8');
-    const frame = window.open('', '_blank');
-    if (frame) {
-      frame.document.open();
-      frame.document.write(html);
-      frame.document.close();
-      setTimeout(() => {
-        frame.focus();
-        frame.print();
-      }, 250);
-    }
+    downloadBlob(`${stem}.html`, html, 'text/html;charset=utf-8');
+    downloadBlob(`${stem}.pdf`, buildSettlementPdfBytes(input) as BlobPart, 'application/pdf');
+    printOfficialForm(html);
     return true;
   }
   return false;

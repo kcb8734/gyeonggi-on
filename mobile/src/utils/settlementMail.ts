@@ -1,13 +1,6 @@
 import { Linking } from 'react-native';
 
-export function matchingAmountWon(params: {
-  maxDiscountAmount: number;
-  govRate: number;
-  qrCount: number;
-}) {
-  const perUse = Math.max(0, Math.round((params.maxDiscountAmount * params.govRate) / 100));
-  return { perUse, total: perUse * Math.max(0, params.qrCount) };
-}
+export { matchingAmountWon, settlementFromScans } from './settlementAmounts';
 
 export function openSettlementMail(input: {
   to: string;

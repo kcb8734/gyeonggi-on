@@ -32,7 +32,7 @@ export default function QrCouponScanner({
 }: {
   merchantId?: string;
   readerId?: string;
-  onUsed?: () => void;
+  onUsed?: (coupon: ScannedCoupon) => void;
 }) {
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
@@ -125,7 +125,7 @@ export default function QrCouponScanner({
                 }
                 setCoupon(null);
                 handled.current = '';
-                onUsed?.();
+                onUsed?.(used.data ?? coupon);
               }}
             >
               <Text style={styles.btnText}>{busy ? '처리 중...' : '사용하기'}</Text>
