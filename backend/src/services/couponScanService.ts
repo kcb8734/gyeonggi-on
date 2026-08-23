@@ -89,12 +89,17 @@ export async function verifyCouponCode(code: string): Promise<CouponScanRecord> 
     );
   }
   if (!coupon) throw new AppError(404, '등록되지 않은 쿠폰 코드입니다.');
-  validateCouponStatus(coupon);
+  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) {
+    throw new AppError(410, '만료된 쿠폰입니다.');
+  }
   return coupon;
 }
 
 export async function useCouponCode(code: string, merchantId?: string | null): Promise<CouponScanRecord> {
   const coupon = await verifyCouponCode(code);
+  if (coupon.isUsed) {
+    throw new AppError(409, '이미 사용된 쿠폰입니다.');
+  }
 
   const now = new Date().toISOString();
   if (coupon.source === 'coupons') {

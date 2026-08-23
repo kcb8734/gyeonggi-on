@@ -7,7 +7,11 @@ export async function verifyCoupon(req: Request, res: Response) {
     const code = String(req.body?.code ?? req.body?.coupon_code ?? '').trim();
     if (!code) return res.status(400).json({ success: false, message: 'QR code 값이 필요합니다.' });
     const data = await verifyCouponCode(code);
-    return res.json({ success: true, data, message: '사용 가능한 쿠폰입니다.' });
+    return res.json({
+      success: true,
+      data,
+      message: data.isUsed ? '이미 사용된 쿠폰입니다. 정산 집계에 포함할 수 있습니다.' : '사용 가능한 쿠폰입니다.',
+    });
   } catch (err) {
     return res.status(errorStatus(err)).json({ success: false, message: errorMessage(err) });
   }

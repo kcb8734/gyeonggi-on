@@ -1,6 +1,7 @@
 import { api } from './client';
 import { findWalletCoupon, markWalletUsed } from '../stores/appStore';
 import { isIssuedCouponCode, normalizeCouponCode } from '../utils/couponToken';
+import { couponDiscountWon } from '../utils/settlementAmounts';
 
 export type ScannedCoupon = {
   id: string;
@@ -20,7 +21,9 @@ function fromWallet(code: string): ScannedCoupon | null {
     id: wallet.id,
     code: wallet.coupon_code,
     title: wallet.title,
-    discountAmount: Math.round((wallet.total_discount_rate || 10) * 300),
+    discountAmount: couponDiscountWon({
+      totalDiscountRate: wallet.total_discount_rate,
+    }),
     isUsed: wallet.status === 'USED',
     usedAt: null,
     expiresAt: wallet.expires_at ?? null,
@@ -48,7 +51,7 @@ export async function verifyCouponCode(code: string): Promise<{ success: boolean
     return { success: true, message: '사용 가능한 쿠폰입니다.', data: local };
   }
   if (local?.isUsed) {
-    return { success: false, message: '이미 사용된 쿠폰입니다.' };
+    return { success: true, message: '이미 사용된 쿠폰입니다. 정산 집계에 포함할 수 있습니다.', data: local };
   }
   if (isIssuedCouponCode(token)) {
     return {

@@ -13,14 +13,16 @@ import { fetchNearbyFestivals } from '../api/festivals';
 import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
-import { addLocalPromotion, incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
+import { addLocalPromotion, settlePromotion, useAppState } from '../stores/appStore';
 import { logoutMerchant, useMerchantState } from '../stores/merchantStore';
 import MerchantAuthPanel from '../components/ui/MerchantAuthPanel';
 import QrCouponScanner from '../components/ui/QrCouponScanner';
 import type { HomePromotion, QrScanRecord } from '../types/home';
 import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
-import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
-import { matchingAmountWon } from '../utils/settlementMail';
+import { downloadSettlementPdf, resolveSettlementEmail, sendSettlementDocumentMail } from '../utils/settlementDocument';
+import { fetchOfficialPreview, sendOfficialSettlement } from '../api/settlementOfficial';
+import { DEFAULT_FESTIVAL_MANAGER_EMAIL } from '../stores/managerStore';
+import { couponDiscountWon, mergeQrScans, settlementFromScans } from '../utils/settlementAmounts';
 
 interface PromotionResponse {
   success: boolean;
@@ -152,7 +154,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     if (!promo) return;
     setQrCount(promo.qrConfirmCount ?? 0);
     setQrScans(promo.qrScans ?? []);
-    if (promo.lastQrAt) setLastQrNote(`카메라 확인 ${new Date(promo.lastQrAt).toLocaleString('ko-KR')}`);
+    if (promo.managerEmail && !settlementEmail) setSettlementEmail(promo.managerEmail);
+    if (promo.lastQrAt) setLastQrNote(`QR 확인 ${new Date(promo.lastQrAt).toLocaleString('ko-KR')}`);
   }, [savedPromoId, app.localPromotions]);
 
   useEffect(() => {
@@ -187,29 +190,99 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     return { merchant: rate, gov, total: rate + gov };
   }, [discountRate, requestMatching]);
 
-  const matchPreview = useMemo(
-    () => matchingAmountWon({
-      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-      govRate: preview.gov,
-      qrCount,
-    }),
-    [maxDiscountAmount, preview.gov, qrCount],
-  );
+  const scanTotals = useMemo(() => settlementFromScans(qrScans, couponDiscountWon({
+    maxDiscountAmount: parseFloat(maxDiscountAmount) || 3000,
+  })), [qrScans, maxDiscountAmount]);
+  const matchPreview = scanTotals.count
+    ? scanTotals
+    : {
+      count: qrCount,
+      perUse: couponDiscountWon({ maxDiscountAmount: parseFloat(maxDiscountAmount) || 3000 }),
+      total: couponDiscountWon({ maxDiscountAmount: parseFloat(maxDiscountAmount) || 3000 }) * qrCount,
+    };
 
-  const recordVerifiedQr = () => {
-    const at = new Date().toISOString();
-    const amountWon = matchingAmountWon({
+  const makeLocalPromo = (promoId: string, scans = qrScans, count = qrCount): HomePromotion => {
+    const festival = festivals.find((f) => f.id === selectedFestivalId);
+    const businessName = businessNameRef.current || session?.businessName || '온앤온 가맹점';
+    return {
+      id: promoId,
+      title: `${festival?.title ?? businessName} 제휴 할인`,
+      festival_id: selectedFestivalId || undefined,
+      festival_title: festival?.title,
+      festivalStartDate: festival?.start_date,
+      festivalEndDate: festival?.end_date,
+      business_name: businessName,
+      businessNumber: businessNumberRef.current || session?.businessNumber,
+      merchant_discount_rate: parseFloat(discountRate) || 0,
+      gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
+      total_discount_rate: requestMatching
+        ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
+        : (parseFloat(discountRate) || 0),
+      remaining_quantity: parseInt(quantity, 10) || 0,
+      funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+      metro: 'GYEONGGI',
+      municipality_name: festival?.municipality_name,
+      main_menu: mainMenuRef.current,
+      features: featuresRef.current,
+      exterior_image_url: exteriorUrl,
+      interior_image_url: interiorUrl,
+      address: addressRef.current,
+      latitude: gps?.latitude,
+      longitude: gps?.longitude,
+      gps_confirmed: gpsConfirmed,
+      tel: shopTel.trim(),
+      bankName: bankName.trim(),
+      bankAccount: bankAccount.trim(),
+      bankHolder: bankHolder.trim(),
+      managerEmail: settlementEmail.trim(),
+      qrConfirmCount: count,
+      qrScans: scans,
+      lastQrAt: scans[scans.length - 1]?.at,
       maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-      govRate: preview.gov,
-      qrCount: 1,
-    }).perUse;
-    if (savedPromoId) {
-      incrementPromotionQr(savedPromoId, { at, amountWon });
-      return;
-    }
-    setQrScans((prev) => [...prev, { at, amountWon }]);
-    setQrCount((prev) => prev + 1);
-    setLastQrNote(`QR 확인 ${new Date(at).toLocaleString('ko-KR')}`);
+      settlementAmount: settlementFromScans(scans).total,
+    };
+  };
+
+  useEffect(() => {
+    fetchOfficialPreview(merchantId).then((official) => {
+      if (!official?.items?.length) return;
+      if (!settlementEmail && official.municipality.settlementEmail) {
+        setSettlementEmail(official.municipality.settlementEmail);
+      }
+      const incoming = official.items.map((item) => ({
+        at: item.usedAt ?? new Date().toISOString(),
+        amountWon: couponDiscountWon({ discountAmount: item.discountAmount }),
+        title: item.title,
+        code: item.code,
+      }));
+      setQrScans((prev) => {
+        const next = mergeQrScans(prev, incoming);
+        if (next.length === prev.length) return prev;
+        setQrCount(next.length);
+        setLastQrNote(`사용 쿠폰 ${next.length}건 집계 · 할인액 ${settlementFromScans(next).total.toLocaleString('ko-KR')}원`);
+        const promoId = savedPromoId || `local-${Date.now()}`;
+        addLocalPromotion(makeLocalPromo(promoId, next, next.length));
+        if (!savedPromoId) setSavedPromoId(promoId);
+        return next;
+      });
+    });
+  }, [merchantId]);
+
+  const recordVerifiedQr = (coupon?: { discountAmount?: number; title?: string; code?: string }) => {
+    const at = new Date().toISOString();
+    const amountWon = couponDiscountWon({
+      discountAmount: coupon?.discountAmount,
+      maxDiscountAmount: parseFloat(maxDiscountAmount) || 3000,
+    });
+    const scan = { at, amountWon, title: coupon?.title, code: coupon?.code };
+    const nextScans = [...qrScans, scan];
+    const nextCount = nextScans.length;
+    setQrScans(nextScans);
+    setQrCount(nextCount);
+    setLastQrNote(`QR 확인 ${amountWon.toLocaleString('ko-KR')}원 · ${new Date(at).toLocaleString('ko-KR')}`);
+    const promoId = savedPromoId || `local-${Date.now()}`;
+    addLocalPromotion(makeLocalPromo(promoId, nextScans, nextCount));
+    if (!savedPromoId) setSavedPromoId(promoId);
   };
 
   const handleVerify = async () => {
@@ -283,43 +356,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         return;
       }
     }
-    const festival = festivals.find((f) => f.id === selectedFestivalId);
-    const buildLocalPromo = (promoId: string): HomePromotion => ({
-      id: promoId,
-      title: `${festival?.title ?? businessName} 제휴 할인`,
-      festival_id: selectedFestivalId,
-      festival_title: festival?.title,
-      festivalStartDate: festival?.start_date,
-      festivalEndDate: festival?.end_date,
-      business_name: businessName,
-      businessNumber,
-      merchant_discount_rate: parseFloat(discountRate) || 0,
-      gov_matching_rate: requestMatching ? Math.min(parseFloat(discountRate) || 0, 10) : 0,
-      total_discount_rate: requestMatching
-        ? (parseFloat(discountRate) || 0) + Math.min(parseFloat(discountRate) || 0, 10)
-        : (parseFloat(discountRate) || 0),
-      remaining_quantity: parseInt(quantity, 10) || 0,
-      funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
-      metro: 'GYEONGGI',
-      municipality_name: festival?.municipality_name,
-      main_menu: mainMenu,
-      features,
-      exterior_image_url: exteriorUrl,
-      interior_image_url: interiorUrl,
-      address,
-      latitude: gps?.latitude,
-      longitude: gps?.longitude,
-      gps_confirmed: gpsConfirmed,
-      tel: shopTel.trim(),
-      bankName: bankName.trim(),
-      bankAccount: bankAccount.trim(),
-      bankHolder: bankHolder.trim(),
-      managerEmail: settlementEmail.trim(),
-      qrConfirmCount: qrCount,
-      qrScans,
-      lastQrAt: qrScans[qrScans.length - 1]?.at,
-      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-    });
+    const buildLocalPromo = (promoId: string) => makeLocalPromo(promoId);
     setLoading(true);
     try {
       const res = await axios.post<PromotionResponse>(`${API_BASE_URL}/api/promotions`, {
@@ -505,76 +542,103 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
             placeholder="예: 031-228-0000"
             keyboardType="phone-pad"
           />
-          <Text style={styles.label}>지자체 담당자 메일</Text>
-          <TextInput
-            style={styles.input}
-            value={settlementEmail}
-            onChangeText={setSettlementEmail}
-            placeholder="축제 등록 시 확인한 담당자 메일"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <View style={styles.qrBox}>
-            <Text style={styles.matchTitle}>쿠폰 확인 QR 스캔</Text>
-            <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건</Text>
-            <Text style={styles.note}>손님 쿠폰함 QR을 스캔해 확인한 건만 집계됩니다. 정산은 한 번에 합니다.</Text>
-            {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
-            <View style={styles.settleRow}>
-              <Text style={styles.settleLabel}>건당 매칭</Text>
-              <Text style={styles.settleValue}>{matchPreview.perUse.toLocaleString('ko-KR')}원</Text>
-            </View>
-            <View style={styles.settleRow}>
-              <Text style={styles.settleLabel}>정산 요청액</Text>
-              <Text style={styles.settleValue}>{matchPreview.total.toLocaleString('ko-KR')}원</Text>
-            </View>
-            {(() => {
-              const festival = festivals.find((item) => item.id === selectedFestivalId);
-              const saved = app.localPromotions.find((item) => item.id === savedPromoId);
-              const endDate = saved?.festivalEndDate ?? festival?.end_date;
-              const alreadySettled = Boolean(saved?.settledAt);
-              return (
-                <>
-                  <Text style={styles.note}>
-                    {endDate
-                      ? `행사 종료일 ${endDate}. QR 확인 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.`
-                      : 'QR 확인 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.'}
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.mailBtn, !saved && styles.mailBtnOff]}
-                    disabled={!saved}
-                    onPress={() => {
-                      if (!saved) return;
-                      settlePromotion(saved.id, matchPreview.total);
-                      const latest = { ...saved, settledAt: saved.settledAt ?? new Date().toISOString(), settlementAmount: saved.settlementAmount ?? matchPreview.total };
-                      sendSettlementDocumentMail(latest).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. PDF는 내려받을 수 있습니다.'));
-                    }}
-                  >
-                    <Text style={styles.mailBtnText}>
-                      {alreadySettled ? '담당자 정산서 다시 보내기' : '일괄 정산.담당자 정산서 발송'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.pdfBtn}
-                    disabled={!saved}
-                    onPress={() => {
-                      if (!saved) {
-                        Alert.alert('알림', '쿠폰을 먼저 등록하면 공문 PDF를 받을 수 있습니다.');
-                        return;
-                      }
-                      if (!downloadSettlementPdf(saved)) {
-                        Alert.alert('알림', '웹에서 공문서 PDF를 내려받을 수 있습니다.');
-                      }
-                    }}
-                  >
-                    <Text style={styles.pdfBtnText}>상가 사장님 정산서 내려받기</Text>
-                  </TouchableOpacity>
-                </>
-              );
-            })()}
-          </View>
         </View>
       ) : null}
+
+      <View style={styles.matchBox}>
+        <Text style={styles.matchTitle}>정산서 수신 메일</Text>
+        <Text style={styles.note}>스캔 집계 후 담당자 정산서 발송에 사용합니다.</Text>
+        <TextInput
+          style={styles.input}
+          value={settlementEmail}
+          onChangeText={setSettlementEmail}
+          placeholder={DEFAULT_FESTIVAL_MANAGER_EMAIL}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+      </View>
+
+      <View style={styles.qrBox}>
+        <Text style={styles.matchTitle}>스캔 집계 · 일괄 정산</Text>
+        <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건</Text>
+        <Text style={styles.note}>QR 쿠폰 스캔 할인액과 정산 요청액이 같은 금액으로 집계됩니다.</Text>
+        {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
+        <View style={styles.settleRow}>
+          <Text style={styles.settleLabel}>건당 할인·정산</Text>
+          <Text style={styles.settleValue}>{matchPreview.perUse.toLocaleString('ko-KR')}원</Text>
+        </View>
+        <View style={styles.settleRow}>
+          <Text style={styles.settleLabel}>정산 요청액</Text>
+          <Text style={styles.settleValue}>{matchPreview.total.toLocaleString('ko-KR')}원</Text>
+        </View>
+        {(() => {
+          const saved = app.localPromotions.find((item) => item.id === savedPromoId)
+            ?? (qrCount > 0 ? makeLocalPromo(savedPromoId || `local-${Date.now()}`, qrScans, qrCount) : null);
+          const canSettle = qrCount > 0;
+          const alreadySettled = Boolean(saved?.settledAt);
+          return (
+            <>
+              <Text style={styles.note}>
+                {canSettle
+                  ? '스캔 집계가 있어 일괄 정산과 정산서 PDF 내려받기를 할 수 있습니다.'
+                  : '손님 쿠폰 QR을 스캔하면 정산 버튼이 켜집니다.'}
+              </Text>
+              <TouchableOpacity
+                style={[styles.mailBtn, !canSettle && styles.mailBtnOff]}
+                disabled={!canSettle}
+                onPress={() => {
+                  if (!canSettle) return;
+                  const promo = saved ?? makeLocalPromo(`local-${Date.now()}`, qrScans, qrCount);
+                  addLocalPromotion(promo);
+                  if (!savedPromoId) setSavedPromoId(promo.id);
+                  settlePromotion(promo.id, matchPreview.total);
+                  const latest = {
+                    ...promo,
+                    qrScans,
+                    qrConfirmCount: qrCount,
+                    settledAt: promo.settledAt ?? new Date().toISOString(),
+                    settlementAmount: matchPreview.total,
+                    managerEmail: resolveSettlementEmail({
+                      ...promo,
+                      managerEmail: promo.managerEmail || settlementEmail.trim(),
+                    }),
+                  };
+                  sendOfficialSettlement({
+                    merchantId,
+                    toEmail: latest.managerEmail,
+                  }).catch(() => undefined);
+                  sendSettlementDocumentMail(latest).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. 정산서 PDF는 내려받았습니다.'));
+                }}
+              >
+                <Text style={styles.mailBtnText}>
+                  {alreadySettled ? '담당자 정산서 다시 보내기' : '일괄 정산.담당자 정산서 발송'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.pdfBtn, !canSettle && styles.mailBtnOff]}
+                disabled={!canSettle}
+                onPress={() => {
+                  if (!canSettle) return;
+                  const promo = saved ?? makeLocalPromo(`local-${Date.now()}`, qrScans, qrCount);
+                  addLocalPromotion(promo);
+                  if (!savedPromoId) setSavedPromoId(promo.id);
+                  const latest = {
+                    ...promo,
+                    qrScans,
+                    qrConfirmCount: qrCount,
+                    settlementAmount: matchPreview.total,
+                  };
+                  if (!downloadSettlementPdf(latest)) {
+                    Alert.alert('알림', '웹에서 공문서 PDF를 내려받을 수 있습니다.');
+                  }
+                }}
+              >
+                <Text style={styles.pdfBtnText}>상가 사장님 정산서 내려받기</Text>
+              </TouchableOpacity>
+            </>
+          );
+        })()}
+      </View>
 
       <View style={styles.badge}>
         <Text style={styles.badgeText}>

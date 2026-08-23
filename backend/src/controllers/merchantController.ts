@@ -109,7 +109,7 @@ export const getMerchantSettlement = async (req: Request, res: Response) => {
       `SELECT
          COUNT(uc.id) AS issued_count,
          COUNT(uc.id) FILTER (WHERE uc.status = 'USED') AS used_count,
-         COALESCE(SUM(st.gov_support_amount) FILTER (WHERE st.settlement_status = 'PENDING'), 0) AS pending_amount
+         COALESCE(SUM(st.merchant_discount_amount + st.gov_support_amount) FILTER (WHERE st.settlement_status = 'PENDING'), 0) AS pending_amount
        FROM discount_promotions dp
        LEFT JOIN user_coupons uc ON uc.promotion_id = dp.id
        LEFT JOIN settlement_transactions st ON st.user_coupon_id = uc.id

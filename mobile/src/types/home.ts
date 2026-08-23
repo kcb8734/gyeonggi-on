@@ -28,6 +28,8 @@ export interface HomeFestival {
 export interface QrScanRecord {
   at: string;
   amountWon: number;
+  title?: string;
+  code?: string;
 }
 
 export interface HomePromotion {

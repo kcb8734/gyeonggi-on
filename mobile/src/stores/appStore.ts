@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { HomeFestival, HomePromotion, QrScanRecord } from '../types/home';
 import type { LocalCurrencyCoupon } from '../api/feeds';
-import { matchingAmountWon } from '../utils/settlementMail';
+import { couponDiscountWon } from '../utils/settlementAmounts';
 import { readJson, writeJson } from '../utils/storage';
 
 export type AttendanceProofKind = 'qr' | 'venue' | 'upload';
@@ -243,11 +243,10 @@ export function incrementPromotionQr(id: string, scan?: Partial<QrScanRecord>) {
     ...state,
     localPromotions: state.localPromotions.map((item) => {
       if (item.id !== id) return item;
-      const perUse = scan?.amountWon ?? matchingAmountWon({
-        maxDiscountAmount: item.maxDiscountAmount ?? 5000,
-        govRate: item.gov_matching_rate,
-        qrCount: 1,
-      }).perUse;
+      const perUse = couponDiscountWon({
+        amountWon: scan?.amountWon,
+        maxDiscountAmount: item.maxDiscountAmount,
+      });
       const existing = item.qrScans ?? [];
       const padded = existing.length
         ? existing
