@@ -62,6 +62,21 @@ function StackBack() {
   );
 }
 
+const homeHeaderOptions = {
+  headerTitleAlign: 'left' as const,
+  headerLeft: () => null,
+  headerRight: () => null,
+  headerShadowVisible: false,
+  headerStyle: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  headerTitleContainerStyle: {
+    left: 12,
+    right: 12,
+    width: undefined,
+    maxWidth: '100%' as const,
+  },
+  headerTitle: () => <HomeHeaderBar />,
+};
+
 function Tabs() {
   return (
     <Tab.Navigator
@@ -79,16 +94,7 @@ function Tabs() {
         component={HomeScreen}
         options={{
           title: 'on&on',
-          headerTitleAlign: 'center',
-          headerLeft: () => null,
-          headerRight: () => null,
-          headerTitleContainerStyle: {
-            left: 10,
-            right: 10,
-            width: undefined,
-            maxWidth: '100%',
-          },
-          headerTitle: () => <HomeHeaderBar />,
+          ...homeHeaderOptions,
           tabBarIcon: ({ focused }) => <TabGlyph name="home" label="홈" focused={focused} />,
         }}
       />
@@ -96,7 +102,7 @@ function Tabs() {
         name="Nearby"
         options={{
           title: '내주변',
-          headerTitle: () => <HomeHeaderBar />,
+          ...homeHeaderOptions,
           tabBarIcon: ({ focused }) => <TabGlyph name="nearby" label="내주변" focused={focused} />,
         }}
       >
@@ -104,8 +110,24 @@ function Tabs() {
           <FestivalMerchantMapScreen festivalId={route.params?.festivalId} userId={DEV_USER_ID} />
         )}
       </Tab.Screen>
-      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: '달력', headerTitle: () => <HomeHeaderBar />, tabBarIcon: ({ focused }) => <TabGlyph name="calendar" label="달력" focused={focused} /> }} />
-      <Tab.Screen name="Coupons" component={CouponsScreen} options={{ title: '쿠폰함', headerTitle: () => <HomeHeaderBar />, tabBarIcon: ({ focused }) => <TabGlyph name="coupons" label="쿠폰" focused={focused} /> }} />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{
+          title: '달력',
+          ...homeHeaderOptions,
+          tabBarIcon: ({ focused }) => <TabGlyph name="calendar" label="달력" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Coupons"
+        component={CouponsScreen}
+        options={{
+          title: '쿠폰함',
+          ...homeHeaderOptions,
+          tabBarIcon: ({ focused }) => <TabGlyph name="coupons" label="쿠폰" focused={focused} />,
+        }}
+      />
       <Tab.Screen name="My" component={MyScreen} options={{ title: '마이', tabBarIcon: ({ focused }) => <TabGlyph name="my" label="마이" focused={focused} /> }} />
     </Tab.Navigator>
   );
