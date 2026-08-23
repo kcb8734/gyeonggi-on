@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { HomeFestival } from '../../types/home';
+import { festivalImageFor } from '../../constants/regionMedia';
 import { ddayLabel } from '../../utils/date';
 
 interface Props {
@@ -11,11 +12,12 @@ interface Props {
 
 export default function FestivalGridCard({ festival, discountRate, onPress }: Props) {
   const dday = ddayLabel(festival.start_date, festival.end_date);
+  const imageUrl = festival.image_url || festivalImageFor(festival.title, festival.location_name);
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <View>
-        {festival.image_url ? (
-          <Image source={{ uri: festival.image_url }} style={styles.image} />
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.image} />
         ) : (
           <View style={[styles.image, styles.fallback]} />
         )}

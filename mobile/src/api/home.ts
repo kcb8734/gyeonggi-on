@@ -1,15 +1,19 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
-import { REGION_FESTIVAL_FALLBACKS, fallbackPromotions } from '../constants/regionTour';
+import { REGION_FESTIVAL_FALLBACKS, fallbackPromotions, withFestivalImage } from '../constants/regionTour';
 import type { HomeFeed } from '../types/home';
 
 export async function fetchHomeFeed(metro: string, category?: string): Promise<HomeFeed> {
   try {
     const res = await api.get<HomeFeed>('/api/home', { params: { metro, category } });
     if (res.data?.festivals) {
+      const promotions = res.data.promotions?.length ? res.data.promotions : fallbackPromotions(metro);
+      const festivals = res.data.festivals.map((item) => withFestivalImage(item, metro));
       return {
         ...res.data,
-        popular: res.data.popular?.length ? res.data.popular : res.data.festivals,
+        festivals,
+        promotions,
+        popular: (res.data.popular?.length ? res.data.popular : festivals).map((item) => withFestivalImage(item, metro)),
       };
     }
   } catch {

@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from './src/screens/HomeScreen';
 import FestivalMerchantMapScreen from './src/screens/FestivalMerchantMapScreen';
@@ -41,7 +41,18 @@ export type RootTabParamList = {
 export type RootStackParamList = {
   Tabs: undefined;
   PromotionRegister: undefined;
-  TourDetail: { contentId: string; contentTypeId?: string; tel?: string; title?: string };
+  TourDetail: {
+    contentId: string;
+    contentTypeId?: string;
+    tel?: string;
+    title?: string;
+    city?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+    metro?: string;
+    imageUrl?: string;
+  };
   MerchantSettlement: undefined;
   Support: { topic?: 'notice' | 'help' | 'privacy' };
   FeedUpload: undefined;
@@ -62,19 +73,17 @@ function StackBack() {
   );
 }
 
+function HomeNavHeader() {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ paddingTop: insets.top, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+      <HomeHeaderBar />
+    </View>
+  );
+}
+
 const homeHeaderOptions = {
-  headerTitleAlign: 'left' as const,
-  headerLeft: () => null,
-  headerRight: () => null,
-  headerShadowVisible: false,
-  headerStyle: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  headerTitleContainerStyle: {
-    left: 12,
-    right: 12,
-    width: undefined,
-    maxWidth: '100%' as const,
-  },
-  headerTitle: () => <HomeHeaderBar />,
+  header: () => <HomeNavHeader />,
 };
 
 function Tabs() {
@@ -181,6 +190,12 @@ export default function App() {
                   contentTypeId={route.params.contentTypeId}
                   fallbackTel={route.params.tel}
                   fallbackTitle={route.params.title}
+                  fallbackCity={route.params.city}
+                  fallbackAddress={route.params.address}
+                  fallbackLatitude={route.params.latitude}
+                  fallbackLongitude={route.params.longitude}
+                  fallbackMetro={route.params.metro}
+                  fallbackImageUrl={route.params.imageUrl}
                 />
               )}
             </Stack.Screen>

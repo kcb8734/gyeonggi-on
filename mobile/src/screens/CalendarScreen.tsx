@@ -5,7 +5,7 @@ import { fetchTourFestivals, homeFestivalFromTour } from '../api/tour';
 import type { HomeFestival } from '../types/home';
 import { addSchedule, rememberFestival, useAppState } from '../stores/appStore';
 import { useSelectedRegionPreset } from '../stores/regionStore';
-import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
+import { REGION_FESTIVAL_FALLBACKS, withFestivalImage } from '../constants/regionTour';
 import { eventColor, overlapsDay, ymd } from '../utils/date';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -34,7 +34,8 @@ export default function CalendarScreen() {
   useEffect(() => {
     fetchTourFestivals({ areaCode: region.code, month, year }).then((items) => {
       const mapped = items.map(homeFestivalFromTour);
-      setFestivals(mapped.length ? mapped : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []));
+      const incoming = mapped.length ? mapped : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []);
+      setFestivals(incoming.map((item) => withFestivalImage(item, region.id)));
     });
   }, [month, year, region.code, region.id]);
 
@@ -61,6 +62,12 @@ export default function CalendarScreen() {
         contentTypeId: festival.contentTypeId,
         tel: festival.tel,
         title: festival.title,
+        city: festival.municipality_name ?? undefined,
+        address: festival.location_name ?? undefined,
+        latitude: festival.latitude,
+        longitude: festival.longitude,
+        metro: region.id,
+        imageUrl: festival.image_url ?? undefined,
       });
     }
   };

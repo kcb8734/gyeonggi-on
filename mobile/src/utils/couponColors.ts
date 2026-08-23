@@ -32,6 +32,22 @@ const LOCALITY_RATE_COLORS: Array<{ token: string; color: string }> = [
   { token: '인천', color: '#0F766E' },
   { token: '강원', color: '#047857' },
   { token: '제주', color: '#EA580C' },
+  { token: '춘천', color: '#047857' },
+  { token: '강릉', color: '#0F766E' },
+  { token: '평창', color: '#15803D' },
+  { token: '속초', color: '#0369A1' },
+  { token: '강화', color: '#0D9488' },
+  { token: '연수', color: '#0F766E' },
+  { token: '청주', color: '#D97706' },
+  { token: '보령', color: '#B45309' },
+  { token: '부여', color: '#CA8A04' },
+  { token: '전주', color: '#7C3AED' },
+  { token: '여수', color: '#6D28D9' },
+  { token: '순천', color: '#5B21B6' },
+  { token: '진주', color: '#DB2777' },
+  { token: '경주', color: '#BE185D' },
+  { token: '부산', color: '#9D174D' },
+  { token: '서귀포', color: '#C2410C' },
 ];
 
 export function couponRateColor(source?: string | null, metro?: string | null): string {

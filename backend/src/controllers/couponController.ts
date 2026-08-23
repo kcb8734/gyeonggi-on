@@ -117,12 +117,14 @@ export const listMyCoupons = async (req: Request, res: Response) => {
       `SELECT
          uc.id, uc.coupon_code, uc.status, uc.issued_at,
          dp.id AS promotion_id, dp.title, dp.total_discount_rate,
-         dp.funding_type, dp.end_time,
-         m.business_name, f.title AS festival_title
+         dp.funding_type, dp.coupon_type, dp.end_time,
+         m.business_name, f.title AS festival_title,
+         mu.metro_region AS metro, mu.name AS municipality_name
        FROM user_coupons uc
        JOIN discount_promotions dp ON dp.id = uc.promotion_id
        JOIN merchants m ON m.id = dp.merchant_id
        LEFT JOIN festivals f ON f.id = dp.festival_id
+       LEFT JOIN municipalities mu ON mu.id = m.municipality_id
        WHERE uc.user_id = $1
        ORDER BY uc.issued_at DESC`,
       [userId],

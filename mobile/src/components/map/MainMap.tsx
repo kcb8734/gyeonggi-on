@@ -332,7 +332,14 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
           onDetail={() => {
             if (!sheet) return;
             if (sheet.kind === 'place') {
-              navigation.navigate('TourDetail', { contentId: sheet.id, title: sheet.title });
+              navigation.navigate('TourDetail', {
+                contentId: sheet.id,
+                title: sheet.title,
+                address: sheet.address,
+                latitude: sheet.latitude,
+                longitude: sheet.longitude,
+                metro: regionPreset.id,
+              });
               return;
             }
             if (sheet.kind === 'festival') {
@@ -342,6 +349,12 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
                 contentTypeId: festival?.contentTypeId,
                 tel: festival?.tel,
                 title: festival?.title ?? sheet.title,
+                city: festival?.municipality_name ?? undefined,
+                address: festival?.location_name ?? sheet.address,
+                latitude: festival?.latitude ?? sheet.latitude,
+                longitude: festival?.longitude ?? sheet.longitude,
+                metro: regionPreset.id,
+                imageUrl: festival?.image_url ?? undefined,
               });
               return;
             }

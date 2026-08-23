@@ -10,6 +10,10 @@ import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
 import { fetchTourFestivals } from '../api/tour';
 import { submitFeedReward } from '../api/feeds';
 import type { TourFestival } from '../types/tour';
+import { useSelectedRegionPreset } from '../stores/regionStore';
+import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
+import { PREVIEW_HOME } from '../api/previewHome';
+import { festivalImageFor } from '../constants/regionMedia';
 
 const PRESETS = [
   'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=600&q=80',
@@ -42,6 +46,7 @@ async function readGps(): Promise<{ latitude: number; longitude: number } | null
 
 export default function FeedUploadScreen() {
   const navigation = useNavigation<any>();
+  const region = useSelectedRegionPreset();
   const captionRef = useRef('');
   const [imageUrl, setImageUrl] = useState(PRESETS[0]);
   const [previewNonce, setPreviewNonce] = useState(0);
@@ -51,12 +56,35 @@ export default function FeedUploadScreen() {
   const [gpsLabel, setGpsLabel] = useState('위치 확인 중...');
 
   useEffect(() => {
-    fetchTourFestivals({ areaCode: 'all' })
+    const fallback = (region.id === 'GYEONGGI' ? PREVIEW_HOME.festivals : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []))
+      .map((item) => ({
+        contentId: item.contentId ?? item.id,
+        contentTypeId: item.contentTypeId ?? '15',
+        title: item.title,
+        address: item.location_name ?? '',
+        mapX: item.longitude,
+        mapY: item.latitude,
+        eventStartDate: item.start_date ?? '',
+        eventEndDate: item.end_date ?? '',
+        firstImage: item.image_url ?? festivalImageFor(item.title, item.location_name, region.id),
+        category: (item.category as TourFestival['category']) ?? '문화/예술',
+      })) as TourFestival[];
+    fetchTourFestivals({ areaCode: region.code })
       .then((list) => {
-        setFestivals(list);
-        if (list[0]) setFestivalId(list[0].contentId);
+        const incoming = list.length ? list : fallback;
+        setFestivals(incoming);
+        if (incoming[0]) {
+          setFestivalId(incoming[0].contentId);
+          if (incoming[0].firstImage) setImageUrl(incoming[0].firstImage);
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        setFestivals(fallback);
+        if (fallback[0]) {
+          setFestivalId(fallback[0].contentId);
+          if (fallback[0].firstImage) setImageUrl(fallback[0].firstImage);
+        }
+      });
     readGps().then((value) => {
       if (value) {
         setCoords(value);
@@ -65,7 +93,7 @@ export default function FeedUploadScreen() {
         setGpsLabel('위치 권한을 허용하면 현장 방문 인증이 완료됩니다');
       }
     });
-  }, []);
+  }, [region.code, region.id]);
 
   const submit = async () => {
     const caption = captionRef.current.trim();
@@ -120,6 +148,7 @@ export default function FeedUploadScreen() {
       caption,
       festival: festival.title,
       festivalId: festival.contentId,
+      metro: region.id,
       imageUrl,
       author: getAuthUser()?.nickname,
       rewarded,
