@@ -15,6 +15,7 @@ export interface WalletCoupon {
   festival_title?: string | null;
   total_discount_rate: number;
   funding_type?: 'MERCHANT_ONLY' | 'MATCHED';
+  coupon_type?: 'OFFICIAL' | 'SELF';
   expires_at?: string;
   status: 'ISSUED' | 'USED';
   proofImageUrl?: string;
@@ -58,6 +59,7 @@ const SEEDED_WALLET: WalletCoupon[] = [
     festival_title: '수원화성문화제',
     total_discount_rate: 10,
     funding_type: 'MATCHED',
+    coupon_type: 'OFFICIAL',
     expires_at: '2026-09-21',
     status: 'ISSUED',
     proofImageUrl: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80',
@@ -299,6 +301,7 @@ export function promotionToWallet(promo: HomePromotion, couponCode: string, proo
     festival_title: promo.festival_title,
     total_discount_rate: promo.total_discount_rate,
     funding_type: promo.funding_type,
+    coupon_type: promo.coupon_type ?? (promo.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
     expires_at: '2026-09-30',
     status: 'ISSUED',
     proofImageUrl: proofImageUrl ?? promo.exterior_image_url ?? undefined,

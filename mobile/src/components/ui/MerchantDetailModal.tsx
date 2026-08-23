@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import type { HomePromotion } from '../../types/home';
 import { couponRateColor } from '../../utils/couponColors';
+import { shopPhotosFor } from '../../constants/regionMedia';
 import { setImeModalLock } from '../../utils/nativeImeHost';
 import ModalExitButton from './ModalExitButton';
 
@@ -30,8 +31,12 @@ export default function MerchantDetailModal({ promotion, issuing, onClose, onDow
     `${promotion.municipality_name ?? ''} ${promotion.festival_title ?? ''} ${promotion.business_name ?? ''}`,
     promotion.metro,
   );
-  const exterior = promotion.exterior_image_url;
-  const interior = promotion.interior_image_url;
+  const photos = shopPhotosFor('food');
+  const exterior = promotion.exterior_image_url || photos.exterior_image_url;
+  const interior = promotion.interior_image_url || photos.interior_image_url;
+  const couponType = promotion.coupon_type ?? (promotion.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL');
+  const totalRate = promotion.total_discount_rate
+    ?? ((promotion.merchant_discount_rate ?? 0) + (promotion.gov_matching_rate ?? 0));
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -42,7 +47,7 @@ export default function MerchantDetailModal({ promotion, issuing, onClose, onDow
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={[styles.rateBanner, { backgroundColor: rateColor }]}>
               <Text style={styles.rateKicker}>{promotion.municipality_name ?? '제휴 상가'}</Text>
-              <Text style={styles.rate}>{promotion.total_discount_rate}% OFF</Text>
+              <Text style={styles.rate}>{totalRate}% OFF</Text>
               <Text style={styles.rateShop}>{promotion.business_name ?? '제휴업소'}</Text>
             </View>
             <View style={styles.body}>
@@ -50,6 +55,11 @@ export default function MerchantDetailModal({ promotion, issuing, onClose, onDow
               {promotion.festival_title ? (
                 <Text style={styles.fest}>{promotion.festival_title} 연계 할인</Text>
               ) : null}
+              <Text style={styles.fest}>
+                {couponType === 'SELF' ? '소상공인 자율 할인' : '지자체 매칭 쿠폰'}
+                {` · 상가 ${promotion.merchant_discount_rate ?? 0}%`}
+                {promotion.gov_matching_rate ? ` + 지자체 ${promotion.gov_matching_rate}%` : ''}
+              </Text>
 
               <Text style={styles.label}>가게 사진 (외부 · 내부)</Text>
               <View style={styles.photoRow}>

@@ -9,6 +9,8 @@ interface Props {
   shop: string;
   festival?: string | null;
   rate: number;
+  merchantRate?: number;
+  govRate?: number;
   matched?: boolean;
   couponType?: 'OFFICIAL' | 'SELF';
   expires?: string;
@@ -27,6 +29,8 @@ export function TicketCouponCard({
   shop,
   festival,
   rate,
+  merchantRate,
+  govRate,
   matched,
   couponType,
   expires,
@@ -55,15 +59,20 @@ export function TicketCouponCard({
       </View>
       <View style={[styles.dash, compact && styles.dashCompact]} />
       <View style={[styles.body, compact && styles.bodyCompact]}>
-        <Text style={[styles.shop, compact && styles.shopCompact]} numberOfLines={1}>{shop}</Text>
+        <Text style={[styles.shop, compact && styles.shopCompact]} numberOfLines={1}>{shop || '제휴업소'}</Text>
         {compact ? null : <Text style={styles.title} numberOfLines={2}>{title}</Text>}
-        {!compact && festival ? <Text style={styles.fest} numberOfLines={1}>{festival}</Text> : null}
+        {festival ? <Text style={styles.fest} numberOfLines={1}>{festival}</Text> : null}
         <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
           {couponType === 'SELF' || (!matched && couponType !== 'OFFICIAL')
             ? <Text style={styles.self}>소상공인 자율 할인</Text>
             : <Text style={styles.badge}>지자체 매칭</Text>}
           {!compact && expires ? <Text style={styles.expire}>~ {expires}</Text> : null}
         </View>
+        {merchantRate != null || govRate != null ? (
+          <Text style={styles.split} numberOfLines={1}>
+            상가 {merchantRate ?? 0}%{govRate ? ` + 지자체 ${govRate}%` : ''}
+          </Text>
+        ) : null}
         {!compact && remaining != null ? <Text style={styles.remain}>잔여 {remaining.toLocaleString()}장</Text> : null}
         {!compact && status ? <Text style={styles.status}>{status === 'ISSUED' ? '사용 가능' : status}</Text> : null}
         {cta ? <Text style={[styles.cta, compact && styles.ctaCompact]}>{cta}</Text> : null}
@@ -97,8 +106,10 @@ export function ticketFromPromotion(promo: HomePromotion, cta = '다운로드'):
     title: promo.title,
     shop: promo.business_name ?? '제휴업소',
     festival: promo.festival_title,
-    rate: promo.total_discount_rate,
-    matched: promo.funding_type !== 'MERCHANT_ONLY',
+    rate: Number(promo.total_discount_rate ?? ((promo.merchant_discount_rate ?? 0) + (promo.gov_matching_rate ?? 0))) || 0,
+    merchantRate: promo.merchant_discount_rate,
+    govRate: promo.gov_matching_rate,
+    matched: promo.funding_type !== 'MERCHANT_ONLY' && promo.coupon_type !== 'SELF',
     couponType: promo.coupon_type ?? (promo.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
     remaining: promo.remaining_quantity,
     cta,
@@ -111,9 +122,9 @@ export function ticketFromWallet(item: WalletCoupon): Props {
     title: item.title,
     shop: item.business_name,
     festival: item.festival_title,
-    rate: item.total_discount_rate,
-    matched: item.funding_type !== 'MERCHANT_ONLY',
-    couponType: item.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL',
+    rate: Number(item.total_discount_rate) || 0,
+    matched: item.funding_type !== 'MERCHANT_ONLY' && item.coupon_type !== 'SELF',
+    couponType: item.coupon_type ?? (item.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
     expires: item.expires_at,
     status: item.status,
     cta: 'QR 보기',
@@ -136,7 +147,7 @@ const styles = StyleSheet.create({
     minHeight: 118,
   },
   wrapCompact: {
-    minHeight: 64,
+    minHeight: 86,
     borderRadius: 14,
     marginBottom: 8,
   },
@@ -199,6 +210,7 @@ const styles = StyleSheet.create({
   ctaCompact: { marginTop: 4, fontSize: 11 },
   title: { fontSize: 12, color: '#4B5563', marginTop: 3 },
   fest: { fontSize: 11, color: '#2563EB', fontWeight: '700', marginTop: 4 },
+  split: { fontSize: 10, color: '#6B7280', fontWeight: '700', marginTop: 3 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' },
   badge: {
     backgroundColor: '#FEF3C7',

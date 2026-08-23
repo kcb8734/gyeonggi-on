@@ -36,7 +36,7 @@ export const getHomeFeed = async (req: Request, res: Response) => {
     const promotionResult = await pool.query(
       `SELECT
          dp.id, dp.title, dp.merchant_discount_rate, dp.gov_matching_rate, dp.total_discount_rate,
-         dp.remaining_quantity, dp.total_quantity, dp.funding_type, dp.matching_status,
+         dp.remaining_quantity, dp.total_quantity, dp.funding_type, dp.matching_status, dp.coupon_type,
          dp.max_discount_amount, f.id AS festival_id, f.title AS festival_title,
          m.business_name, m.category AS merchant_category
        FROM discount_promotions dp

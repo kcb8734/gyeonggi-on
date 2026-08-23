@@ -21,7 +21,7 @@ import {
   getLocalities,
   localityMatches,
 } from '../constants/regions';
-import { regionById } from '../constants/regionTour';
+import { regionById, withFestivalImage } from '../constants/regionTour';
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { MapView, Marker } from '../components/map/CompatibleMap';
@@ -75,13 +75,22 @@ export default function HomeScreen() {
       metro === 'GYEONGGI' ? fetchListedFestivals() : Promise.resolve([]),
       fetchTourFestivals({ areaCode: selectedPreset.code, month: now.getMonth() + 1, year: now.getFullYear() }),
     ]).then(([feed, listed, tourFestivals]) => {
-      const extra = app.localPromotions.filter((item) => !feed.promotions.some((promo) => promo.id === item.id));
-      setPromotions([...extra, ...feed.promotions.map((item) => ({ ...item, metro }))]);
+      const extra = app.localPromotions.filter((item) =>
+        (!item.metro || item.metro === metro)
+        && !feed.promotions.some((promo) => promo.id === item.id),
+      );
+      setPromotions([...extra, ...feed.promotions.map((item) => ({
+        ...item,
+        metro: item.metro ?? metro,
+        coupon_type: item.coupon_type ?? (item.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
+        total_discount_rate: item.total_discount_rate
+          ?? ((item.merchant_discount_rate ?? 0) + (item.gov_matching_rate ?? 0)),
+      }))]);
       const incoming = listed.length
         ? listed
         : (tourFestivals.length ? tourFestivals.map(homeFestivalFromTour) : feed.festivals);
       const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
-      setFestivals([...extras, ...incoming]);
+      setFestivals([...extras, ...incoming].map((item) => withFestivalImage(item, metro)));
       if (!feed.available) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
   }, [metro, selectedPreset.code, app.localPromotions, app.localFestivals]);
@@ -223,7 +232,7 @@ export default function HomeScreen() {
             }}
             pointerEvents={Platform.OS === 'web' ? 'auto' : 'none'}
           >
-            {festivals.map((festival) => (
+            {locatedFestivals.map((festival) => (
               <Marker
                 key={festival.id}
                 coordinate={{ latitude: festival.latitude, longitude: festival.longitude }}
@@ -239,8 +248,10 @@ export default function HomeScreen() {
 
         <Text style={styles.section}>선택 지역 할인쿠폰</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
-          {filteredPromotions.map((promo) => (
-            <View key={promo.id} style={{ width: 260 }}>
+          {filteredPromotions.length === 0 ? (
+            <Text style={styles.empty}>선택하신 권역에 등록된 쿠폰이 없습니다.</Text>
+          ) : filteredPromotions.map((promo) => (
+            <View key={promo.id} style={{ width: 280 }}>
               <TicketCouponCard
                 compact
                 {...ticketFromPromotion(promo, issuingId === promo.id ? '발급 중...' : '상가 보기')}
@@ -251,7 +262,7 @@ export default function HomeScreen() {
         </ScrollView>
 
         <Text style={styles.section}>축제 현장 피드 올리고 지역화폐 받기</Text>
-        <FeedRail onPress={(postId) => navigation.navigate('FeedView', { postId })} />
+        <FeedRail metro={metro} onPress={(postId) => navigation.navigate('FeedView', { postId })} />
 
         <Text style={styles.section}>지역별 축제 리스트</Text>
         <ScrollView
@@ -313,6 +324,12 @@ export default function HomeScreen() {
               contentTypeId: festival.contentTypeId,
               tel: festival.tel,
               title: festival.title,
+              city: festival.municipality_name ?? undefined,
+              address: festival.location_name ?? undefined,
+              latitude: festival.latitude,
+              longitude: festival.longitude,
+              metro,
+              imageUrl: festival.image_url ?? undefined,
             });
           } else {
             navigation.navigate('Nearby', { festivalId: festival.id });
@@ -345,7 +362,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     borderRadius: 16,
     paddingHorizontal: 13,
-    paddingVertical: 8,
+    height: 36,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#D1D5DB',
   },

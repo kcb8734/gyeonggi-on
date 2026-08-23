@@ -1,4 +1,5 @@
 import type { HomeFestival, HomePromotion } from '../types/home';
+import { festivalImageFor, shopPhotosFor } from './regionMedia';
 
 export type CouponKind = 'OFFICIAL' | 'SELF';
 
@@ -43,6 +44,7 @@ function fest(
   start: string,
   end: string,
   category: string,
+  metro: string,
 ): HomeFestival {
   return {
     id,
@@ -54,9 +56,9 @@ function fest(
     longitude: lng,
     start_date: start,
     end_date: end,
-    municipality_name: city.split(' ')[0],
+    municipality_name: city.split(' ').pop()?.replace(/(광역시|특별시|특별자치도|도)$/, '') || city,
     category,
-    image_url: null,
+    image_url: festivalImageFor(title, city, metro),
     is_trending: true,
     source: 'gov',
   };
@@ -64,57 +66,128 @@ function fest(
 
 export const REGION_FESTIVAL_FALLBACKS: Record<string, HomeFestival[]> = {
   GANGWON: [
-    fest('gw-1', '춘천마임축제', '강원특별자치도 춘천시', 37.8813, 127.7300, '2026-05-21', '2026-05-31', '공연'),
-    fest('gw-2', '강릉커피축제', '강원특별자치도 강릉시', 37.7519, 128.8761, '2026-10-02', '2026-10-06', '먹거리'),
-    fest('gw-3', '평창효석문화제', '강원특별자치도 평창군', 37.5090, 128.4280, '2026-09-04', '2026-09-07', '문화/예술'),
-    fest('gw-4', '속초해변축제', '강원특별자치도 속초시', 38.2070, 128.5918, '2026-07-24', '2026-07-27', '가족'),
+    fest('gw-1', '춘천마임축제', '강원특별자치도 춘천시', 37.8813, 127.7300, '2026-05-21', '2026-05-31', '공연', 'GANGWON'),
+    fest('gw-2', '강릉커피축제', '강원특별자치도 강릉시', 37.7519, 128.8761, '2026-10-02', '2026-10-06', '먹거리', 'GANGWON'),
+    fest('gw-3', '평창효석문화제', '강원특별자치도 평창군', 37.5090, 128.4280, '2026-09-04', '2026-09-07', '문화/예술', 'GANGWON'),
+    fest('gw-4', '속초해변축제', '강원특별자치도 속초시', 38.2070, 128.5918, '2026-07-24', '2026-07-27', '가족', 'GANGWON'),
   ],
   SEOUL: [
-    fest('su-1', '서울거리예술축제', '서울특별시 종로구', 37.5720, 126.9769, '2026-09-26', '2026-10-04', '공연'),
-    fest('su-2', '서울빛초롱축제', '서울특별시 중구', 37.5694, 126.9783, '2026-12-12', '2027-01-04', '계절축제'),
+    fest('su-1', '서울거리예술축제', '서울특별시 종로구', 37.5720, 126.9769, '2026-09-26', '2026-10-04', '공연', 'SEOUL'),
+    fest('su-2', '서울빛초롱축제', '서울특별시 중구', 37.5694, 126.9783, '2026-12-12', '2027-01-04', '계절축제', 'SEOUL'),
+    fest('su-3', '중랑 서울장미축제', '서울특별시 중랑구', 37.6060, 127.0930, '2026-05-16', '2026-05-25', '가족', 'SEOUL'),
+    fest('su-4', '한강몽땅 여름축제', '서울특별시 영등포구', 37.5270, 126.9340, '2026-07-25', '2026-08-10', '가족', 'SEOUL'),
   ],
   INCHEON: [
-    fest('ic-1', '인천펜타포트락페스티벌', '인천광역시 연수구', 37.3890, 126.6430, '2026-08-07', '2026-08-09', '공연'),
-    fest('ic-2', '강화고인돌문화축제', '인천광역시 강화군', 37.7460, 126.4880, '2026-10-10', '2026-10-12', '체험'),
+    fest('ic-1', '인천펜타포트락페스티벌', '인천광역시 연수구', 37.3890, 126.6430, '2026-08-07', '2026-08-09', '공연', 'INCHEON'),
+    fest('ic-2', '강화고인돌문화축제', '인천광역시 강화군', 37.7460, 126.4880, '2026-10-10', '2026-10-12', '체험', 'INCHEON'),
+    fest('ic-3', '인천개항장문화재야행', '인천광역시 중구', 37.4728, 126.6219, '2026-10-17', '2026-10-18', '문화/예술', 'INCHEON'),
   ],
   CHUNGCHEONG: [
-    fest('cc-1', '청주직지축제', '충청북도 청주시', 36.6424, 127.4890, '2026-09-03', '2026-09-07', '문화/예술'),
-    fest('cc-2', '보령머드축제', '충청남도 보령시', 36.3330, 126.6120, '2026-07-17', '2026-07-26', '체험'),
+    fest('cc-1', '청주직지축제', '충청북도 청주시', 36.6424, 127.4890, '2026-09-03', '2026-09-07', '문화/예술', 'CHUNGCHEONG'),
+    fest('cc-2', '보령머드축제', '충청남도 보령시', 36.3330, 126.6120, '2026-07-17', '2026-07-26', '체험', 'CHUNGCHEONG'),
+    fest('cc-3', '부여서동연꽃축제', '충청남도 부여군', 36.2750, 126.9120, '2026-07-04', '2026-07-12', '계절축제', 'CHUNGCHEONG'),
   ],
   JEOLLA: [
-    fest('jl-1', '전주한지문화축제', '전북특별자치도 전주시', 35.8150, 127.1530, '2026-05-01', '2026-05-05', '문화/예술'),
-    fest('jl-2', '여수밤바다불꽃축제', '전라남도 여수시', 34.7604, 127.6622, '2026-10-31', '2026-11-01', '공연'),
+    fest('jl-1', '전주한지문화축제', '전북특별자치도 전주시', 35.8150, 127.1530, '2026-05-01', '2026-05-05', '문화/예술', 'JEOLLA'),
+    fest('jl-2', '여수밤바다불꽃축제', '전라남도 여수시', 34.7604, 127.6622, '2026-10-31', '2026-11-01', '공연', 'JEOLLA'),
+    fest('jl-3', '순천만갈대축제', '전라남도 순천시', 34.8860, 127.5090, '2026-10-24', '2026-11-02', '계절축제', 'JEOLLA'),
   ],
   GYEONGSANG: [
-    fest('gs-1', '진주남강유등축제', '경상남도 진주시', 35.1800, 128.1080, '2026-10-01', '2026-10-12', '문화/예술'),
-    fest('gs-2', '경주벚꽃축제', '경상북도 경주시', 35.8562, 129.2247, '2026-04-03', '2026-04-12', '계절축제'),
-    fest('gs-3', '부산불꽃축제', '부산광역시 수영구', 35.1530, 129.1180, '2026-10-24', '2026-10-25', '공연'),
+    fest('gs-1', '진주남강유등축제', '경상남도 진주시', 35.1800, 128.1080, '2026-10-01', '2026-10-12', '문화/예술', 'GYEONGSANG'),
+    fest('gs-2', '경주벚꽃축제', '경상북도 경주시', 35.8562, 129.2247, '2026-04-03', '2026-04-12', '계절축제', 'GYEONGSANG'),
+    fest('gs-3', '부산불꽃축제', '부산광역시 수영구', 35.1530, 129.1180, '2026-10-24', '2026-10-25', '공연', 'GYEONGSANG'),
   ],
   JEJU: [
-    fest('jj-1', '제주들불축제', '제주특별자치도 제주시', 33.4590, 126.5170, '2026-03-06', '2026-03-09', '계절축제'),
-    fest('jj-2', '서귀포칠십리축제', '제주특별자치도 서귀포시', 33.2530, 126.5600, '2026-10-09', '2026-10-12', '문화/예술'),
+    fest('jj-1', '제주들불축제', '제주특별자치도 제주시', 33.4590, 126.5170, '2026-03-06', '2026-03-09', '계절축제', 'JEJU'),
+    fest('jj-2', '서귀포칠십리축제', '제주특별자치도 서귀포시', 33.2530, 126.5600, '2026-10-09', '2026-10-12', '문화/예술', 'JEJU'),
+    fest('jj-3', '제주유채꽃축제', '제주특별자치도 제주시', 33.3890, 126.2390, '2026-04-04', '2026-04-13', '가족', 'JEJU'),
   ],
 };
+
+const SHOP_HINTS: Array<{ token: string; shop: string; menu: string; features: string; kind: 'food' | 'cafe' | 'market' | 'night' }> = [
+  { token: '마임', shop: '춘천 중앙시장 닭갈비', menu: '숯불닭갈비, 막국수, 감자전', features: '축제장에서 5분, 당일 손질 닭고기', kind: 'food' },
+  { token: '커피', shop: '안목해변 커피거리', menu: '핸드드립, 강릉커피빵, 흑임자라떼', features: '경포·안목 해변 테라스 좌석', kind: 'cafe' },
+  { token: '효석', shop: '봉평 메밀막국수', menu: '메밀막국수, 메밀전, 감자전', features: '이효석 생가 인근 메밀 전문', kind: 'food' },
+  { token: '속초', shop: '속초관광수산시장', menu: '오징어순대, 닭강정, 회덮밥', features: '축제 해변과 이어지는 수산시장 골목', kind: 'market' },
+  { token: '거리예술', shop: '광장시장 빈대떡', menu: '녹두빈대떡, 마약김밥, 육회', features: '청계천·종로 축제 동선에 붙은 노포', kind: 'market' },
+  { token: '빛초롱', shop: '을지로 야행 포차', menu: '김치전, 막걸리, 오뎅탕', features: '청계천 초롱 야경이 보이는 골목', kind: 'night' },
+  { token: '장미', shop: '중랑 장미정원 카페', menu: '장미에이드, 소금빵, 수제청', features: '장미축제장 입구 테라스', kind: 'cafe' },
+  { token: '한강', shop: '여의도 한강 포장마차', menu: '닭꼬치, 맥주, 오뎅', features: '몽땅축제 메인 무대 옆 푸드존', kind: 'food' },
+  { token: '펜타포트', shop: '송도 락페 푸드트럭', menu: '수제버거, 맥주, 나초', features: '달빛축제공원 공연장 앞', kind: 'food' },
+  { token: '고인돌', shop: '강화 중앙시장', menu: '순무김치, 밴댕이회, 인삼약과', features: '고인돌 공원에서 차로 15분', kind: 'market' },
+  { token: '개항장', shop: '신포국제시장 닭강정', menu: '양념닭강정, 짜장면, 공갈빵', features: '개항장 거리와 이어지는 시장 골목', kind: 'market' },
+  { token: '직지', shop: '육거리시장 순대국', menu: '순대국밥, 칼국수, 튀김', features: '고인쇄박물관에서 도보 10분', kind: 'food' },
+  { token: '머드', shop: '대천항 조개구이', menu: '조개구이, 해물라면, 모듬회', features: '머드 광장에서 가까운 항 포차', kind: 'food' },
+  { token: '서동', shop: '부여 연꽃밥집', menu: '연잎밥, 한우구이, 버섯전골', features: '궁남지 연꽃단지 앞 한정식', kind: 'food' },
+  { token: '한지', shop: '전주 남부시장 야시장', menu: '초코파이, 문어꼬치, 막걸리', features: '한옥마을·한지축제장과 이어지는 야시장', kind: 'market' },
+  { token: '밤바다', shop: '여수 교동시장', menu: '서대회, 게장, 돌산갓김치', features: '밤바다 불꽃 관람 동선 위 시장', kind: 'market' },
+  { token: '갈대', shop: '순천만 갈대밭 카페', menu: '꼬막비빔밥, 갈대빵, 쑥차', features: '정원 박람회장·갈대밭 입구', kind: 'cafe' },
+  { token: '유등', shop: '진주중앙시장 비빔밥', menu: '진주비빔밥, 냉면, 육회', features: '남강 유등 산책로에서 5분', kind: 'food' },
+  { token: '벚꽃', shop: '황리단길 황남빵', menu: '황남빵, 찰보리빵, 수정과', features: '대릉원 벚꽃길과 이어지는 빵집', kind: 'cafe' },
+  { token: '부산불꽃', shop: '광안리 포장마차', menu: '회, 파전, 생맥주', features: '불꽃 관람석이 보이는 해변 포차', kind: 'night' },
+  { token: '들불', shop: '동문재래시장', menu: '흑돼지, 오메기떡, 고기국수', features: '새별오름 들불 관람 후 이어지는 시장', kind: 'market' },
+  { token: '칠십리', shop: '서귀포매일올레시장', menu: '갈치조림, 고기국수, 한라봉주스', features: '칠십리시공원에서 가까운 올레시장', kind: 'market' },
+  { token: '유채', shop: '협재 해변 카페', menu: '한라봉에이드, 말차라떼, 오메기빵', features: '유채꽃 단지와 협재 에메랄드 해변 사이', kind: 'cafe' },
+];
+
+function shopHint(title: string) {
+  return SHOP_HINTS.find((item) => title.includes(item.token)) ?? {
+    shop: '축제 상생가게',
+    menu: '지역 대표 메뉴',
+    features: '축제장 인근 제휴 점포',
+    kind: 'food' as const,
+  };
+}
 
 export function fallbackPromotions(metro: string): HomePromotion[] {
   const official = couponTypeForRegion(metro) === 'OFFICIAL';
   const festivals = REGION_FESTIVAL_FALLBACKS[metro] ?? [];
-  return festivals.slice(0, 2).map((item, index) => ({
-    id: `self-${metro}-${index}`,
-    title: `${item.title} 제휴 할인`,
-    festival_id: item.id,
-    festival_title: item.title,
-    business_name: `${item.municipality_name} 상생가게`,
-    merchant_discount_rate: official ? 10 : 15,
-    gov_matching_rate: official ? 10 : 0,
-    total_discount_rate: official ? 20 : 15,
-    remaining_quantity: 80,
-    funding_type: official ? 'MATCHED' : 'MERCHANT_ONLY',
-    coupon_type: official ? 'OFFICIAL' : 'SELF',
-    metro,
-    municipality_name: item.municipality_name,
-    address: item.location_name,
-    latitude: item.latitude,
-    longitude: item.longitude,
-  }));
+  return festivals.map((item, index) => {
+    const hint = shopHint(item.title);
+    const photos = shopPhotosFor(hint.kind);
+    const merchant = official ? 10 : 15;
+    const gov = official ? 10 : 0;
+    return {
+      id: `${official ? 'off' : 'self'}-${metro}-${item.id}`,
+      title: `${item.title} 제휴 할인`,
+      festival_id: item.id,
+      festival_title: item.title,
+      business_name: hint.shop,
+      merchant_discount_rate: merchant,
+      gov_matching_rate: gov,
+      total_discount_rate: merchant + gov,
+      remaining_quantity: 80 - index * 6,
+      funding_type: official ? 'MATCHED' : 'MERCHANT_ONLY',
+      coupon_type: official ? 'OFFICIAL' : 'SELF',
+      metro,
+      municipality_name: item.municipality_name,
+      address: item.location_name,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      main_menu: hint.menu,
+      features: hint.features,
+      exterior_image_url: photos.exterior_image_url,
+      interior_image_url: photos.interior_image_url,
+      gps_confirmed: true,
+    };
+  });
+}
+
+export function findFallbackFestival(contentId?: string, title?: string): HomeFestival | undefined {
+  const all = Object.values(REGION_FESTIVAL_FALLBACKS).flat();
+  return all.find((item) =>
+    item.id === contentId
+    || item.contentId === contentId
+    || (title && item.title === title)
+    || (title && item.title.includes(title))
+    || (title && title.includes(item.title)),
+  );
+}
+
+export function withFestivalImage(festival: HomeFestival, metro?: string): HomeFestival {
+  if (festival.image_url) return festival;
+  return {
+    ...festival,
+    image_url: festivalImageFor(festival.title, festival.location_name, metro),
+  };
 }

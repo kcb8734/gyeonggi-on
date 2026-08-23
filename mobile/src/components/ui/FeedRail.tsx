@@ -2,8 +2,8 @@ import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFeedPosts } from '../../stores/feedStore';
 
-export default function FeedRail({ onPress }: { onPress?: (postId: string) => void }) {
-  const posts = useFeedPosts();
+export default function FeedRail({ onPress, metro }: { onPress?: (postId: string) => void; metro?: string }) {
+  const posts = useFeedPosts(metro);
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>

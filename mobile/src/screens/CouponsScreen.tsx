@@ -44,7 +44,19 @@ export default function CouponsScreen() {
 
   useEffect(() => {
     fetchHomeFeed(region.id).then((feed) => {
-      setPromotions([...app.localPromotions, ...feed.promotions.filter((item) => !app.localPromotions.some((local) => local.id === item.id))]);
+      const locals = app.localPromotions.filter((item) => !item.metro || item.metro === region.id);
+      setPromotions([
+        ...locals,
+        ...feed.promotions
+          .filter((item) => !locals.some((local) => local.id === item.id))
+          .map((item) => ({
+            ...item,
+            metro: item.metro ?? region.id,
+            coupon_type: item.coupon_type ?? (item.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
+            total_discount_rate: item.total_discount_rate
+              ?? ((item.merchant_discount_rate ?? 0) + (item.gov_matching_rate ?? 0)),
+          })),
+      ]);
     });
     fetchMyCoupons(DEV_USER_ID).then((items) => {
       items.forEach((item) => addWalletCoupon(item));

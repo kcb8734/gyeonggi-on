@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import CourseGuideModal from '../components/ui/CourseGuideModal';
 import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
+import { findFallbackFestival } from '../constants/regionTour';
+import { festivalImageFor } from '../constants/regionMedia';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
@@ -36,20 +38,41 @@ export default function FestivalDetailScreen({
   contentTypeId,
   fallbackTel,
   fallbackTitle,
+  fallbackCity,
+  fallbackAddress,
+  fallbackLatitude,
+  fallbackLongitude,
+  fallbackMetro,
+  fallbackImageUrl,
 }: {
   contentId: string;
   contentTypeId?: string;
   fallbackTel?: string;
   fallbackTitle?: string;
+  fallbackCity?: string;
+  fallbackAddress?: string;
+  fallbackLatitude?: number;
+  fallbackLongitude?: number;
+  fallbackMetro?: string;
+  fallbackImageUrl?: string;
 }) {
   useAppState();
+  const known = findFallbackFestival(contentId, fallbackTitle);
   const [detail, setDetail] = useState<TourDetail | null>(null);
   const [course, setCourse] = useState<FestivalCourse | null>(null);
   const [guideFocus, setGuideFocus] = useState<'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박' | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchRecommendedCourse(fallbackTitle).then((data) => {
+    const seed = {
+      title: fallbackTitle || known?.title,
+      city: fallbackCity || known?.municipality_name || undefined,
+      address: fallbackAddress || known?.location_name || undefined,
+      metro: fallbackMetro,
+      latitude: fallbackLatitude ?? known?.latitude,
+      longitude: fallbackLongitude ?? known?.longitude,
+    };
+    fetchRecommendedCourse(seed).then((data) => {
       if (!cancelled && data) setCourse(data);
     });
     fetchTourDetail(contentId, contentTypeId)
@@ -59,39 +82,52 @@ export default function FestivalDetailScreen({
             ...data,
             tel: data.tel || fallbackTel,
             title: data.title || fallbackTitle || data.title,
+            address: data.address || fallbackAddress || known?.location_name || data.address,
+            mapX: data.mapX || fallbackLongitude || known?.longitude || data.mapX,
+            mapY: data.mapY || fallbackLatitude || known?.latitude || data.mapY,
+            firstImage: data.firstImage || fallbackImageUrl || known?.image_url || data.firstImage,
           });
         }
       })
       .catch(() => {
         if (!cancelled) {
+          const image = fallbackImageUrl || known?.image_url || festivalImageFor(fallbackTitle, fallbackAddress, fallbackMetro);
           setDetail({
             contentId,
             contentTypeId: contentTypeId ?? '15',
             tel: fallbackTel,
-            title: fallbackTitle || '축제 상세',
+            title: fallbackTitle || known?.title || '축제 상세',
             overview: EMPTY_COPY.overview,
-            address: EMPTY_COPY.address,
+            address: fallbackAddress || known?.location_name || EMPTY_COPY.address,
             fee: EMPTY_COPY.fee,
-            mapX: 127.013,
-            mapY: 37.287,
-            images: [],
-            category: '문화/예술',
+            mapX: fallbackLongitude || known?.longitude || 127.013,
+            mapY: fallbackLatitude || known?.latitude || 37.287,
+            images: image ? [{ originUrl: image }] : [],
+            firstImage: image,
+            category: (known?.category as TourDetail['category']) || '문화/예술',
           });
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [contentId, contentTypeId, fallbackTel, fallbackTitle]);
+  }, [contentId, contentTypeId, fallbackTel, fallbackTitle, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, fallbackImageUrl, known]);
 
   useEffect(() => {
     if (!detail?.title) return;
     let cancelled = false;
-    fetchRecommendedCourse(detail.title).then((data) => {
+    fetchRecommendedCourse({
+      title: detail.title,
+      city: fallbackCity || known?.municipality_name || undefined,
+      address: detail.address || fallbackAddress,
+      metro: fallbackMetro,
+      latitude: detail.mapY || fallbackLatitude,
+      longitude: detail.mapX || fallbackLongitude,
+    }).then((data) => {
       if (!cancelled && data) setCourse(data);
     });
     return () => { cancelled = true; };
-  }, [detail?.title]);
+  }, [detail?.title, detail?.address, detail?.mapX, detail?.mapY, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, known]);
 
   if (!detail) {
     return (

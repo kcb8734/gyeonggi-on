@@ -6,6 +6,9 @@ import { useAppState } from '../../stores/appStore';
 import { useAuthUser } from '../../stores/authStore';
 
 const LOGO = require('../../../assets/onandon-logo.png');
+/** 원본 로고 1536×1024. 경기온 칩 높이(36)에 맞춰 세로를 맞추고 가로는 배율 유지. */
+const LOGO_HEIGHT = 36;
+const LOGO_WIDTH = Math.round(LOGO_HEIGHT * (1536 / 1024));
 
 function CoinGlyph() {
   return (
@@ -58,19 +61,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 52,
     backgroundColor: '#fff',
   },
   left: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 1,
+    justifyContent: 'flex-start',
   },
   logo: {
-    height: 32,
-    width: 112,
+    height: LOGO_HEIGHT,
+    width: LOGO_WIDTH,
   },
   pointsBox: {
     flexDirection: 'row',
@@ -80,7 +83,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    marginLeft: 12,
+    height: LOGO_HEIGHT,
   },
   pts: {
     fontSize: 14,
