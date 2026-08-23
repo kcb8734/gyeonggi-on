@@ -16,6 +16,7 @@ import type { FestivalPin } from '../types/map';
 import { addLocalPromotion, incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
 import { logoutMerchant, useMerchantState } from '../stores/merchantStore';
 import MerchantAuthPanel from '../components/ui/MerchantAuthPanel';
+import QrCouponScanner from '../components/ui/QrCouponScanner';
 import type { HomePromotion, QrScanRecord } from '../types/home';
 import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
 import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
@@ -392,6 +393,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         </TouchableOpacity>
         {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
       </View>
+      <QrCouponScanner merchantId={merchantId} onUsed={() => incrementPromotionQr(savedPromoId || 'local')} />
 
       <Text style={styles.note}>상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 

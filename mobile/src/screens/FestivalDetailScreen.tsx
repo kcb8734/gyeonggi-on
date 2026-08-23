@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
@@ -42,9 +43,13 @@ export default function FestivalDetailScreen({
 }) {
   useAppState();
   const [detail, setDetail] = useState<TourDetail | null>(null);
+  const [course, setCourse] = useState<FestivalCourse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    fetchRecommendedCourse(fallbackTitle).then((data) => {
+      if (!cancelled && data) setCourse(data);
+    });
     fetchTourDetail(contentId, contentTypeId)
       .then((data) => {
         if (!cancelled) {
@@ -76,6 +81,15 @@ export default function FestivalDetailScreen({
       cancelled = true;
     };
   }, [contentId, contentTypeId, fallbackTel, fallbackTitle]);
+
+  useEffect(() => {
+    if (!detail?.title) return;
+    let cancelled = false;
+    fetchRecommendedCourse(detail.title).then((data) => {
+      if (!cancelled && data) setCourse(data);
+    });
+    return () => { cancelled = true; };
+  }, [detail?.title]);
 
   if (!detail) {
     return (
@@ -130,6 +144,20 @@ export default function FestivalDetailScreen({
           <Text style={styles.label}>상세 개요</Text>
           <Text style={styles.overview}>{overview}</Text>
         </View>
+
+        {course ? (
+          <View style={styles.card}>
+            <Text style={styles.label}>On&On 추천 코스</Text>
+            <Text style={styles.value}>{course.course_title}</Text>
+            <Text style={styles.overview}>대상 {course.target_audience} · {course.total_distance}</Text>
+            {course.itinerary.map((step) => (
+              <Text key={step.step} style={styles.overview}>
+                {step.step}. [{step.category}] {step.place_name} · {step.estimated_time}{'\n'}{step.description}
+              </Text>
+            ))}
+            <Text style={styles.overview}>{course.local_benefit_tip}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.label}>행사 장소 / 주소</Text>

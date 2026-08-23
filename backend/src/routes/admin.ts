@@ -2,11 +2,15 @@ import { Router } from 'express';
 import { adminLogin } from '../controllers/adminAuthController';
 import {
   approveMerchantMatching,
+  downloadSettlementExcel,
+  getAdminDashboard,
   getBudgetOverview,
   getCouponStats,
   listAdminFestivals,
   listVerifiedMerchants,
+  markCoursePick,
   removeAdminFestival,
+  updateAdminEngine,
   upsertAdminFestival,
 } from '../controllers/adminController';
 import { adminAuthMiddleware } from '../middleware/adminAuth';
@@ -21,5 +25,9 @@ router.get('/budget', adminAuthMiddleware, getBudgetOverview);
 router.get('/festivals', adminAuthMiddleware, listAdminFestivals);
 router.post('/festivals', adminAuthMiddleware, upsertAdminFestival);
 router.delete('/festivals/:contentId', adminAuthMiddleware, removeAdminFestival);
+router.get('/dashboard', getAdminDashboard);
+router.post('/engine', updateAdminEngine);
+router.post('/courses/pick', markCoursePick);
+router.get('/settlements.csv', downloadSettlementExcel);
 
 export default router;

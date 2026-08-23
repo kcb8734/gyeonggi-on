@@ -5,6 +5,7 @@ import {
   deleteAdminFestival,
   fetchAdminFestivals,
   fetchBudget,
+  fetchDashboard,
   fetchMerchants,
   fetchStats,
   logout,
@@ -25,6 +26,7 @@ export default function App() {
   const [stats, setStats] = useState<any>(null);
   const [budget, setBudget] = useState<any[]>([]);
   const [manualFestivals, setManualFestivals] = useState<any[]>([]);
+  const [dashboard, setDashboard] = useState<any>(null);
   const [festivalForm, setFestivalForm] = useState({
     title: '',
     address: '',
@@ -49,16 +51,18 @@ export default function App() {
   }, [view, path]);
 
   const load = async () => {
-    const [m, s, b, f] = await Promise.all([
+    const [m, s, b, f, d] = await Promise.all([
       fetchMerchants(),
       fetchStats(),
       fetchBudget(),
       fetchAdminFestivals().catch(() => []),
+      fetchDashboard().catch(() => null),
     ]);
     setMerchants(m);
     setStats(s);
     setBudget(b);
     setManualFestivals(f);
+    setDashboard(d);
   };
 
   useEffect(() => {
@@ -286,6 +290,34 @@ export default function App() {
                 <td>
                   <button className="danger" onClick={() => deleteAdminFestival(row.contentId).then(load)}>삭제</button>
                 </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>지자체 매칭 매트릭스</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>시·군</th>
+              <th>담당자</th>
+              <th>매칭 상가</th>
+              <th>활성 축제</th>
+              <th>쿠폰</th>
+              <th>승인</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(dashboard?.matching ?? []).map((row: any) => (
+              <tr key={row.city}>
+                <td>{row.city}</td>
+                <td>{row.officerName || '미지정'}</td>
+                <td>{row.stores}</td>
+                <td>{row.festivals}</td>
+                <td>{row.coupons}</td>
+                <td>{row.approved ? '승인' : '대기'}</td>
               </tr>
             ))}
           </tbody>

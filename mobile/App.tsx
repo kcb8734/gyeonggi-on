@@ -129,13 +129,18 @@ function startsOnAdmin() {
   return window.location.pathname.replace(/\/+$/, '') === '/admin';
 }
 
+function startsOnSettlement() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return window.location.pathname.replace(/\/+$/, '') === '/merchant/settlement';
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AppShell>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName={startsOnAdmin() ? 'Admin' : 'Tabs'}>
+          <Stack.Navigator initialRouteName={startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : 'Tabs'}>
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="PromotionRegister"

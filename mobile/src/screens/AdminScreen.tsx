@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
 const ADMIN_PASSWORD = 'admin1234';
+
+type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'ai' | 'stats';
 
 export default function AdminScreen() {
   const [email, setEmail] = useState(ADMIN_EMAIL);
   const [password, setPassword] = useState(ADMIN_PASSWORD);
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState('');
+  const [menu, setMenu] = useState<Menu>('dash');
   const [festivalCount, setFestivalCount] = useState<number | null>(null);
   const [festivalSource, setFestivalSource] = useState('');
   const [syncMessage, setSyncMessage] = useState('');
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [festivalW, setFestivalW] = useState(40);
+  const [campW, setCampW] = useState(25);
+  const [marketW, setMarketW] = useState(20);
+  const [historyW, setHistoryW] = useState(15);
 
   const loadFestivals = async () => {
     try {
@@ -24,8 +32,27 @@ export default function AdminScreen() {
     }
   };
 
+  const loadDashboard = async () => {
+    try {
+      const res = await fetch('/api/admin/dashboard');
+      const data = await res.json();
+      setDashboard(data.data);
+      if (data.data?.engine) {
+        setFestivalW(data.data.engine.festivalWeight ?? 40);
+        setCampW(data.data.engine.campingDistanceWeight ?? 25);
+        setMarketW(data.data.engine.marketRatioWeight ?? 20);
+        setHistoryW(data.data.engine.historyWeight ?? 15);
+      }
+    } catch {
+      setDashboard(null);
+    }
+  };
+
   useEffect(() => {
-    if (authed) loadFestivals();
+    if (authed) {
+      loadFestivals();
+      loadDashboard();
+    }
   }, [authed]);
 
   const handleLogin = async () => {
@@ -86,30 +113,137 @@ export default function AdminScreen() {
     );
   }
 
+  const kpi = dashboard?.kpi ?? {};
+  const tour = dashboard?.tour ?? {};
+  const coupons = dashboard?.coupons ?? [];
+  const matching = dashboard?.matching ?? [];
+  const unassigned = matching.filter((row: any) => !row.officerName);
+  const courses = dashboard?.courses ?? [];
+
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.body}>
       <Text style={styles.kicker}>온앤온 관리자</Text>
-      <Text style={styles.title}>한국관광공사 API 수집</Text>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>데이터 수집 프로세스</Text>
-        <Text style={styles.p}>1. 서비스 키(TOUR_API_SERVICE_KEY 또는 NTS_SERVICE_KEY)로 한국관광공사 TourAPI 4.0에 접속합니다.</Text>
-        <Text style={styles.p}>2. KorService2 / searchFestival2 를 호출합니다. areaCode=31(경기), MobileOS=ETC, MobileApp=kdanji, 오늘 이후 행사만 가져옵니다.</Text>
-        <Text style={styles.p}>3. 구 KorService1 / searchFestival1 은 폐기되어 결과가 없으면 쓰지 않습니다. 운영 API는 2.0 경로를 먼저 시도한 뒤 필요 시 보완합니다.</Text>
-        <Text style={styles.p}>4. 매일 03:00 Vercel Cron이 /api/cron/festivals 를 호출해 동기화합니다. 관리자는 아래 버튼으로 즉시 수집을 요청할 수 있습니다.</Text>
-        <Text style={styles.p}>5. 응답의 contentid, title, 주소, 좌표, 기간, 이미지를 홈 축제 카드로 바꿉니다. 12시간 캐시로 트래픽을 줄입니다.</Text>
-        <Text style={styles.p}>6. TourAPI에 없는 지자체 자체 행사는 관리자가 수동 등록하면 앱 홈·상세에 바로 붙습니다.</Text>
+      <Text style={styles.title}>통합 관리자 백오피스</Text>
+      <View style={styles.menuRow}>
+        {([
+          ['dash', '대시보드'],
+          ['tour', 'TourAPI'],
+          ['coupon', '상가·쿠폰'],
+          ['match', '지자체'],
+          ['ai', 'AI 코스'],
+          ['stats', '통계'],
+        ] as const).map(([key, label]) => (
+          <TouchableOpacity key={key} style={[styles.menu, menu === key && styles.menuOn]} onPress={() => setMenu(key)}>
+            <Text style={[styles.menuText, menu === key && styles.menuTextOn]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>현재 수집 상태</Text>
-        <Text style={styles.p}>
-          경기 축제 {festivalCount == null ? '확인 중' : `${festivalCount}건`}
-          {festivalSource ? ` · 출처 ${festivalSource}` : ''}
-        </Text>
-        {syncMessage ? <Text style={styles.ok}>{syncMessage}</Text> : null}
-        <TouchableOpacity style={styles.btn} onPress={handleSync}>
-          <Text style={styles.btnText}>TourAPI 지금 수집</Text>
-        </TouchableOpacity>
-      </View>
+
+      {menu === 'dash' ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>핵심 KPI</Text>
+          <Text style={styles.p}>축제 {kpi.festivals ?? festivalCount ?? '-'} · 상가 {kpi.merchants ?? '-'}</Text>
+          <Text style={styles.p}>쿠폰 발행 {kpi.couponsIssued ?? 0} · 사용 {kpi.couponsUsed ?? 0} · 회수율 {kpi.recoveryRate ?? 0}%</Text>
+        </View>
+      ) : null}
+
+      {menu === 'tour' ? (
+        <>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>TourAPI 수집 엔진</Text>
+            <Text style={styles.p}>일일 Quota {tour.quotaUsed ?? 0} / {tour.quotaLimit ?? 1000}</Text>
+            <View style={styles.bar}><View style={[styles.barFill, { width: `${Math.min(100, ((tour.quotaUsed ?? 0) / (tour.quotaLimit ?? 1000)) * 100)}%` }]} /></View>
+            {(tour.categories ?? []).map((row: any) => (
+              <Text key={row.name} style={styles.p}>{row.name} {row.count}건</Text>
+            ))}
+            <Text style={styles.p}>경기 축제 {festivalCount == null ? '확인 중' : `${festivalCount}건`}{festivalSource ? ` · ${festivalSource}` : ''}</Text>
+            {syncMessage ? <Text style={styles.ok}>{syncMessage}</Text> : null}
+            <TouchableOpacity style={styles.btn} onPress={handleSync}>
+              <Text style={styles.btnText}>즉시 동기화</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>수집 로그</Text>
+            {(tour.logs ?? []).map((row: any, idx: number) => (
+              <Text key={idx} style={styles.p}>{row.ran_at} · {row.target_api} · 수집 {row.fetched} · 실패 {row.failed} · {row.status}</Text>
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {menu === 'coupon' ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>쿠폰 마스터</Text>
+          {coupons.map((row: any) => (
+            <Text key={row.id} style={styles.p}>
+              {row.id} · {row.festival} / {row.store} · 발급 {row.issued} 사용 {row.used} 회수율 {row.recovery}%
+            </Text>
+          ))}
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => {
+              if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.location.href = '/api/admin/settlements.csv';
+              }
+            }}
+          >
+            <Text style={styles.btnText}>월별 정산 Excel 내려받기</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {menu === 'match' ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>경기도 31개 시·군 매칭</Text>
+          {unassigned.length ? <Text style={styles.error}>담당자 미지정 {unassigned.length}곳</Text> : null}
+          {matching.map((row: any) => (
+            <Text key={row.city} style={styles.p}>
+              {row.city} · {row.officerName || '미지정'} · 상가 {row.stores} · 축제 {row.festivals} · 쿠폰 {row.coupons} · {row.approved ? '승인' : '대기'}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {menu === 'ai' ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>추천 가중치</Text>
+          <Text style={styles.p}>축제 {festivalW} / 캠핑거리 {campW} / 전통시장 {marketW} / 역사 {historyW}</Text>
+          <TextInput style={styles.input} value={String(festivalW)} onChangeText={(v) => setFestivalW(Number(v) || 0)} />
+          <TextInput style={styles.input} value={String(campW)} onChangeText={(v) => setCampW(Number(v) || 0)} />
+          <TextInput style={styles.input} value={String(marketW)} onChangeText={(v) => setMarketW(Number(v) || 0)} />
+          <TextInput style={styles.input} value={String(historyW)} onChangeText={(v) => setHistoryW(Number(v) || 0)} />
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={async () => {
+              await fetch('/api/admin/engine', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  festivalWeight: festivalW,
+                  campingDistanceWeight: campW,
+                  marketRatioWeight: marketW,
+                  historyWeight: historyW,
+                }),
+              });
+              await loadDashboard();
+            }}
+          >
+            <Text style={styles.btnText}>가중치 저장</Text>
+          </TouchableOpacity>
+          {courses.map((row: any) => (
+            <Text key={row.id} style={styles.p}>{row.festival} · 추천 {row.recommendCount} · 저장 {row.saveCount}</Text>
+          ))}
+        </View>
+      ) : null}
+
+      {menu === 'stats' ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>지역 소비 활성화</Text>
+          <Text style={styles.p}>쿠폰 회수율 {kpi.recoveryRate ?? 0}% · 사용 {kpi.couponsUsed ?? 0}건</Text>
+          <Text style={styles.p}>TourAPI 출처 {festivalSource || '실시간 조회'}</Text>
+        </View>
+      ) : null}
+
       <TouchableOpacity style={styles.ghost} onPress={() => setAuthed(false)}>
         <Text style={styles.ghostText}>로그아웃</Text>
       </TouchableOpacity>
@@ -122,6 +256,11 @@ const styles = StyleSheet.create({
   body: { padding: 20, paddingBottom: 40 },
   kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
   title: { fontSize: 22, fontWeight: '800', color: '#111827', marginTop: 4, marginBottom: 12 },
+  menuRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  menu: { backgroundColor: '#fff', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#E5E7EB' },
+  menuOn: { backgroundColor: '#111827', borderColor: '#111827' },
+  menuText: { fontSize: 12, fontWeight: '800', color: '#374151' },
+  menuTextOn: { color: '#fff' },
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -140,6 +279,7 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     padding: 12,
     fontSize: 15,
+    marginBottom: 8,
   },
   btn: { marginTop: 14, backgroundColor: '#111827', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
   btnText: { color: '#fff', fontWeight: '800' },
@@ -147,4 +287,6 @@ const styles = StyleSheet.create({
   ghostText: { fontWeight: '700', color: '#4B5563' },
   error: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#B91C1C' },
   ok: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#047857' },
+  bar: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 99, overflow: 'hidden', marginBottom: 10 },
+  barFill: { height: 8, backgroundColor: '#0F766E' },
 });

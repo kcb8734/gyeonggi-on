@@ -3,6 +3,50 @@ import { generateEmailCode, saveEmailCode, verifyEmailCode } from './emailCodeSt
 
 const RESEND_URL = 'https://api.resend.com/emails';
 
+export type ResendAttachment = {
+  filename: string;
+  content: string;
+};
+
+export async function sendResendEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: ResendAttachment[];
+}): Promise<{ id?: string; mocked?: boolean }> {
+  const resendKey = String(process.env.RESEND_API_KEY || '').trim();
+  const from = process.env.RESEND_FROM || 'Onandon <noreply@kdanji.com>';
+  if (!resendKey) {
+    console.log(`[email] RESEND_API_KEY 없음. to=${input.to} subject=${input.subject}`);
+    return { id: `mock-${Date.now()}`, mocked: true };
+  }
+  const response = await fetch(RESEND_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [input.to],
+      subject: input.subject,
+      html: input.html,
+      attachments: input.attachments,
+    }),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    console.error('[email] Resend 실패', response.status, text);
+    throw new Error('공문서 메일 발송에 실패했습니다.');
+  }
+  try {
+    const parsed = JSON.parse(text) as { id?: string };
+    return { id: parsed.id };
+  } catch {
+    return { id: 'sent' };
+  }
+}
+
 export async function sendManagerEmailCode(email: string) {
   const trimmed = String(email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {

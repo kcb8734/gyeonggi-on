@@ -303,3 +303,29 @@ export const removeAdminFestival = async (req: Request, res: Response) => {
   const removed = deleteFestivalOverride(String(req.params.contentId ?? ''));
   return res.json({ success: removed, message: removed ? '삭제했습니다.' : '해당 행사가 없습니다.' });
 };
+
+export const getAdminDashboard = async (_req: Request, res: Response) => {
+  const { getAdminDashboard: load } = await import('../services/adminDashboardService');
+  const data = await load();
+  return res.json({ success: true, data });
+};
+
+export const updateAdminEngine = async (req: Request, res: Response) => {
+  const { updateEngineWeights } = await import('../services/adminDashboardService');
+  const data = await updateEngineWeights(req.body ?? {});
+  return res.json({ success: true, data });
+};
+
+export const markCoursePick = async (req: Request, res: Response) => {
+  const { markEditorsPick } = await import('../services/adminDashboardService');
+  const data = await markEditorsPick(String(req.body?.course_id ?? req.params.id ?? ''), req.body?.enabled !== false);
+  return res.json({ success: true, data });
+};
+
+export const downloadSettlementExcel = async (_req: Request, res: Response) => {
+  const { settlementCsv } = await import('../services/adminDashboardService');
+  const csv = settlementCsv();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="onandon-settlement.csv"');
+  return res.send(`\uFEFF${csv}`);
+};
