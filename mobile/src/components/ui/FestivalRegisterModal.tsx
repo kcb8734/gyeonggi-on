@@ -21,9 +21,11 @@ import { formatTel } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
 import { sendManagerEmailCode, verifyManagerEmailCode } from '../../api/emailAuth';
 import {
+  DEFAULT_FESTIVAL_MANAGER_EMAIL,
   getManagerState,
   loginFestivalManager,
   logoutFestivalManager,
+  rememberVerifiedManager,
   registerFestivalManager,
   useManagerState,
 } from '../../stores/managerStore';
@@ -162,7 +164,7 @@ export default function FestivalRegisterModal({
   const [address, setAddress] = useState('');
   const [summary, setSummary] = useState('');
   const [overview, setOverview] = useState('');
-  const [managerEmail, setManagerEmail] = useState('');
+  const [managerEmail, setManagerEmail] = useState(DEFAULT_FESTIVAL_MANAGER_EMAIL);
   const [managerPhone, setManagerPhone] = useState('');
   const [inquiryTel, setInquiryTel] = useState('');
   const [contactVerified, setContactVerified] = useState(false);
@@ -171,6 +173,7 @@ export default function FestivalRegisterModal({
   const [sendingCode, setSendingCode] = useState(false);
   const [checkingCode, setCheckingCode] = useState(false);
   const [devCode, setDevCode] = useState('');
+  const [emailChallenge, setEmailChallenge] = useState('');
   const [localityId, setLocalityId] = useState(CITIES[0]?.id ?? '수원시');
   const [category, setCategory] = useState<string>('먹거리');
   const [startDate, setStartDate] = useState('');
@@ -195,6 +198,7 @@ export default function FestivalRegisterModal({
     setEmailSent(false);
     setEmailCode('');
     setDevCode('');
+    setEmailChallenge('');
   }, [managerEmail, managerPhone]);
 
   const reset = () => {
@@ -202,13 +206,14 @@ export default function FestivalRegisterModal({
     setAddress('');
     setSummary('');
     setOverview('');
-    setManagerEmail('');
+    setManagerEmail(DEFAULT_FESTIVAL_MANAGER_EMAIL);
     setManagerPhone('');
     setInquiryTel('');
     setContactVerified(false);
     setEmailCode('');
     setEmailSent(false);
     setDevCode('');
+    setEmailChallenge('');
     setLocalityId(CITIES[0]?.id ?? '수원시');
     setCategory('먹거리');
     setStartDate('');
@@ -241,8 +246,14 @@ export default function FestivalRegisterModal({
       return;
     }
     setEmailSent(true);
+    if (result.challenge) setEmailChallenge(result.challenge);
     if (result.devCode) setDevCode(result.devCode);
-    Alert.alert('인증메일 발송', result.devCode ? `${result.message}\n개발용 코드 ${result.devCode}` : result.message);
+    Alert.alert(
+      result.devCode ? '개발용 인증번호' : '인증메일 발송',
+      result.devCode
+        ? `${result.message}\n개발용 코드 ${result.devCode}\n운영에 RESEND_API_KEY를 넣으면 ${managerEmail.trim()} 메일함으로 갑니다.`
+        : result.message,
+    );
   };
 
   const confirmEmailCode = async () => {
@@ -251,14 +262,15 @@ export default function FestivalRegisterModal({
       return;
     }
     setCheckingCode(true);
-    const result = await verifyManagerEmailCode(managerEmail.trim(), emailCode.trim());
+    const result = await verifyManagerEmailCode(managerEmail.trim(), emailCode.trim(), emailChallenge);
     setCheckingCode(false);
     if (!result.success) {
       Alert.alert('인증 실패', result.message);
       return;
     }
     setContactVerified(true);
-    Alert.alert('확인 완료', `${managerEmail.trim()}\n${formatTel(managerPhone)}\n담당자 메일이 인증되었습니다.`);
+    rememberVerifiedManager(managerEmail.trim(), managerPhone.trim());
+    Alert.alert('확인 완료', `${managerEmail.trim()}\n${formatTel(managerPhone)}\n담당자로 등록되었습니다. 관리 비밀번호를 설정하세요.`);
   };
 
   const handleSave = async () => {
@@ -379,7 +391,7 @@ export default function FestivalRegisterModal({
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <Text style={styles.kicker}>지자체 축제 관리</Text>
             <Text style={styles.title}>지자체 축제 등록</Text>
-            <Text style={styles.lead}>31개 시·군 축제를 직접 올리고 지역화폐 쿠폰과 매칭할 수 있습니다.</Text>
+            <Text style={styles.lead}>31개 시·군 축제를 직접 올리고 지역화폐 쿠폰과 매칭할 수 있습니다. 담당자 메일은 pizon8113@gmail.com 으로 인증번호를 받아 등록합니다.</Text>
 
             <View style={styles.loginBox}>
               <Text style={styles.loginTitle}>등록 담당자 관리</Text>
@@ -445,7 +457,7 @@ export default function FestivalRegisterModal({
             <InModalField
               value={managerEmail}
               onChange={setManagerEmail}
-              placeholder="예: festival@suwon.go.kr"
+              placeholder="pizon8113@gmail.com"
               keyboardType="email-address"
             />
 
