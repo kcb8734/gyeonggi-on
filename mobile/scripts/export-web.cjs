@@ -42,7 +42,7 @@ const result = spawnSync(
 const indexPath = path.join(root, 'dist/index.html');
 if (fs.existsSync(indexPath)) {
   const html = fs.readFileSync(indexPath, 'utf8')
-    .replace('<head>', `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />\n    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />`)
+    .replace('<head>', `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />`)
     .replace('</body>', `<!-- onandon-build ${sha} ${stamp} -->\n  </body>`);
   fs.writeFileSync(indexPath, html);
 }
