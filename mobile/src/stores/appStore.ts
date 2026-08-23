@@ -232,7 +232,14 @@ export function incrementPromotionQr(id: string, scan?: Partial<QrScanRecord>) {
         govRate: item.gov_matching_rate,
         qrCount: 1,
       }).perUse;
-      const qrScans = [...(item.qrScans ?? []), { at, amountWon: perUse }];
+      const existing = item.qrScans ?? [];
+      const padded = existing.length
+        ? existing
+        : Array.from({ length: item.qrConfirmCount ?? 0 }, () => ({
+          at: item.lastQrAt ?? at,
+          amountWon: perUse,
+        }));
+      const qrScans = [...padded, { at, amountWon: perUse }];
       return {
         ...item,
         qrConfirmCount: qrScans.length,

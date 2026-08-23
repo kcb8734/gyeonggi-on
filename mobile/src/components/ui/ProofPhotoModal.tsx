@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { AttendanceProofKind, WalletCoupon } from '../../stores/appStore';
 import ModalExitButton from './ModalExitButton';
@@ -32,6 +32,10 @@ export default function ProofPhotoModal({
 }: Props) {
   const [picking, setPicking] = useState(false);
   const issued = coupons.filter((item) => item.status === 'ISSUED');
+
+  useEffect(() => {
+    if (!visible) setPicking(false);
+  }, [visible]);
 
   if (!visible) return null;
 
