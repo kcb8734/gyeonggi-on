@@ -1,0 +1,215 @@
+import { Linking, Platform } from 'react-native';
+import type { HomePromotion, QrScanRecord } from '../types/home';
+import { formatKoDate, formatKoDateTime } from './festivalSchedule';
+import { matchingAmountWon } from './settlementMail';
+
+export interface SettlementDocumentInput {
+  promo: HomePromotion;
+  scans: QrScanRecord[];
+  amountWon: number;
+  documentNo: string;
+  issuedAt: string;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function scansOf(promo: HomePromotion): QrScanRecord[] {
+  if (promo.qrScans?.length) return promo.qrScans;
+  if (promo.lastQrAt) {
+    const perUse = matchingAmountWon({
+      maxDiscountAmount: promo.maxDiscountAmount ?? 5000,
+      govRate: promo.gov_matching_rate,
+      qrCount: 1,
+    }).perUse;
+    return Array.from({ length: promo.qrConfirmCount ?? 1 }, () => ({
+      at: promo.lastQrAt as string,
+      amountWon: perUse,
+    }));
+  }
+  return [];
+}
+
+export function buildSettlementInput(promo: HomePromotion): SettlementDocumentInput {
+  const scans = scansOf(promo);
+  const money = matchingAmountWon({
+    maxDiscountAmount: promo.maxDiscountAmount ?? 5000,
+    govRate: promo.gov_matching_rate,
+    qrCount: scans.length || (promo.qrConfirmCount ?? 0),
+  });
+  const amountWon = promo.settlementAmount ?? money.total;
+  const issuedAt = promo.settledAt ?? new Date().toISOString();
+  const stamp = issuedAt.slice(0, 10).replace(/-/g, '');
+  const documentNo = `ONON-정산-${stamp}-${promo.id.slice(-4).toUpperCase()}`;
+  return { promo, scans, amountWon, documentNo, issuedAt };
+}
+
+export function buildOfficialDocumentHtml(input: SettlementDocumentInput): string {
+  const { promo, scans, amountWon, documentNo, issuedAt } = input;
+  const rows = scans.length
+    ? scans.map((scan, index) => `
+        <tr>
+          <td class="c">${index + 1}</td>
+          <td>${escapeHtml(formatKoDateTime(scan.at))}</td>
+          <td class="r">${scan.amountWon.toLocaleString('ko-KR')}원</td>
+        </tr>`).join('')
+    : `<tr><td class="c" colspan="3">QR 촬영 내역이 없습니다.</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(documentNo)} 정산 공문</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body { font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: #111; margin: 0; }
+    .doc { max-width: 720px; margin: 0 auto; }
+    .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #111; padding-bottom: 10px; }
+    .brand { font-size: 13px; letter-spacing: 2px; font-weight: 800; }
+    .org { font-size: 22px; font-weight: 900; margin-top: 4px; }
+    .seal { width: 72px; height: 72px; border: 2px solid #b91c1c; border-radius: 50%; color: #b91c1c; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; text-align: center; line-height: 1.3; }
+    h1 { font-size: 20px; text-align: center; margin: 22px 0 18px; }
+    .meta { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .meta th, .meta td { border: 1px solid #111; padding: 7px 8px; font-size: 12px; }
+    .meta th { width: 22%; background: #f3f4f6; text-align: left; }
+    p { font-size: 13px; line-height: 1.7; }
+    table.data { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+    table.data th, table.data td { border: 1px solid #111; padding: 7px 8px; font-size: 12px; }
+    table.data th { background: #111; color: #fff; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+    .sum { font-weight: 800; }
+    .end { text-align: right; margin-top: 28px; font-size: 13px; }
+    .foot { margin-top: 36px; font-size: 11px; color: #4b5563; border-top: 1px solid #d1d5db; padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <div class="head">
+      <div>
+        <div class="brand">on&amp;on</div>
+        <div class="org">온앤온 지역축제 상생쿠폰</div>
+        <div>정산 공문 (시행)</div>
+      </div>
+      <div class="seal">온앤온<br/>직인</div>
+    </div>
+    <h1>지역축제 연계 상생쿠폰 정산 요청</h1>
+    <table class="meta">
+      <tr><th>문서번호</th><td>${escapeHtml(documentNo)}</td></tr>
+      <tr><th>시행일자</th><td>${escapeHtml(formatKoDate(issuedAt))}</td></tr>
+      <tr><th>발신</th><td>온앤온(on&amp;on) 쿠폰 정산 담당</td></tr>
+      <tr><th>수신</th><td>${escapeHtml(promo.managerEmail ?? '지자체 축제 담당자')}</td></tr>
+      <tr><th>제목</th><td>${escapeHtml(promo.festival_title ?? '연계 축제')} 종료에 따른 매칭 쿠폰 일괄 정산 요청</td></tr>
+    </table>
+    <p>
+      1. 관련: 온앤온 지자체 1:1 매칭 쿠폰 운영 기준<br/>
+      2. 아래 상가의 행사 기간이 종료되어, 현장에서 확인한 쿠폰 QR 촬영 일시와 정산금액을 붙임과 같이 통보하고 일괄 정산을 요청합니다.
+    </p>
+    <table class="meta">
+      <tr><th>상가명</th><td>${escapeHtml(promo.business_name ?? promo.title)}</td></tr>
+      <tr><th>사업자등록번호</th><td>${escapeHtml(promo.businessNumber || '-')}</td></tr>
+      <tr><th>소재지</th><td>${escapeHtml(promo.address || '-')}</td></tr>
+      <tr><th>연락처</th><td>${escapeHtml(promo.tel || '-')}</td></tr>
+      <tr><th>연계 축제</th><td>${escapeHtml(promo.festival_title || '-')} (${escapeHtml(promo.festivalStartDate || '-')} ~ ${escapeHtml(promo.festivalEndDate || '-')})</td></tr>
+      <tr><th>지자체</th><td>${escapeHtml(promo.municipality_name || '-')}</td></tr>
+      <tr><th>입금 은행</th><td>${escapeHtml(promo.bankName || '-')}</td></tr>
+      <tr><th>계좌번호</th><td>${escapeHtml(promo.bankAccount || '-')}</td></tr>
+      <tr><th>예금주</th><td>${escapeHtml(promo.bankHolder || '-')}</td></tr>
+      <tr><th>QR 확인 건수</th><td>${(scans.length || promo.qrConfirmCount || 0).toLocaleString('ko-KR')}건</td></tr>
+      <tr><th>정산 요청액</th><td class="sum">${amountWon.toLocaleString('ko-KR')}원</td></tr>
+    </table>
+    <p><strong>붙임. QR 촬영 일시 및 건당 정산금액</strong></p>
+    <table class="data">
+      <thead><tr><th class="c">연번</th><th>QR 촬영 일시</th><th class="r">건당 정산금액</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr class="sum">
+          <td class="c" colspan="2">합계</td>
+          <td class="r">${amountWon.toLocaleString('ko-KR')}원</td>
+        </tr>
+      </tfoot>
+    </table>
+    <p>위와 같이 행사 종료 후 일괄 정산을 요청하오니 업무에 참고하여 주시기 바랍니다. 끝.</p>
+    <div class="end">${escapeHtml(formatKoDate(issuedAt))}<br/>온앤온 쿠폰 정산 담당</div>
+    <div class="foot">본 공문은 온앤온 앱에서 생성된 정산 문서입니다. 인쇄 대화상자에서 PDF로 저장할 수 있습니다.</div>
+  </div>
+</body>
+</html>`;
+}
+
+function downloadTextFile(filename: string, contents: string, mime: string) {
+  if (typeof document === 'undefined') return false;
+  const blob = new Blob([contents], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return true;
+}
+
+export function downloadSettlementPdf(promo: HomePromotion): boolean {
+  const input = buildSettlementInput(promo);
+  const html = buildOfficialDocumentHtml(input);
+  const filename = `${input.documentNo.replace(/\s+/g, '_')}.html`;
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    downloadTextFile(filename, html, 'text/html;charset=utf-8');
+    const frame = window.open('', '_blank');
+    if (frame) {
+      frame.document.open();
+      frame.document.write(html);
+      frame.document.close();
+      setTimeout(() => {
+        frame.focus();
+        frame.print();
+      }, 250);
+    }
+    return true;
+  }
+  return false;
+}
+
+export async function sendSettlementDocumentMail(promo: HomePromotion): Promise<void> {
+  const input = buildSettlementInput(promo);
+  const to = (promo.managerEmail ?? '').trim();
+  if (!to) throw new Error('담당자 메일이 없습니다.');
+  downloadSettlementPdf(promo);
+  const subject = encodeURIComponent(`[온앤온 정산공문] ${promo.business_name ?? promo.title} ${input.documentNo}`);
+  const body = encodeURIComponent(
+    [
+      '지자체 축제 담당자님께',
+      '',
+      '행사 종료에 따른 상생쿠폰 일괄 정산 공문을 송부합니다.',
+      '',
+      `문서번호: ${input.documentNo}`,
+      `상가명: ${promo.business_name ?? promo.title}`,
+      `사업자등록번호: ${promo.businessNumber ?? '-'}`,
+      `소재지: ${promo.address ?? '-'}`,
+      `연락처: ${promo.tel ?? '-'}`,
+      `연계 축제: ${promo.festival_title ?? '-'}`,
+      `축제 기간: ${promo.festivalStartDate ?? '-'} ~ ${promo.festivalEndDate ?? '-'}`,
+      `입금 은행: ${promo.bankName ?? '-'}`,
+      `계좌번호: ${promo.bankAccount ?? '-'}`,
+      `예금주: ${promo.bankHolder ?? '-'}`,
+      `QR 확인 건수: ${(input.scans.length || promo.qrConfirmCount || 0).toLocaleString('ko-KR')}건`,
+      `정산 요청액: ${input.amountWon.toLocaleString('ko-KR')}원`,
+      '',
+      'QR 촬영 일시',
+      ...(input.scans.length
+        ? input.scans.map((scan, index) => `${index + 1}. ${formatKoDateTime(scan.at)} · ${scan.amountWon.toLocaleString('ko-KR')}원`)
+        : ['내역 없음']),
+      '',
+      '공문서 파일이 함께 내려받아졌습니다. 메일에 첨부해 주시기 바랍니다.',
+      '온앤온(on&on)',
+    ].join('\n'),
+  );
+  await Linking.openURL(`mailto:${to}?subject=${subject}&body=${body}`);
+}

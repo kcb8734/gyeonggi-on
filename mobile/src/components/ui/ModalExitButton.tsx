@@ -10,7 +10,7 @@ export default function ModalExitButton({ onPress }: { onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel="나가기"
     >
-      <Text style={styles.emoji}>🚪</Text>
+      <Text style={styles.chevron}>{'>'}</Text>
     </TouchableOpacity>
   );
 }
@@ -28,5 +28,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 16 },
+  chevron: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginTop: -1,
+  },
 });

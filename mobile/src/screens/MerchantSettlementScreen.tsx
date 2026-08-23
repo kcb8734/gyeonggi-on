@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchMerchantSettlement, type MerchantSettlement } from '../api/merchants';
-import { incrementPromotionQr, useAppState } from '../stores/appStore';
-import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
-import { matchingAmountWon, openSettlementMail } from '../utils/settlementMail';
+import { incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
+import type { HomePromotion } from '../types/home';
+import { formatKoDateTime, isScheduleEnded } from '../utils/festivalSchedule';
+import { pickFromCamera } from '../utils/pickImage';
+import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
+import { matchingAmountWon } from '../utils/settlementMail';
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
+
+function resolveEndDate(promo: HomePromotion, festivals: { id: string; end_date?: string }[]): string | undefined {
+  return promo.festivalEndDate
+    ?? festivals.find((item) => item.id === promo.festival_id)?.end_date
+    ?? undefined;
+}
 
 export default function MerchantSettlementScreen() {
   const [data, setData] = useState<MerchantSettlement | null>(null);
@@ -45,8 +54,10 @@ export default function MerchantSettlementScreen() {
         </View>
       ))}
 
-      <Text style={styles.section}>지자체 매칭 QR 카운터</Text>
-      <Text style={styles.lead}>QR을 촬영하면 확인 건수가 올라가고, 담당자 메일로 매칭 금액을 입금 요청할 수 있습니다.</Text>
+      <Text style={styles.section}>행사 종료 후 일괄 정산</Text>
+      <Text style={styles.lead}>
+        QR 촬영 일시와 정산금액을 기록한 뒤, 축제 일정이 끝나면 공문서 PDF를 담당자에게 보내고 사장님도 내려받습니다.
+      </Text>
       {matched.length === 0 ? (
         <Text style={styles.empty}>매칭 신청한 쿠폰이 없습니다. 할인 쿠폰 등록에서 지자체 1:1 매칭을 켜 주세요.</Text>
       ) : (
@@ -57,54 +68,79 @@ export default function MerchantSettlementScreen() {
             govRate: promo.gov_matching_rate,
             qrCount,
           });
+          const endDate = resolveEndDate(promo, app.localFestivals);
+          const ended = isScheduleEnded(endDate);
+          const scans = promo.qrScans ?? [];
           return (
             <View key={promo.id} style={styles.qrCard}>
               <Text style={styles.cardTitle}>{promo.business_name ?? promo.title}</Text>
               <Text style={styles.meta}>{promo.festival_title ?? '연계 축제'}</Text>
+              <Text style={styles.meta}>
+                행사 기간 {promo.festivalStartDate ?? '-'} ~ {endDate ?? '-'}
+                {ended ? ' · 종료' : ' · 진행 중'}
+              </Text>
               <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건 확인</Text>
               <Text style={styles.meta}>
                 정산 요청액 {money.total.toLocaleString('ko-KR')}원 · 계좌 {promo.bankName ?? '-'} {promo.bankAccount ?? ''}
               </Text>
-              <View style={styles.row}>
-                <TouchableOpacity
-                  style={styles.qrBtn}
-                  onPress={async () => {
-                    const uri = await pickFromCamera();
-                    if (uri) incrementPromotionQr(promo.id);
-                  }}
-                >
-                  <Text style={styles.qrBtnText}>QR 촬영</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.qrGhost}
-                  onPress={async () => {
-                    const uri = await pickPhotoFromGallery();
-                    if (uri) incrementPromotionQr(promo.id);
-                  }}
-                >
-                  <Text style={styles.qrGhostText}>갤러리 QR</Text>
-                </TouchableOpacity>
-              </View>
+              {scans.length ? (
+                <View style={styles.scanBox}>
+                  {scans.slice(-4).map((scan, index) => (
+                    <Text key={`${scan.at}-${index}`} style={styles.scanRow}>
+                      {formatKoDateTime(scan.at)} · {scan.amountWon.toLocaleString('ko-KR')}원
+                    </Text>
+                  ))}
+                  {scans.length > 4 ? <Text style={styles.scanRow}>외 {scans.length - 4}건</Text> : null}
+                </View>
+              ) : null}
               <TouchableOpacity
-                style={styles.mailBtn}
+                style={styles.qrBtn}
+                onPress={async () => {
+                  const uri = await pickFromCamera();
+                  if (uri) incrementPromotionQr(promo.id);
+                }}
+              >
+                <Text style={styles.qrBtnText}>QR 촬영</Text>
+              </TouchableOpacity>
+              {promo.settledAt ? (
+                <Text style={styles.settled}>일괄 정산 완료 · {formatKoDateTime(promo.settledAt)}</Text>
+              ) : (
+                <Text style={styles.meta}>
+                  {ended
+                    ? '행사 종료. 한 번만 일괄 정산할 수 있습니다.'
+                    : '행사 일정이 끝난 뒤 한 번에 정산합니다.'}
+                </Text>
+              )}
+              <TouchableOpacity
+                style={[styles.mailBtn, !ended && !promo.settledAt && styles.mailBtnOff]}
+                disabled={!ended && !promo.settledAt}
                 onPress={() => {
                   if (!promo.managerEmail) {
                     Alert.alert('알림', '담당자 메일이 없습니다. 쿠폰 등록 화면에서 메일을 입력해주세요.');
                     return;
                   }
-                  openSettlementMail({
-                    to: promo.managerEmail,
-                    businessName: promo.business_name ?? promo.title,
-                    festivalTitle: promo.festival_title ?? undefined,
-                    bankName: promo.bankName ?? '',
-                    bankAccount: promo.bankAccount ?? '',
-                    bankHolder: promo.bankHolder ?? '',
-                    qrCount,
-                    amountWon: money.total,
-                  }).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다.'));
+                  if (!promo.settledAt) settlePromotion(promo.id, money.total);
+                  const latest = {
+                    ...promo,
+                    settledAt: promo.settledAt ?? new Date().toISOString(),
+                    settlementAmount: promo.settlementAmount ?? money.total,
+                  };
+                  sendSettlementDocumentMail(latest).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. PDF는 내려받을 수 있습니다.'));
                 }}
               >
-                <Text style={styles.mailBtnText}>담당자 메일로 정산 입금 요청</Text>
+                <Text style={styles.mailBtnText}>
+                  {promo.settledAt ? '정산 공문 다시 보내기' : '종료 후 일괄 정산 · 담당자 공문 발송'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pdfBtn}
+                onPress={() => {
+                  if (!downloadSettlementPdf(promo)) {
+                    Alert.alert('알림', '웹에서 공문서 PDF를 내려받을 수 있습니다.');
+                  }
+                }}
+              >
+                <Text style={styles.pdfBtnText}>상가 사장님 공문서 PDF 내려받기</Text>
               </TouchableOpacity>
             </View>
           );
@@ -138,25 +174,24 @@ const styles = StyleSheet.create({
     borderColor: '#A7F3D0',
   },
   qrCount: { fontSize: 24, fontWeight: '900', color: '#111827', marginTop: 8 },
-  row: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  scanBox: {
+    marginTop: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  scanRow: { fontSize: 12, fontWeight: '700', color: '#065F46', marginTop: 2 },
   qrBtn: {
-    flex: 1,
+    marginTop: 12,
     backgroundColor: '#111827',
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
   },
   qrBtnText: { color: '#fff', fontWeight: '800' },
-  qrGhost: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  qrGhostText: { color: '#111827', fontWeight: '800' },
+  settled: { marginTop: 10, fontSize: 12, fontWeight: '800', color: '#047857' },
   mailBtn: {
     marginTop: 10,
     backgroundColor: '#047857',
@@ -164,5 +199,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
+  mailBtnOff: { backgroundColor: '#9CA3AF' },
   mailBtnText: { color: '#fff', fontWeight: '800' },
+  pdfBtn: {
+    marginTop: 8,
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  pdfBtnText: { color: '#fff', fontWeight: '800' },
 });

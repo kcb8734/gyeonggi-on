@@ -115,7 +115,6 @@ export function ticketFromWallet(item: WalletCoupon): Props {
       `${item.municipality_name ?? ''} ${item.festival_title ?? ''} ${item.business_name}`,
       item.metro,
     ),
-    proofImageUrl: item.proofImageUrl,
   };
 }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchHomeFeed } from '../api/home';
 import { fetchMyCoupons, issueCoupon } from '../api/coupons';
 import type { HomePromotion } from '../types/home';
@@ -7,13 +7,17 @@ import { TicketCouponCard, ticketFromPromotion, ticketFromWallet } from '../comp
 import CouponQrModal from '../components/ui/CouponQrModal';
 import MerchantDetailModal from '../components/ui/MerchantDetailModal';
 import ProofPhotoModal from '../components/ui/ProofPhotoModal';
+import ModalExitButton from '../components/ui/ModalExitButton';
 import {
   addWalletCoupon,
   promotionToWallet,
+  setAttendanceProof,
   useAppState,
+  type AttendanceProofKind,
   type WalletCoupon,
 } from '../stores/appStore';
 import { getFeedPosts, getMyFeedPosts } from '../stores/feedStore';
+import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
 
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -31,7 +35,8 @@ export default function CouponsScreen() {
   const [promotions, setPromotions] = useState<HomePromotion[]>([]);
   const [issuingId, setIssuingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<WalletCoupon | null>(null);
-  const [proof, setProof] = useState<WalletCoupon | null>(null);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [merchant, setMerchant] = useState<HomePromotion | null>(null);
   const app = useAppState();
 
@@ -50,7 +55,7 @@ export default function CouponsScreen() {
       const code = await issueCoupon(DEV_USER_ID, promo.id);
       addWalletCoupon(promotionToWallet(promo, code, proofForPromotion(promo)));
       setTab('wallet');
-      Alert.alert('쿠폰함', '쿠폰을 다운로드했습니다. 인증사진을 확인한 뒤 QR을 제시하세요.');
+      Alert.alert('쿠폰함', '쿠폰을 다운로드했습니다. 하단 오른쪽 인증 칸에 참석 사진을 올린 뒤 사용하세요.');
     } catch {
       const code = `GGON-${promo.id.slice(-4).toUpperCase()}`;
       addWalletCoupon(promotionToWallet(promo, code, proofForPromotion(promo)));
@@ -60,6 +65,13 @@ export default function CouponsScreen() {
       setIssuingId(null);
       setMerchant(null);
     }
+  };
+
+  const captureProof = async (kind: AttendanceProofKind) => {
+    const uri = kind === 'upload' ? await pickPhotoFromGallery() : await pickFromCamera();
+    if (!uri) return;
+    setAttendanceProof(uri, kind);
+    setCaptureOpen(false);
   };
 
   return (
@@ -81,7 +93,7 @@ export default function CouponsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: tab === 'wallet' ? 120 : 32 }}>
         {tab === 'available' ? (
           <>
             <Text style={styles.lead}>상가 상세를 확인한 뒤 쿠폰을 다운로드하세요. 지자체별로 할인율 색이 다릅니다.</Text>
@@ -96,7 +108,12 @@ export default function CouponsScreen() {
           </>
         ) : (
           <>
-            <Text style={styles.lead}>인증사진 섬네일을 눌러 행사 참여를 확인한 뒤, 해당 상가에서 쿠폰을 사용하세요.</Text>
+            <View style={styles.guide}>
+              <Text style={styles.guideTitle}>쿠폰 사용 안내</Text>
+              <Text style={styles.lead}>
+                각 쿠폰에는 사진을 두지 않습니다. 하단 오른쪽 인증 칸에 행사장 참석 QR을 찍거나, 행사장 배경으로 촬영하거나, 사진을 올리세요. 상가 관계자가 그 칸을 눌러 참석 이미지를 확인한 뒤 쿠폰을 결제합니다.
+              </Text>
+            </View>
             {app.wallet.length === 0 ? (
               <Text style={styles.empty}>아직 받은 쿠폰이 없습니다</Text>
             ) : (
@@ -106,7 +123,6 @@ export default function CouponsScreen() {
                   compact
                   {...ticketFromWallet(item)}
                   onPress={() => setSelected(item)}
-                  onProofPress={() => setProof(item)}
                 />
               ))
             )}
@@ -114,12 +130,65 @@ export default function CouponsScreen() {
         )}
       </ScrollView>
 
+      {tab === 'wallet' ? (
+        <View style={styles.proofDock} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.proofBox}
+            onPress={() => {
+              if (app.attendanceProofUrl) {
+                setProofOpen(true);
+                return;
+              }
+              setCaptureOpen(true);
+            }}
+            activeOpacity={0.85}
+          >
+            {app.attendanceProofUrl ? (
+              <Image source={{ uri: app.attendanceProofUrl }} style={styles.proofImg} />
+            ) : (
+              <View style={styles.proofEmpty}>
+                <Text style={styles.proofPlus}>+</Text>
+              </View>
+            )}
+            <Text style={styles.proofCap}>행사 인증</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.proofEdit} onPress={() => setCaptureOpen(true)}>
+            <Text style={styles.proofEditText}>촬영·업로드</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <Modal visible={captureOpen} transparent animationType="fade" onRequestClose={() => setCaptureOpen(false)}>
+        <View style={styles.captureOverlay}>
+          <TouchableOpacity style={styles.captureBackdrop} activeOpacity={1} onPress={() => setCaptureOpen(false)} />
+          <View style={styles.captureCard}>
+            <ModalExitButton onPress={() => setCaptureOpen(false)} />
+            <Text style={styles.captureTitle}>행사 참석 이미지</Text>
+            <Text style={styles.captureLead}>상가 결제 전에 참석을 확인할 사진을 담아 주세요.</Text>
+            <TouchableOpacity style={styles.captureBtn} onPress={() => captureProof('qr')}>
+              <Text style={styles.captureBtnText}>행사장 참석 QR 촬영</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.captureBtn} onPress={() => captureProof('venue')}>
+              <Text style={styles.captureBtnText}>행사장 배경으로 촬영</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.captureGhost} onPress={() => captureProof('upload')}>
+              <Text style={styles.captureGhostText}>사진 업로드</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <CouponQrModal coupon={selected} onClose={() => setSelected(null)} />
       <ProofPhotoModal
-        coupon={proof}
-        onClose={() => setProof(null)}
+        visible={proofOpen}
+        imageUrl={app.attendanceProofUrl}
+        festivalTitle={app.wallet[0]?.festival_title ?? '행사 참석'}
+        capturedAt={app.attendanceProofAt}
+        kind={app.attendanceProofKind}
+        coupons={app.wallet}
+        onClose={() => setProofOpen(false)}
         onUse={(coupon) => {
-          setProof(null);
+          setProofOpen(false);
           setSelected(coupon);
         }}
       />
@@ -147,6 +216,86 @@ const styles = StyleSheet.create({
   tabOn: { backgroundColor: '#111827' },
   tabText: { fontSize: 13, fontWeight: '800', color: '#4B5563' },
   tabTextOn: { color: '#fff' },
+  guide: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  guideTitle: { fontSize: 13, fontWeight: '800', color: '#9A3412', marginBottom: 4 },
   lead: { fontSize: 13, color: '#6B7280', marginBottom: 12, lineHeight: 20 },
   empty: { color: '#6B7280', marginTop: 20 },
+  proofDock: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
+  proofBox: {
+    width: 72,
+    height: 86,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+    shadowColor: '#111827',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  proofImg: { width: 56, height: 56, borderRadius: 8, backgroundColor: '#E5E7EB' },
+  proofEmpty: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+  },
+  proofPlus: { fontSize: 22, fontWeight: '800', color: '#6B7280' },
+  proofCap: { fontSize: 10, fontWeight: '800', color: '#374151', marginTop: 4 },
+  proofEdit: {
+    backgroundColor: '#111827',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  proofEditText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  captureOverlay: { flex: 1, justifyContent: 'flex-end' },
+  captureBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  captureCard: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    paddingBottom: 24,
+  },
+  captureTitle: { fontSize: 17, fontWeight: '800', paddingRight: 40 },
+  captureLead: { fontSize: 13, color: '#6B7280', marginTop: 6, marginBottom: 14, lineHeight: 20 },
+  captureBtn: {
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  captureBtnText: { color: '#fff', fontWeight: '800' },
+  captureGhost: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  captureGhostText: { color: '#111827', fontWeight: '800' },
 });

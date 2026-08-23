@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { HomeFestival, HomePromotion } from '../types/home';
+import type { HomeFestival, HomePromotion, QrScanRecord } from '../types/home';
 import type { LocalCurrencyCoupon } from '../api/feeds';
+import { matchingAmountWon } from '../utils/settlementMail';
 import { readJson, writeJson } from '../utils/storage';
+
+export type AttendanceProofKind = 'qr' | 'venue' | 'upload';
 
 export interface WalletCoupon {
   id: string;
@@ -38,6 +41,9 @@ interface AppState {
   localCoupons: LocalCurrencyCoupon[];
   localPromotions: HomePromotion[];
   localFestivals: HomeFestival[];
+  attendanceProofUrl?: string;
+  attendanceProofAt?: string;
+  attendanceProofKind?: AttendanceProofKind;
 }
 
 const KEY = 'gyeonggi-on-app-state';
@@ -69,6 +75,9 @@ const INITIAL: AppState = {
   points: 1280,
   localPromotions: [],
   localFestivals: [],
+  attendanceProofUrl: undefined,
+  attendanceProofAt: undefined,
+  attendanceProofKind: undefined,
   localCoupons: [
     {
       id: 'lc-seed-1',
@@ -92,6 +101,9 @@ let state: AppState = {
   localPromotions: loaded.localPromotions ?? INITIAL.localPromotions,
   localFestivals: loaded.localFestivals ?? INITIAL.localFestivals,
   points: loaded.points ?? INITIAL.points,
+  attendanceProofUrl: loaded.attendanceProofUrl,
+  attendanceProofAt: loaded.attendanceProofAt,
+  attendanceProofKind: loaded.attendanceProofKind,
 };
 const listeners = new Set<Listener>();
 
@@ -209,18 +221,56 @@ export function addLocalPromotion(promo: HomePromotion) {
   });
 }
 
-export function incrementPromotionQr(id: string) {
+export function incrementPromotionQr(id: string, scan?: Partial<QrScanRecord>) {
+  const at = scan?.at ?? new Date().toISOString();
+  emit({
+    ...state,
+    localPromotions: state.localPromotions.map((item) => {
+      if (item.id !== id) return item;
+      const perUse = scan?.amountWon ?? matchingAmountWon({
+        maxDiscountAmount: item.maxDiscountAmount ?? 5000,
+        govRate: item.gov_matching_rate,
+        qrCount: 1,
+      }).perUse;
+      const existing = item.qrScans ?? [];
+      const padded = existing.length
+        ? existing
+        : Array.from({ length: item.qrConfirmCount ?? 0 }, () => ({
+          at: item.lastQrAt ?? at,
+          amountWon: perUse,
+        }));
+      const qrScans = [...padded, { at, amountWon: perUse }];
+      return {
+        ...item,
+        qrConfirmCount: qrScans.length,
+        lastQrAt: at,
+        qrScans,
+      };
+    }),
+  });
+}
+
+export function settlePromotion(id: string, amountWon: number) {
   emit({
     ...state,
     localPromotions: state.localPromotions.map((item) =>
       item.id === id
         ? {
           ...item,
-          qrConfirmCount: (item.qrConfirmCount ?? 0) + 1,
-          lastQrAt: new Date().toISOString(),
+          settledAt: item.settledAt ?? new Date().toISOString(),
+          settlementAmount: item.settlementAmount ?? amountWon,
         }
         : item,
     ),
+  });
+}
+
+export function setAttendanceProof(url: string, kind: AttendanceProofKind) {
+  emit({
+    ...state,
+    attendanceProofUrl: url,
+    attendanceProofAt: new Date().toISOString(),
+    attendanceProofKind: kind,
   });
 }
 
