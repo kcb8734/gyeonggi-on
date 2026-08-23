@@ -46,7 +46,18 @@ node dist/app.js        # 또는 npm run dev (tsx watch)
 - `GET /api/admin/coupons/stats` — 쿠폰 발행·사용 통계
 - `GET /api/admin/budget` — 지자체 예산 잔액/집행률
 - `GET /health` — 헬스체크
-- `GET /api/db-test` — Neon PostgreSQL 연결 확인 (`SELECT NOW()`)
+- `GET /api/db-test` — PostgreSQL/Neon 연결 확인 (`SELECT NOW()` + 원인별 점검)
+
+```bash
+# 기본 포트는 4000 입니다. 5000이 아닙니다.
+curl http://localhost:4000/api/db-test
+```
+
+연결 실패 시 응답의 `checks`를 봅니다.
+
+1. `databaseUrlSet` — `backend/.env`의 `DATABASE_URL` (git pull은 .env를 갱신하지 않음)
+2. `looksNeon` — 호스트가 `*.neon.tech` 인지
+3. Neon 콘솔에서 Endpoint가 Active인지, 비밀번호가 맞는지
 
 ## 보안/동시성 설계
 `SELECT ... FOR UPDATE` 비관적 잠금 + 원자적 조건부 `UPDATE`로 지자체 예산 동시성 이슈를 방어합니다.
