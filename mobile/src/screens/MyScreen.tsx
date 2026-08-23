@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import FestivalRegisterModal from '../components/ui/FestivalRegisterModal';
 import { syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
 import { clearAuthSession, useAuthUser } from '../stores/authStore';
 import { deleteMyFeedPost, useMyFeedPosts } from '../stores/feedStore';
@@ -11,6 +12,7 @@ export default function MyScreen() {
   const app = useAppState();
   const user = useAuthUser();
   const myFeeds = useMyFeedPosts();
+  const [festivalModal, setFestivalModal] = useState(false);
 
   useEffect(() => {
     const userId = user?.id ?? '11111111-1111-4111-8111-111111111111';
@@ -127,6 +129,18 @@ export default function MyScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.gov}>
+        <Text style={styles.govKicker}>지자체 담당자 코너</Text>
+        <Text style={styles.cardTitle}>우리 지역 축제를 직접 등록하세요</Text>
+        <Text style={styles.govBody}>우리 지역 축제를 직접 등록하고 지역화폐 쿠폰을 연동하세요</Text>
+        <TouchableOpacity style={styles.govBtn} onPress={() => setFestivalModal(true)}>
+          <Text style={styles.govBtnText}>지자체 축제 등록하기</Text>
+        </TouchableOpacity>
+        {app.localFestivals.length ? (
+          <Text style={styles.govMeta}>이 기기에서 등록한 축제 {app.localFestivals.length}건 · 홈 리스트에 바로 반영</Text>
+        ) : null}
+      </View>
+
       <Text style={styles.section}>최근 본 축제</Text>
       {app.recent.length === 0 ? (
         <Text style={styles.empty}>홈에서 축제를 둘러보면 여기에 모입니다</Text>
@@ -204,6 +218,7 @@ export default function MyScreen() {
           <Text style={styles.menuMeta}>내 일정 {app.schedule.length}건 연동</Text>
         </TouchableOpacity>
       </View>
+      <FestivalRegisterModal visible={festivalModal} onClose={() => setFestivalModal(false)} />
     </ScrollView>
   );
 }
@@ -264,6 +279,24 @@ const styles = StyleSheet.create({
   merchantBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   merchantGhost: { marginTop: 8, paddingVertical: 10, alignItems: 'center' },
   merchantGhostText: { fontWeight: '800', color: '#9A3412' },
+  gov: {
+    marginTop: 22,
+    backgroundColor: '#F0FDFA',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    shadowColor: '#111827',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  govKicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
+  govBody: { fontSize: 13, color: '#115E59', marginTop: 6, lineHeight: 20, fontWeight: '600' },
+  govBtn: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginTop: 14 },
+  govBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  govMeta: { fontSize: 12, color: '#555555', marginTop: 10, fontWeight: '600' },
   cardKicker: { fontSize: 12, fontWeight: '800', color: '#3730A3' },
   cardTitle: { fontSize: 17, fontWeight: '800', marginTop: 4, color: '#111827' },
   cardBody: { fontSize: 13, color: '#374151', marginTop: 6, lineHeight: 20, fontWeight: '600' },

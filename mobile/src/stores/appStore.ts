@@ -37,6 +37,7 @@ interface AppState {
   points: number;
   localCoupons: LocalCurrencyCoupon[];
   localPromotions: HomePromotion[];
+  localFestivals: HomeFestival[];
 }
 
 const KEY = 'gyeonggi-on-app-state';
@@ -67,6 +68,7 @@ const INITIAL: AppState = {
   favorites: [],
   points: 1280,
   localPromotions: [],
+  localFestivals: [],
   localCoupons: [
     {
       id: 'lc-seed-1',
@@ -88,6 +90,7 @@ let state: AppState = {
   wallet: loaded.wallet ?? INITIAL.wallet,
   localCoupons: loaded.localCoupons ?? INITIAL.localCoupons,
   localPromotions: loaded.localPromotions ?? INITIAL.localPromotions,
+  localFestivals: loaded.localFestivals ?? INITIAL.localFestivals,
   points: loaded.points ?? INITIAL.points,
 };
 const listeners = new Set<Listener>();
@@ -183,6 +186,16 @@ export function syncRewardBalance(points: number, coupons: LocalCurrencyCoupon[]
     ...state,
     points: Math.max(state.points, points),
     localCoupons: coupons.length ? coupons : state.localCoupons,
+  });
+}
+
+export function addLocalFestival(festival: HomeFestival) {
+  const exists = state.localFestivals.some((item) => item.id === festival.id);
+  emit({
+    ...state,
+    localFestivals: exists
+      ? state.localFestivals.map((item) => (item.id === festival.id ? festival : item))
+      : [festival, ...state.localFestivals],
   });
 }
 

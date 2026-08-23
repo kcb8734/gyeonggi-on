@@ -21,7 +21,7 @@ export interface FallbackFestival {
   mapX: number;
   mapY: number;
   tel?: string;
-  category: '먹거리' | '문화/예술' | '가족' | '계절축제' | '플리마켓';
+  category: '먹거리' | '체험' | '공연' | '문화/예술' | '가족' | '계절축제' | '플리마켓';
   overview?: string;
   fee?: string;
   eventPlace?: string;
