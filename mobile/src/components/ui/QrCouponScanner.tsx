@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useCouponCode, verifyCouponCode, type ScannedCoupon } from '../../api/couponScan';
+import { normalizeCouponCode } from '../../utils/couponToken';
 import ModalExitButton from './ModalExitButton';
 
 const HTML5_QR_SRC = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
@@ -26,9 +27,11 @@ function loadHtml5Qrcode(): Promise<void> {
 
 export default function QrCouponScanner({
   merchantId,
+  readerId = 'onandon-qr-reader',
   onUsed,
 }: {
   merchantId?: string;
+  readerId?: string;
   onUsed?: () => void;
 }) {
   const [manual, setManual] = useState('');
@@ -39,7 +42,7 @@ export default function QrCouponScanner({
   const handled = useRef('');
 
   const handleCode = async (code: string) => {
-    const token = code.trim();
+    const token = normalizeCouponCode(code);
     if (!token || handled.current === token || busy) return;
     handled.current = token;
     setBusy(true);
@@ -62,8 +65,9 @@ export default function QrCouponScanner({
       .then(async () => {
         if (cancelled) return;
         const Html5Qrcode = (window as unknown as { Html5Qrcode: new (id: string) => { start: Function; stop: Function } }).Html5Qrcode;
-        if (!Html5Qrcode || !document.getElementById('onandon-qr-reader')) return;
-        scanner = new Html5Qrcode('onandon-qr-reader');
+        const host = document.getElementById(readerId);
+        if (!Html5Qrcode || !host) return;
+        scanner = new Html5Qrcode(readerId);
         await scanner.start(
           { facingMode: 'environment' },
           { fps: 8, qrbox: 220 },
@@ -78,24 +82,22 @@ export default function QrCouponScanner({
       cancelled = true;
       scanner?.stop?.().catch(() => undefined);
     };
-  }, []);
+  }, [readerId]);
 
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>QR 쿠폰 스캔</Text>
-      <Text style={styles.lead}>웹 카메라로 손님 쿠폰 QR을 읽거나, 코드를 직접 입력하세요.</Text>
-      {Platform.OS === 'web' ? (
-        <View nativeID="onandon-qr-reader" style={styles.camera} />
-      ) : (
-        <Text style={styles.note}>앱에서는 코드 입력으로 확인할 수 있습니다.</Text>
-      )}
+      <Text style={styles.lead}>손님 쿠폰함 QR만 인식합니다. 일반 사물 사진은 집계되지 않습니다.</Text>
+      {Platform.OS === 'web'
+        ? React.createElement('div', { id: readerId, style: { height: 240, background: '#111827', borderRadius: 12, overflow: 'hidden', marginBottom: 10 } })
+        : <Text style={styles.note}>앱에서는 코드 입력으로 확인할 수 있습니다.</Text>}
       {!cameraReady ? <ActivityIndicator /> : null}
       <TextInput
         style={styles.input}
         value={manual}
         onChangeText={setManual}
         autoCapitalize="none"
-        placeholder="GYON-SCAN-0001"
+        placeholder="GGON-SW-1042"
       />
       <TouchableOpacity style={styles.btn} onPress={() => handleCode(manual)}>
         <Text style={styles.btnText}>코드 확인</Text>
@@ -139,7 +141,6 @@ const styles = StyleSheet.create({
   wrap: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 14 },
   title: { fontSize: 16, fontWeight: '800', color: '#111827' },
   lead: { fontSize: 12, color: '#4B5563', marginTop: 4, marginBottom: 10, fontWeight: '600' },
-  camera: { height: 240, backgroundColor: '#111827', borderRadius: 12, overflow: 'hidden', marginBottom: 10 },
   note: { fontSize: 12, color: '#6B7280', marginBottom: 8 },
   input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, padding: 12, fontSize: 15, backgroundColor: '#F9FAFB' },
   btn: { marginTop: 10, backgroundColor: '#111827', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },

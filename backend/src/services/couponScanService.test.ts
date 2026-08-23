@@ -40,8 +40,20 @@ test('verify demo unused coupon then use it', async () => {
   ));
 });
 
-test('unknown coupon is 404', async () => {
+test('plain text without coupon token is rejected', async () => {
   await assert.rejects(() => verifyCouponCode('NO-SUCH-CODE'), (err: unknown) => (
-    err instanceof AppError && err.status === 404
+    err instanceof AppError && err.status === 400
   ));
+});
+
+test('wallet coupon GGON-SW-1042 is accepted', async () => {
+  const { memoryCoupons } = await import('./inMemoryPlatform');
+  const wallet = memoryCoupons.find((item) => item.code === 'GGON-SW-1042');
+  if (wallet) {
+    wallet.isUsed = false;
+    wallet.usedAt = null;
+  }
+  const verified = await verifyCouponCode('https://www.kdanji.com/?code=ggon-sw-1042');
+  assert.equal(verified.code, 'GGON-SW-1042');
+  assert.equal(verified.isUsed, false);
 });

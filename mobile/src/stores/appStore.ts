@@ -129,6 +129,22 @@ export function useAppState(): AppState {
   return value;
 }
 
+export function findWalletCoupon(code: string): WalletCoupon | undefined {
+  const token = String(code || '').trim().toUpperCase();
+  return state.wallet.find((item) => item.coupon_code.toUpperCase() === token);
+}
+
+export function markWalletUsed(code: string) {
+  emit({
+    ...state,
+    wallet: state.wallet.map((item) => (
+      item.coupon_code.toUpperCase() === String(code || '').trim().toUpperCase()
+        ? { ...item, status: 'USED' }
+        : item
+    )),
+  });
+}
+
 export function addWalletCoupon(coupon: WalletCoupon) {
   const exists = state.wallet.some((item) => item.coupon_code === coupon.coupon_code);
   emit({

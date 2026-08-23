@@ -196,9 +196,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     [maxDiscountAmount, preview.gov, qrCount],
   );
 
-  const scanCouponQr = async () => {
-    const uri = await pickFromCamera();
-    if (!uri) return;
+  const recordVerifiedQr = () => {
     const at = new Date().toISOString();
     const amountWon = matchingAmountWon({
       maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
@@ -211,7 +209,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     }
     setQrScans((prev) => [...prev, { at, amountWon }]);
     setQrCount((prev) => prev + 1);
-    setLastQrNote(`카메라 확인 ${new Date(at).toLocaleString('ko-KR')}`);
+    setLastQrNote(`QR 확인 ${new Date(at).toLocaleString('ko-KR')}`);
   };
 
   const handleVerify = async () => {
@@ -378,22 +376,13 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
       <View style={styles.sessionBox}>
         <Text style={styles.matchTitle}>{session.businessName} 로그인됨</Text>
-        <Text style={styles.note}>국세청 확인이 끝난 상호입니다. 손님 쿠폰 QR을 바로 찍거나 할인 쿠폰을 이어서 등록하세요.</Text>
+        <Text style={styles.note}>국세청 확인이 끝난 상호입니다. 아래 QR 쿠폰 스캔으로 손님 쿠폰만 확인하세요.</Text>
         <TouchableOpacity style={styles.photoBtnGhost} onPress={logoutMerchant}>
           <Text style={styles.photoBtnGhostText}>사장님 로그아웃</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.quickQr}>
-        <Text style={[styles.matchTitle, { color: '#F9FAFB' }]}>손님 쿠폰 QR 바로 촬영</Text>
-        <Text style={[styles.qrCount, { color: '#fff' }]}>{qrCount.toLocaleString('ko-KR')}건</Text>
-        <Text style={[styles.note, { color: '#E5E7EB' }]}>카운터에서 한 번만 누르면 카메라가 열립니다. 촬영 일시와 정산액이 바로 기록됩니다.</Text>
-        <TouchableOpacity style={styles.qrHeroBtn} onPress={scanCouponQr}>
-          <Text style={styles.qrHeroText}>QR 바로 촬영</Text>
-        </TouchableOpacity>
-        {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
-      </View>
-      <QrCouponScanner merchantId={merchantId} onUsed={() => incrementPromotionQr(savedPromoId || 'local')} />
+      <QrCouponScanner merchantId={merchantId} readerId="merchant-register-qr" onUsed={recordVerifiedQr} />
 
       <Text style={styles.note}>상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 
@@ -527,12 +516,9 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
           />
 
           <View style={styles.qrBox}>
-            <Text style={styles.matchTitle}>쿠폰 확인 QR 촬영</Text>
+            <Text style={styles.matchTitle}>쿠폰 확인 QR 스캔</Text>
             <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건</Text>
-            <Text style={styles.note}>카운터에서 손님 QR을 촬영하면 일시와 정산액이 기록됩니다. 정산은 행사 종료 후 한 번에 합니다.</Text>
-            <TouchableOpacity style={styles.photoBtn} onPress={scanCouponQr}>
-              <Text style={styles.photoBtnText}>QR 바로 촬영</Text>
-            </TouchableOpacity>
+            <Text style={styles.note}>손님 쿠폰함 QR을 스캔해 확인한 건만 집계됩니다. 정산은 한 번에 합니다.</Text>
             {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
             <View style={styles.settleRow}>
               <Text style={styles.settleLabel}>건당 매칭</Text>

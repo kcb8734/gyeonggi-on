@@ -65,7 +65,40 @@ export const memoryCoupons: CouponScanRecord[] = [
     settlementId: null,
     source: 'coupons',
   },
+  {
+    id: 'coupon-wallet-1',
+    code: 'GGON-SW-1042',
+    title: '수원화성문화제 제휴 한정식 할인',
+    discountAmount: 3000,
+    municipalityId: YONGIN_MUNI_ID,
+    merchantId: DEV_MERCHANT_ID,
+    isUsed: false,
+    usedAt: null,
+    expiresAt: daysFromNow(40),
+    settlementId: null,
+    source: 'user_coupons',
+  },
 ];
+
+export function enrollMemoryCoupon(code: string, title?: string, discountAmount?: number): CouponScanRecord {
+  const existing = memoryCoupons.find((item) => item.code.toUpperCase() === code.toUpperCase());
+  if (existing) return existing;
+  const row: CouponScanRecord = {
+    id: `auto-${code}`,
+    code,
+    title: title || '온앤온 모바일 쿠폰',
+    discountAmount: discountAmount ?? 3000,
+    municipalityId: YONGIN_MUNI_ID,
+    merchantId: DEV_MERCHANT_ID,
+    isUsed: false,
+    usedAt: null,
+    expiresAt: daysFromNow(40),
+    settlementId: null,
+    source: 'coupons',
+  };
+  memoryCoupons.push(row);
+  return row;
+}
 
 export const memorySettlements: Array<{
   id: string;

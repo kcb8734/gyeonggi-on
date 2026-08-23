@@ -4,10 +4,9 @@ import { fetchMerchantSettlement, type MerchantSettlement } from '../api/merchan
 import { fetchOfficialPreview, sendOfficialSettlement, type OfficialPreview } from '../api/settlementOfficial';
 import QrCouponScanner from '../components/ui/QrCouponScanner';
 import ModalExitButton from '../components/ui/ModalExitButton';
-import { incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
+import { settlePromotion, useAppState } from '../stores/appStore';
 import type { HomePromotion } from '../types/home';
 import { formatKoDateTime, isScheduleEnded } from '../utils/festivalSchedule';
-import { pickFromCamera } from '../utils/pickImage';
 import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
 import { matchingAmountWon } from '../utils/settlementMail';
 
@@ -104,7 +103,7 @@ export default function MerchantSettlementScreen() {
       >
         <Text style={styles.mailBtnText}>{sending ? '발송 중...' : '지자체 정산 공문 발송하기'}</Text>
       </TouchableOpacity>
-      <QrCouponScanner merchantId={DEV_MERCHANT_ID} onUsed={loadOfficial} />
+      <QrCouponScanner merchantId={DEV_MERCHANT_ID} readerId="merchant-settle-qr" onUsed={loadOfficial} />
 
       <Modal visible={previewOpen} transparent animationType="fade" onRequestClose={() => setPreviewOpen(false)}>
         <View style={styles.overlay}>
@@ -151,7 +150,7 @@ export default function MerchantSettlementScreen() {
 
       <Text style={styles.section}>행사 종료 후 일괄 정산</Text>
       <Text style={styles.lead}>
-        QR 촬영 일시와 정산금액을 기록한 뒤, 일괄 정산으로 담당자에게 정산서를 보내고 사장님도 내려받습니다.
+        QR 쿠폰 스캔으로 확인한 일시와 정산금액을 기록한 뒤, 일괄 정산으로 담당자에게 정산서를 보내고 사장님도 내려받습니다.
       </Text>
       {matched.length === 0 ? (
         <Text style={styles.empty}>매칭 신청한 쿠폰이 없습니다. 할인 쿠폰 등록에서 지자체 1:1 매칭을 켜 주세요.</Text>
@@ -188,22 +187,13 @@ export default function MerchantSettlementScreen() {
                   {scans.length > 4 ? <Text style={styles.scanRow}>외 {scans.length - 4}건</Text> : null}
                 </View>
               ) : null}
-              <TouchableOpacity
-                style={styles.qrBtn}
-                onPress={async () => {
-                  const uri = await pickFromCamera();
-                  if (uri) incrementPromotionQr(promo.id);
-                }}
-              >
-                <Text style={styles.qrBtnText}>QR 촬영</Text>
-              </TouchableOpacity>
               {promo.settledAt ? (
                 <Text style={styles.settled}>일괄 정산 완료 · {formatKoDateTime(promo.settledAt)}</Text>
               ) : (
                 <Text style={styles.meta}>
                   {ended
                     ? '행사 종료. 일괄 정산과 정산서 내려받기를 할 수 있습니다.'
-                    : 'QR 촬영 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.'}
+                    : '위 QR 쿠폰 스캔으로 확인한 뒤 일괄 정산과 정산서 내려받기를 할 수 있습니다.'}
                 </Text>
               )}
               <TouchableOpacity

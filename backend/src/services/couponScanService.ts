@@ -1,7 +1,8 @@
 import { tryQuery } from '../db/pool';
 import type { CouponScanRecord } from '../types/couponScan';
+import { isIssuedCouponCode, normalizeCouponCode } from '../utils/couponToken';
 import { AppError } from '../utils/errors';
-import { memoryCoupons } from './inMemoryPlatform';
+import { enrollMemoryCoupon, memoryCoupons } from './inMemoryPlatform';
 
 export type { CouponScanRecord };
 
@@ -53,11 +54,13 @@ async function findInDatabase(code: string): Promise<CouponScanRecord | null> {
 }
 
 export async function findCouponByCode(code: string): Promise<CouponScanRecord | null> {
-  const token = String(code ?? '').trim();
+  const token = normalizeCouponCode(code);
   if (!token) return null;
   const fromDb = await findInDatabase(token);
   if (fromDb) return fromDb;
-  return memoryCoupons.find((item) => item.code === token) ?? null;
+  const fromDbRaw = token === String(code ?? '').trim() ? null : await findInDatabase(String(code ?? '').trim());
+  if (fromDbRaw) return fromDbRaw;
+  return memoryCoupons.find((item) => item.code.toUpperCase() === token) ?? null;
 }
 
 export function validateCouponStatus(coupon: CouponScanRecord) {
@@ -70,16 +73,28 @@ export function validateCouponStatus(coupon: CouponScanRecord) {
 }
 
 export async function verifyCouponCode(code: string): Promise<CouponScanRecord> {
-  const coupon = await findCouponByCode(code);
+  const token = normalizeCouponCode(code);
+  if (!token) throw new AppError(400, '쿠폰 QR이 아닙니다. 손님 쿠폰함의 QR을 스캔해 주세요.');
+  if (!isIssuedCouponCode(token) && !(await findCouponByCode(token))) {
+    throw new AppError(400, '쿠폰 QR이 아닙니다. 손님 쿠폰함의 QR을 스캔해 주세요.');
+  }
+  let coupon = await findCouponByCode(token);
+  if (!coupon && isIssuedCouponCode(token)) {
+    coupon = enrollMemoryCoupon(token);
+    await tryQuery(
+      `INSERT INTO coupons (code, title, discount_amount, is_used, expires_at)
+       VALUES ($1, $2, $3, FALSE, NOW() + INTERVAL '40 days')
+       ON CONFLICT (code) DO NOTHING`,
+      [token, coupon.title, coupon.discountAmount],
+    );
+  }
   if (!coupon) throw new AppError(404, '등록되지 않은 쿠폰 코드입니다.');
   validateCouponStatus(coupon);
   return coupon;
 }
 
 export async function useCouponCode(code: string, merchantId?: string | null): Promise<CouponScanRecord> {
-  const coupon = await findCouponByCode(code);
-  if (!coupon) throw new AppError(404, '등록되지 않은 쿠폰 코드입니다.');
-  validateCouponStatus(coupon);
+  const coupon = await verifyCouponCode(code);
 
   const now = new Date().toISOString();
   if (coupon.source === 'coupons') {
@@ -96,7 +111,7 @@ export async function useCouponCode(code: string, merchantId?: string | null): P
       [coupon.id, now, merchantId ?? coupon.merchantId],
     );
   }
-  const memory = memoryCoupons.find((item) => item.id === coupon.id || item.code === coupon.code);
+  const memory = memoryCoupons.find((item) => item.id === coupon.id || item.code.toUpperCase() === coupon.code.toUpperCase());
   if (memory) {
     memory.isUsed = true;
     memory.usedAt = now;
