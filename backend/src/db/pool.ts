@@ -62,3 +62,17 @@ export const pool = new Pool({
 pool.on('error', (err) => {
   console.error('[PG Pool Error] Unexpected error on idle client', err);
 });
+
+export async function query(text: string, params: unknown[] = []) {
+  return pool.query(text, params);
+}
+
+export async function tryQuery(text: string, params: unknown[] = []) {
+  if (!connectionString) return null;
+  try {
+    return await pool.query(text, params);
+  } catch (err) {
+    console.warn('[db] query skipped', err instanceof Error ? err.message : err);
+    return null;
+  }
+}

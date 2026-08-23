@@ -80,6 +80,13 @@ export async function deleteAdminFestival(contentId: string) {
   return data;
 }
 
+export async function fetchDashboard() {
+  const res = await fetch(`${API_BASE}/api/admin/dashboard`, { headers: authHeaders() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '대시보드 조회 실패');
+  return data.data;
+}
+
 export function logout() {
   localStorage.removeItem('admin_token');
 }

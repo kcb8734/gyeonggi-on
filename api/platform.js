@@ -1,0 +1,232 @@
+const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
+
+function hoursAgo(hours) {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+}
+
+function daysFromNow(days) {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+const coupons = [
+  { id: 'coupon-used-1', code: 'GYON-USED-0001', title: '장단콩 축제 10% 할인', discountAmount: 3000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(6), expiresAt: daysFromNow(20), settlementId: null },
+  { id: 'coupon-used-2', code: 'GYON-USED-0002', title: '전통시장 먹거리 쿠폰', discountAmount: 2000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(30), expiresAt: daysFromNow(20), settlementId: null },
+  { id: 'coupon-used-3', code: 'GYON-USED-0003', title: '온앤온 현장 결제 할인', discountAmount: 4500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(80), expiresAt: daysFromNow(20), settlementId: null },
+  { id: 'coupon-scan-1', code: 'GYON-SCAN-0001', title: '온앤온 현장 할인', discountAmount: 1500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: false, usedAt: null, expiresAt: daysFromNow(40), settlementId: null },
+];
+
+const settlements = [];
+const engine = { festivalWeight: 40, campingDistanceWeight: 25, marketRatioWeight: 20, historyWeight: 15 };
+const CITIES = ['수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시', '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시', '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시', '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군'];
+
+function findCoupon(code) {
+  return coupons.find((item) => item.code === String(code || '').trim()) || null;
+}
+
+function verifyCoupon(code) {
+  const coupon = findCoupon(code);
+  if (!coupon) return { status: 404, body: { success: false, message: '등록되지 않은 쿠폰 코드입니다.' } };
+  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) {
+    return { status: 410, body: { success: false, message: '만료된 쿠폰입니다.' } };
+  }
+  if (coupon.isUsed) return { status: 409, body: { success: false, message: '이미 사용된 쿠폰입니다.' } };
+  return { status: 200, body: { success: true, message: '사용 가능한 쿠폰입니다.', data: coupon } };
+}
+
+function useCoupon(code, merchantId) {
+  const checked = verifyCoupon(code);
+  if (!checked.body.success) return checked;
+  const coupon = findCoupon(code);
+  coupon.isUsed = true;
+  coupon.usedAt = new Date().toISOString();
+  if (merchantId) coupon.merchantId = merchantId;
+  return { status: 200, body: { success: true, message: '쿠폰이 사용 처리되었습니다.', data: coupon } };
+}
+
+function nextDocNumber() {
+  const now = new Date();
+  const stamp = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0');
+  const seq = settlements.filter((item) => item.docNumber.indexOf('GON-' + stamp + '-') === 0).length + 1;
+  return 'GON-' + stamp + '-' + String(seq).padStart(4, '0');
+}
+
+function unsettled(merchantId) {
+  return coupons.filter((item) => item.isUsed && !item.settlementId && (!merchantId || item.merchantId === merchantId));
+}
+
+function inRange(iso, start) {
+  if (!iso) return false;
+  return new Date(iso).getTime() >= start.getTime();
+}
+
+function officialHtml(docNumber, items) {
+  const rows = items.map((item, index) => (
+    '<tr><td>' + (index + 1) + '</td><td>' + (item.usedAt || '') + '</td><td>' + item.title + '</td><td>' + item.discountAmount + '</td><td>' + item.code + '</td></tr>'
+  )).join('');
+  const total = items.reduce((acc, item) => acc + item.discountAmount, 0);
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"/><title>' + docNumber + '</title></head><body>'
+    + '<h1>경기온 모바일 쿠폰 정산 청구의 건</h1>'
+    + '<p>수신: 용인시장 / 참조: 관광과</p>'
+    + '<p>가맹점: 화성행궁 한정식 / 입금: 기업은행 123-456789-01-011</p>'
+    + '<table border="1"><thead><tr><th>연번</th><th>스캔 시각</th><th>쿠폰명</th><th>할인금액</th><th>QR ID</th></tr></thead><tbody>'
+    + rows + '</tbody></table>'
+    + '<p>총 ' + items.length + '건 / ' + total + '원</p><p>직인란</p></body></html>';
+}
+
+function simplePdf(text) {
+  const escaped = String(text).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const lines = escaped.split('\n');
+  const content = lines.map((line, i) => 'BT /F1 11 Tf 40 ' + (780 - i * 16) + ' Td (' + line + ') Tj ET').join('\n');
+  const objects = [
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
+    '4 0 obj << /Length ' + Buffer.byteLength(content) + ' >> stream\n' + content + '\nendstream endobj',
+    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+  ];
+  let offset = 9;
+  const offsets = [0];
+  const body = objects.map((obj) => {
+    offsets.push(offset);
+    const chunk = obj + '\n';
+    offset += Buffer.byteLength(chunk);
+    return chunk;
+  }).join('');
+  return Buffer.from('%PDF-1.4\n' + body + 'xref\n0 6\n0000000000 65535 f \n' + offsets.slice(1).map((n) => String(n).padStart(10, '0') + ' 00000 n ').join('\n') + '\ntrailer << /Size 6 /Root 1 0 R >>\nstartxref\n' + offset + '\n%%EOF');
+}
+
+function preview(merchantId) {
+  const items = unsettled(merchantId);
+  const now = new Date();
+  const weekStart = new Date(now);
+  const day = weekStart.getDay();
+  weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1));
+  weekStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekItems = items.filter((item) => inRange(item.usedAt, weekStart));
+  const monthItems = items.filter((item) => inRange(item.usedAt, monthStart));
+  const sum = (list) => list.reduce((acc, item) => acc + item.discountAmount, 0);
+  const docNumber = nextDocNumber();
+  return {
+    week: { count: weekItems.length, amount: sum(weekItems) },
+    month: { count: monthItems.length, amount: sum(monthItems) },
+    pending: { count: items.length, amount: sum(items) },
+    items,
+    merchant: { id: DEV_MERCHANT_ID, name: '화성행궁 한정식' },
+    municipality: { name: '용인시', mayorName: '용인시장', department: '관광과', settlementEmail: 'pizon8113@gmail.com' },
+    docNumber,
+    html: officialHtml(docNumber, items),
+    status: 'PENDING',
+  };
+}
+
+async function sendResend(to, subject, html, attachments) {
+  const key = String(process.env.RESEND_API_KEY || '').trim();
+  const from = String(process.env.RESEND_FROM || '').trim() || 'Onandon <noreply@kdanji.com>';
+  if (!key) return { id: 'mock-' + Date.now(), mocked: true };
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject, html, attachments }),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error('공문서 메일 발송에 실패했습니다.');
+  try {
+    return JSON.parse(text);
+  } catch (_err) {
+    return { id: 'sent' };
+  }
+}
+
+async function sendOfficial(merchantId, toEmail) {
+  const data = preview(merchantId);
+  if (!data.items.length) return { status: 400, body: { success: false, message: '정산할 스캔 쿠폰이 없습니다.' } };
+  const to = toEmail || data.municipality.settlementEmail;
+  const subject = '[공문] 경기온 모바일 쿠폰 정산 청구의 건 - ' + data.merchant.name + ' (' + data.docNumber + ')';
+  const pdf = simplePdf('On&On settlement ' + data.docNumber + ' count=' + data.pending.count + ' amount=' + data.pending.amount);
+  const sent = await sendResend(to, subject, '<p>첨부된 공문서로 정산을 청구합니다.</p>' + data.html, [
+    { filename: data.docNumber + '.html', content: Buffer.from(data.html, 'utf8').toString('base64') },
+    { filename: data.docNumber + '.pdf', content: pdf.toString('base64') },
+  ]);
+  const settlementId = 'settle-' + Date.now();
+  data.items.forEach((item) => { item.settlementId = settlementId; });
+  settlements.push({ id: settlementId, docNumber: data.docNumber, status: 'REQUESTED' });
+  return {
+    status: 200,
+    body: {
+      success: true,
+      message: '정상적으로 공문서가 접수되었습니다.',
+      data: { ok: true, message: '정상적으로 공문서가 접수되었습니다.', settlementId, docNumber: data.docNumber, status: 'REQUESTED', emailId: sent.id, mocked: sent.mocked || false, to },
+    },
+  };
+}
+
+function recommendCourse(title, city) {
+  const festival = String(title || city || '장단콩 축제');
+  const bean = /장단콩/.test(festival);
+  const place = city || (bean ? '파주' : '용인');
+  return {
+    course_title: bean ? '[파주] 장단콩 축제와 함께하는 역사·캠핑 힐링 투어' : '[' + place + '] ' + festival + '와 함께하는 역사·캠핑 힐링 투어',
+    target_audience: '가족 · 연인 · 캠핑을 즐기는 2030 여행객',
+    total_distance: '36km',
+    itinerary: [
+      { step: 1, category: '역사체험', place_name: bean ? '임진각 평화누리 / 도라전망대' : place + ' 대표 역사 명소', description: '축제 배경이 되는 역사 명소를 먼저 둘러봅니다.', estimated_time: '1시간 30분' },
+      { step: 2, category: '전통시장 먹거리', place_name: bean ? '문산·금촌 전통시장' : place + ' 전통시장', description: 'On&On 쿠폰으로 전통시장 먹거리를 결제합니다.', estimated_time: '1시간' },
+      { step: 3, category: '메인 축제', place_name: festival, description: '축제 핵심 프로그램을 즐깁니다.', estimated_time: '3시간' },
+      { step: 4, category: '캠핑장/숙박', place_name: bean ? '파주 임진각 오토캠핑장' : place + ' 인근 캠핑장', description: '축제장 인근 캠핑장에서 하루를 머뭅니다.', estimated_time: '숙박' },
+    ],
+    local_benefit_tip: 'On&On 플랫폼에서 발급한 모바일 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다.',
+  };
+}
+
+function dashboard() {
+  return {
+    kpi: { festivals: 12, merchants: 18, couponsIssued: 24, couponsUsed: 9, recoveryRate: 38 },
+    tour: {
+      quotaUsed: 42,
+      quotaLimit: 1000,
+      categories: [
+        { name: '축제/행사', count: 12 },
+        { name: '역사체험', count: 8 },
+        { name: '캠핑장', count: 6 },
+        { name: '음식점', count: 21 },
+      ],
+      logs: [{ ran_at: new Date().toISOString(), target_api: 'searchFestival2', fetched: 12, failed: 0, status: '정상' }],
+    },
+    coupons: [
+      { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 40, used: 18, recovery: 45, period: '2026-08' },
+      { id: 'CP-1002', festival: '수원화성문화제', store: '화성행궁 한정식', issued: 30, used: 11, recovery: 37, period: '2026-08' },
+    ],
+    matching: CITIES.map((name, index) => ({
+      city: name,
+      officerName: index % 7 === 0 ? '' : name.replace(/(시|군)$/, '') + ' 담당',
+      phone: index % 7 === 0 ? '' : '031-120',
+      stores: 4 + (index % 5),
+      festivals: 1 + (index % 3),
+      coupons: 8 + (index % 11),
+      approved: index % 7 !== 0,
+    })),
+    engine,
+    courses: [{ id: 'course-1', festival: '장단콩 축제', elements: '캠핑/역사/시장', recommendCount: 12, saveCount: 4, editorsPick: false }],
+    guardLogs: [{ at: new Date().toISOString(), text: '정상 코스 생성', blocked: false }],
+    cities: CITIES,
+  };
+}
+
+function settlementCsv() {
+  const data = dashboard();
+  const header = '시군,담당자,매칭상가,활성축제,쿠폰,승인';
+  const rows = data.matching.map((row) => [row.city, row.officerName || '미지정', row.stores, row.festivals, row.coupons, row.approved ? '승인' : '대기'].join(','));
+  return '\uFEFF' + [header, ...rows].join('\n');
+}
+
+export {
+  verifyCoupon,
+  useCoupon,
+  preview,
+  sendOfficial,
+  recommendCourse,
+  dashboard,
+  settlementCsv,
+  engine,
+};

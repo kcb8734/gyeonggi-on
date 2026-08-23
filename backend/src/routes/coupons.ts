@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { issueCoupon, listMyCoupons, redeemCoupon } from '../controllers/couponController';
+import { useCoupon, verifyCoupon } from '../controllers/couponScanController';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -8,4 +9,6 @@ const router = Router();
 router.get('/', listMyCoupons);
 router.post('/issue', issueCoupon);
 router.post('/redeem', authMiddleware, redeemCoupon);
+router.post('/verify', verifyCoupon);
+router.post('/use', useCoupon);
 export default router;

@@ -5,6 +5,7 @@ import {
   deleteAdminFestival,
   fetchAdminFestivals,
   fetchBudget,
+  fetchDashboard,
   fetchMerchants,
   fetchStats,
   logout,
@@ -25,6 +26,7 @@ export default function App() {
   const [stats, setStats] = useState<any>(null);
   const [budget, setBudget] = useState<any[]>([]);
   const [manualFestivals, setManualFestivals] = useState<any[]>([]);
+  const [dashboard, setDashboard] = useState<any>(null);
   const [festivalForm, setFestivalForm] = useState({
     title: '',
     address: '',
@@ -49,16 +51,18 @@ export default function App() {
   }, [view, path]);
 
   const load = async () => {
-    const [m, s, b, f] = await Promise.all([
+    const [m, s, b, f, d] = await Promise.all([
       fetchMerchants(),
       fetchStats(),
       fetchBudget(),
       fetchAdminFestivals().catch(() => []),
+      fetchDashboard().catch(() => null),
     ]);
     setMerchants(m);
     setStats(s);
     setBudget(b);
     setManualFestivals(f);
+    setDashboard(d);
   };
 
   useEffect(() => {
@@ -88,6 +92,7 @@ export default function App() {
         <form className="login-card" onSubmit={handleLogin}>
           <p className="eyebrow">온앤온(on&on) Admin</p>
           <h1>관리자 로그인</h1>
+          <p className="muted">운영 주소 https://www.kdanji.com/admin · 기본 계정 admin@gyeonggi-on.kr / admin1234</p>
           <label>이메일</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} />
           <label>비밀번호</label>
@@ -118,6 +123,17 @@ export default function App() {
       </header>
 
       {error ? <p className="error">{error}</p> : null}
+
+      <section>
+        <h2>한국관광공사 TourAPI 데이터 수집 프로세스</h2>
+        <ol className="process">
+          <li>서비스 키로 TourAPI 4.0(KorService2)에 접속합니다.</li>
+          <li>searchFestival2를 areaCode=31(경기), MobileApp=kdanji, 오늘 이후 행사 조건으로 호출합니다.</li>
+          <li>매일 03:00 Vercel Cron이 /api/cron/festivals 를 호출하고, 관리자는 즉시 수집도 요청할 수 있습니다.</li>
+          <li>contentid·제목·주소·좌표·기간·이미지를 홈 축제 카드로 변환하고 12시간 캐시합니다.</li>
+          <li>TourAPI에 없는 지자체 자체 행사는 아래 수동 등록으로 앱에 바로 반영합니다.</li>
+        </ol>
+      </section>
 
       <section className="cards">
         <article>
@@ -274,6 +290,34 @@ export default function App() {
                 <td>
                   <button className="danger" onClick={() => deleteAdminFestival(row.contentId).then(load)}>삭제</button>
                 </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>지자체 매칭 매트릭스</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>시·군</th>
+              <th>담당자</th>
+              <th>매칭 상가</th>
+              <th>활성 축제</th>
+              <th>쿠폰</th>
+              <th>승인</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(dashboard?.matching ?? []).map((row: any) => (
+              <tr key={row.city}>
+                <td>{row.city}</td>
+                <td>{row.officerName || '미지정'}</td>
+                <td>{row.stores}</td>
+                <td>{row.festivals}</td>
+                <td>{row.coupons}</td>
+                <td>{row.approved ? '승인' : '대기'}</td>
               </tr>
             ))}
           </tbody>

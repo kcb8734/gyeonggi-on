@@ -2,7 +2,6 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { BUILD_ID } from '../../buildInfo';
 import { useAppState } from '../../stores/appStore';
 import { useAuthUser } from '../../stores/authStore';
 
@@ -29,7 +28,7 @@ export default function HomeHeaderBar() {
       <View style={styles.side} />
       <View style={styles.center}>
         <Text style={styles.logo} numberOfLines={1}>on&on</Text>
-        <Text style={styles.sub} numberOfLines={1}>온앤온 · {BUILD_ID}</Text>
+        <Text style={styles.sub} numberOfLines={1}>온앤온</Text>
       </View>
       <TouchableOpacity style={styles.side} onPress={goMy} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="마이페이지로 이동">
         <View style={styles.shortcut}>

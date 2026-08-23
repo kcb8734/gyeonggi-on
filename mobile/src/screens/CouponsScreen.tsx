@@ -111,7 +111,7 @@ export default function CouponsScreen() {
             <View style={styles.guide}>
               <Text style={styles.guideTitle}>쿠폰 사용 안내</Text>
               <Text style={styles.lead}>
-                각 쿠폰에는 사진을 두지 않습니다. 하단 오른쪽 인증 칸에 행사장 참석 QR을 찍거나, 행사장 배경으로 촬영하거나, 사진을 올리세요. 상가 관계자가 그 칸을 눌러 참석 이미지를 확인한 뒤 쿠폰을 결제합니다.
+                하단 오른쪽 인증 칸에 행사장 참석 QR을 찍거나, 행사장 배경으로 촬영하거나, 사진을 올리세요. 상가 관계자가 그 칸을 눌러 참석 이미지를 확인한 뒤 쿠폰을 결제합니다.
               </Text>
             </View>
             {app.wallet.length === 0 ? (

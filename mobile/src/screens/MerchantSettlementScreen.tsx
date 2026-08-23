@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchMerchantSettlement, type MerchantSettlement } from '../api/merchants';
+import { fetchOfficialPreview, sendOfficialSettlement, type OfficialPreview } from '../api/settlementOfficial';
+import QrCouponScanner from '../components/ui/QrCouponScanner';
+import ModalExitButton from '../components/ui/ModalExitButton';
 import { incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
 import type { HomePromotion } from '../types/home';
 import { formatKoDateTime, isScheduleEnded } from '../utils/festivalSchedule';
@@ -16,13 +19,34 @@ function resolveEndDate(promo: HomePromotion, festivals: { id: string; end_date?
     ?? undefined;
 }
 
+function OfficialPreviewFrame({ html }: { html: string }) {
+  if (Platform.OS === 'web') {
+    return React.createElement('iframe', {
+      srcDoc: html,
+      title: '공문 미리보기',
+      style: { width: '100%', height: 420, border: 0, background: '#fff' },
+    });
+  }
+  return <Text selectable style={styles.previewFallback}>{html.replace(/<[^>]+>/g, ' ').slice(0, 900)}</Text>;
+}
+
 export default function MerchantSettlementScreen() {
   const [data, setData] = useState<MerchantSettlement | null>(null);
+  const [official, setOfficial] = useState<OfficialPreview | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendStatus, setSendStatus] = useState('');
   const app = useAppState();
   const matched = app.localPromotions.filter((item) => item.funding_type === 'MATCHED');
 
+  const loadOfficial = () => {
+    fetchOfficialPreview(DEV_MERCHANT_ID).then(setOfficial);
+  };
+
   useEffect(() => {
     fetchMerchantSettlement(DEV_MERCHANT_ID).then(setData);
+    loadOfficial();
   }, []);
 
   const rows = data?.rows ?? [];
@@ -30,6 +54,77 @@ export default function MerchantSettlementScreen() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
       <Text style={styles.kicker}>사장님 정산</Text>
+      <Text style={styles.title}>지자체 제출용 공문 정산</Text>
+      <View style={styles.stats}>
+        <View style={styles.stat}>
+          <Text style={styles.num}>{official?.week.count ?? 0}</Text>
+          <Text style={styles.label}>이번 주 미정산</Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={styles.num}>{(official?.week.amount ?? 0).toLocaleString('ko-KR')}</Text>
+          <Text style={styles.label}>주간 청구액</Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={styles.num}>{(official?.month.amount ?? 0).toLocaleString('ko-KR')}</Text>
+          <Text style={styles.label}>이번 달 청구액</Text>
+        </View>
+      </View>
+      <Text style={styles.section}>스캔된 쿠폰 내역</Text>
+      {(official?.items ?? []).map((item) => (
+        <View key={item.id} style={styles.card}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.meta}>{item.usedAt ? formatKoDateTime(item.usedAt) : '-'}</Text>
+          <Text style={styles.meta}>할인 {item.discountAmount.toLocaleString('ko-KR')}원 · QR ID {item.code}</Text>
+        </View>
+      ))}
+      {sendStatus ? <Text style={styles.settled}>{sendStatus}</Text> : null}
+      <TouchableOpacity style={styles.pdfBtn} onPress={() => official?.html && setPreviewOpen(true)}>
+        <Text style={styles.pdfBtnText}>공문 미리보기</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.mailBtn}
+        disabled={sending}
+        onPress={async () => {
+          setSending(true);
+          try {
+            const result = await sendOfficialSettlement({ merchantId: DEV_MERCHANT_ID });
+            if (result.success) {
+              setSendStatus('정산 신청 완료');
+              setSuccessOpen(true);
+              loadOfficial();
+            } else {
+              Alert.alert('알림', result.message);
+            }
+          } catch (err) {
+            Alert.alert('알림', err instanceof Error ? err.message : '공문 발송에 실패했습니다.');
+          } finally {
+            setSending(false);
+          }
+        }}
+      >
+        <Text style={styles.mailBtnText}>{sending ? '발송 중...' : '지자체 정산 공문 발송하기'}</Text>
+      </TouchableOpacity>
+      <QrCouponScanner merchantId={DEV_MERCHANT_ID} onUsed={loadOfficial} />
+
+      <Modal visible={previewOpen} transparent animationType="fade" onRequestClose={() => setPreviewOpen(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <ModalExitButton onPress={() => setPreviewOpen(false)} />
+            <Text style={styles.cardTitle}>공문서 미리보기 {official?.docNumber}</Text>
+            {official?.html ? <OfficialPreviewFrame html={official.html} /> : null}
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={successOpen} transparent animationType="fade" onRequestClose={() => setSuccessOpen(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <ModalExitButton onPress={() => setSuccessOpen(false)} />
+            <Text style={styles.cardTitle}>정상적으로 공문서가 접수되었습니다.</Text>
+            <Text style={styles.meta}>상태 · 정산 신청 완료</Text>
+          </View>
+        </View>
+      </Modal>
+
       <Text style={styles.title}>내 가맹점 쿠폰 사용 · 정산 현황</Text>
       <View style={styles.stats}>
         <View style={styles.stat}>
@@ -56,7 +151,7 @@ export default function MerchantSettlementScreen() {
 
       <Text style={styles.section}>행사 종료 후 일괄 정산</Text>
       <Text style={styles.lead}>
-        QR 촬영 일시와 정산금액을 기록한 뒤, 축제 일정이 끝나면 공문서 PDF를 담당자에게 보내고 사장님도 내려받습니다.
+        QR 촬영 일시와 정산금액을 기록한 뒤, 일괄 정산으로 담당자에게 정산서를 보내고 사장님도 내려받습니다.
       </Text>
       {matched.length === 0 ? (
         <Text style={styles.empty}>매칭 신청한 쿠폰이 없습니다. 할인 쿠폰 등록에서 지자체 1:1 매칭을 켜 주세요.</Text>
@@ -107,13 +202,12 @@ export default function MerchantSettlementScreen() {
               ) : (
                 <Text style={styles.meta}>
                   {ended
-                    ? '행사 종료. 한 번만 일괄 정산할 수 있습니다.'
-                    : '행사 일정이 끝난 뒤 한 번에 정산합니다.'}
+                    ? '행사 종료. 일괄 정산과 정산서 내려받기를 할 수 있습니다.'
+                    : 'QR 촬영 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.'}
                 </Text>
               )}
               <TouchableOpacity
-                style={[styles.mailBtn, !ended && !promo.settledAt && styles.mailBtnOff]}
-                disabled={!ended && !promo.settledAt}
+                style={styles.mailBtn}
                 onPress={() => {
                   if (!promo.managerEmail) {
                     Alert.alert('알림', '담당자 메일이 없습니다. 쿠폰 등록 화면에서 메일을 입력해주세요.');
@@ -129,7 +223,7 @@ export default function MerchantSettlementScreen() {
                 }}
               >
                 <Text style={styles.mailBtnText}>
-                  {promo.settledAt ? '정산 공문 다시 보내기' : '종료 후 일괄 정산 · 담당자 공문 발송'}
+                  {promo.settledAt ? '담당자 정산서 다시 보내기' : '일괄 정산.담당자 정산서 발송'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -140,7 +234,7 @@ export default function MerchantSettlementScreen() {
                   }
                 }}
               >
-                <Text style={styles.pdfBtnText}>상가 사장님 공문서 PDF 내려받기</Text>
+                <Text style={styles.pdfBtnText}>상가 사장님 정산서 내려받기</Text>
               </TouchableOpacity>
             </View>
           );
@@ -209,4 +303,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pdfBtnText: { color: '#fff', fontWeight: '800' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 16 },
+  sheet: { backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 44, maxHeight: '88%' as unknown as number },
+  previewFallback: { fontSize: 12, color: '#374151', marginTop: 10, lineHeight: 18 },
 });

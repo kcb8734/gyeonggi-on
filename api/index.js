@@ -8,6 +8,15 @@ import {
   issueEmailChallenge,
   normalizeEmail,
 } from './emailChallenge.js';
+import {
+  dashboard,
+  preview,
+  recommendCourse,
+  sendOfficial,
+  settlementCsv,
+  useCoupon,
+  verifyCoupon,
+} from './platform.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -61,6 +70,17 @@ function readBody(req) {
   }
   if (typeof raw === 'object') return raw;
   return {};
+}
+
+function readQuery(req) {
+  const raw = requestPath(req);
+  const q = raw.indexOf('?');
+  if (q < 0) return {};
+  try {
+    return Object.fromEntries(new URLSearchParams(raw.slice(q + 1)));
+  } catch (_err) {
+    return {};
+  }
 }
 
 function requestPath(req) {
@@ -391,6 +411,59 @@ async function handler(req, res) {
     const method = String(req.method || 'GET').toUpperCase();
     const path = requestPath(req);
     const body = readBody(req);
+
+    if (/coupons\/verify/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = verifyCoupon(body.code || body.coupon_code);
+      send(res, result.status, result.body, corsHeaders(req));
+      return;
+    }
+    if (/coupons\/use/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = useCoupon(body.code || body.coupon_code, body.merchant_id);
+      send(res, result.status, result.body, corsHeaders(req));
+      return;
+    }
+    if (/settlements\/preview/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const query = readQuery(req);
+      const merchantId = body.merchant_id || query.merchant_id;
+      send(res, 200, { success: true, data: preview(merchantId) }, corsHeaders(req));
+      return;
+    }
+    if (/settlements\/send/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = await sendOfficial(body.merchant_id, body.to_email);
+      send(res, result.status, result.body, corsHeaders(req));
+      return;
+    }
+    if (/courses\/recommend/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const query = readQuery(req);
+      const title = body.title || query.title || '';
+      const city = body.city || query.city || '';
+      send(res, 200, { success: true, data: recommendCourse(title, city) }, corsHeaders(req));
+      return;
+    }
+    if (/admin\/dashboard/i.test(path)) {
+      send(res, 200, { success: true, data: dashboard() }, corsHeaders(req));
+      return;
+    }
+    if (/admin\/settlements\.csv/i.test(path)) {
+      send(res, 200, { success: true, csv: settlementCsv() }, corsHeaders(req));
+      return;
+    }
+    if (/admin\/login/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const email = String(body.email || '').trim();
+      const password = String(body.password || '');
+      if (email === 'admin@gyeonggi-on.kr' && password === 'admin1234') {
+        send(res, 200, { success: true, data: { token: 'admin-local' }, message: '관리자 로그인' }, corsHeaders(req));
+        return;
+      }
+      send(res, 401, { success: false, message: '관리자 계정 정보가 올바르지 않습니다.' }, corsHeaders(req));
+      return;
+    }
 
     if (/auth\/send-email-code/i.test(path)) {
       await sendEmailCode(req, res);

@@ -12,6 +12,8 @@ import homeRouter from './routes/home';
 import tourRouter from './routes/tour';
 import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
+import settlementsRouter from './routes/settlements';
+import coursesRouter from './routes/courses';
 import { startFestivalCron } from './jobs/festivalCron';
 import { runFestivalSync } from './controllers/festivalListController';
 import { pool, connectionString } from './db/pool';
@@ -74,6 +76,8 @@ const issueLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 const verifyLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 app.use('/api/coupons/redeem', redeemLimiter);
 app.use('/api/coupons/issue', issueLimiter);
+app.use('/api/coupons/verify', rateLimit({ windowMs: 60 * 1000, max: 40 }));
+app.use('/api/coupons/use', rateLimit({ windowMs: 60 * 1000, max: 40 }));
 app.use('/api/merchants/verify', verifyLimiter);
 
 app.use('/api/promotions', promotionsRouter);
@@ -85,6 +89,8 @@ app.use('/api/home', homeRouter);
 app.use('/api/tour', tourRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/feeds', feedsRouter);
+app.use('/api/settlements', settlementsRouter);
+app.use('/api/courses', coursesRouter);
 app.get('/api/cron/festivals', runFestivalSync);
 app.post('/api/cron/festivals', runFestivalSync);
 

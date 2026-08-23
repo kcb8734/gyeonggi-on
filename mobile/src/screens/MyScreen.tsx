@@ -235,6 +235,11 @@ export default function MyScreen() {
           <Text style={styles.menuTitle}>알림 설정</Text>
           <Text style={styles.menuMeta}>내 일정 {app.schedule.length}건 연동</Text>
         </TouchableOpacity>
+        <View style={styles.menuDivider} />
+        <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Admin')}>
+          <Text style={styles.menuTitle}>관리자 페이지</Text>
+          <Text style={styles.menuMeta}>kdanji.com/admin · TourAPI 수집 안내</Text>
+        </TouchableOpacity>
       </View>
       <FestivalRegisterModal visible={festivalModal} onClose={() => setFestivalModal(false)} />
       <ProfileEditModal visible={profileModal} onClose={() => setProfileModal(false)} />
