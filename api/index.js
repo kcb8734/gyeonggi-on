@@ -184,7 +184,7 @@ function resendConfigured() {
 }
 
 function resendFrom() {
-  return String(process.env.RESEND_FROM || '').trim() || '온앤온 <beth.t@example.com>';
+  return String(process.env.RESEND_FROM || '').trim() || 'Onandon <beth.t@example.com>';
 }
 
 function todayYmd() {
