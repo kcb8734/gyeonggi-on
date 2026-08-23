@@ -56,7 +56,7 @@ export default function MerchantSettlementScreen() {
 
       <Text style={styles.section}>행사 종료 후 일괄 정산</Text>
       <Text style={styles.lead}>
-        QR 촬영 일시와 정산금액을 기록한 뒤, 축제 일정이 끝나면 공문서 PDF를 담당자에게 보내고 사장님도 내려받습니다.
+        QR 촬영 일시와 정산금액을 기록한 뒤, 일괄 정산으로 담당자에게 정산서를 보내고 사장님도 내려받습니다.
       </Text>
       {matched.length === 0 ? (
         <Text style={styles.empty}>매칭 신청한 쿠폰이 없습니다. 할인 쿠폰 등록에서 지자체 1:1 매칭을 켜 주세요.</Text>
@@ -107,13 +107,12 @@ export default function MerchantSettlementScreen() {
               ) : (
                 <Text style={styles.meta}>
                   {ended
-                    ? '행사 종료. 한 번만 일괄 정산할 수 있습니다.'
-                    : '행사 일정이 끝난 뒤 한 번에 정산합니다.'}
+                    ? '행사 종료. 일괄 정산과 정산서 내려받기를 할 수 있습니다.'
+                    : 'QR 촬영 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.'}
                 </Text>
               )}
               <TouchableOpacity
-                style={[styles.mailBtn, !ended && !promo.settledAt && styles.mailBtnOff]}
-                disabled={!ended && !promo.settledAt}
+                style={styles.mailBtn}
                 onPress={() => {
                   if (!promo.managerEmail) {
                     Alert.alert('알림', '담당자 메일이 없습니다. 쿠폰 등록 화면에서 메일을 입력해주세요.');
@@ -129,7 +128,7 @@ export default function MerchantSettlementScreen() {
                 }}
               >
                 <Text style={styles.mailBtnText}>
-                  {promo.settledAt ? '정산 공문 다시 보내기' : '종료 후 일괄 정산 · 담당자 공문 발송'}
+                  {promo.settledAt ? '담당자 정산서 다시 보내기' : '일괄 정산.담당자 정산서 발송'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -140,7 +139,7 @@ export default function MerchantSettlementScreen() {
                   }
                 }}
               >
-                <Text style={styles.pdfBtnText}>상가 사장님 공문서 PDF 내려받기</Text>
+                <Text style={styles.pdfBtnText}>상가 사장님 정산서 내려받기</Text>
               </TouchableOpacity>
             </View>
           );

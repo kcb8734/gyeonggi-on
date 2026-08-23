@@ -22,6 +22,8 @@ table { width: 100%; border-collapse: collapse; background: #fff; }
 th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
 .error { color: #b91c1c; font-weight: 700; }
 .muted { color: #9ca3af; }
+.process { margin: 0; padding-left: 20px; color: #374151; font-weight: 600; line-height: 1.6; }
+.process li { margin-bottom: 6px; }
 .festival-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 20px; }
 .festival-form textarea, .festival-form button { grid-column: 1 / -1; }
 .festival-form textarea { min-height: 80px; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-family: inherit; }

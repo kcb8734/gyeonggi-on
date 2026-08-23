@@ -88,6 +88,7 @@ export default function App() {
         <form className="login-card" onSubmit={handleLogin}>
           <p className="eyebrow">온앤온(on&on) Admin</p>
           <h1>관리자 로그인</h1>
+          <p className="muted">운영 주소 https://www.kdanji.com/admin · 기본 계정 admin@gyeonggi-on.kr / admin1234</p>
           <label>이메일</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} />
           <label>비밀번호</label>
@@ -118,6 +119,17 @@ export default function App() {
       </header>
 
       {error ? <p className="error">{error}</p> : null}
+
+      <section>
+        <h2>한국관광공사 TourAPI 데이터 수집 프로세스</h2>
+        <ol className="process">
+          <li>서비스 키로 TourAPI 4.0(KorService2)에 접속합니다.</li>
+          <li>searchFestival2를 areaCode=31(경기), MobileApp=kdanji, 오늘 이후 행사 조건으로 호출합니다.</li>
+          <li>매일 03:00 Vercel Cron이 /api/cron/festivals 를 호출하고, 관리자는 즉시 수집도 요청할 수 있습니다.</li>
+          <li>contentid·제목·주소·좌표·기간·이미지를 홈 축제 카드로 변환하고 12시간 캐시합니다.</li>
+          <li>TourAPI에 없는 지자체 자체 행사는 아래 수동 등록으로 앱에 바로 반영합니다.</li>
+        </ol>
+      </section>
 
       <section className="cards">
         <article>

@@ -14,8 +14,9 @@ import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
 import { addLocalPromotion, incrementPromotionQr, settlePromotion, useAppState } from '../stores/appStore';
+import { logoutMerchant, useMerchantState } from '../stores/merchantStore';
+import MerchantAuthPanel from '../components/ui/MerchantAuthPanel';
 import type { HomePromotion, QrScanRecord } from '../types/home';
-import { isScheduleEnded } from '../utils/festivalSchedule';
 import { pickFromCamera, pickPhotoFromGallery } from '../utils/pickImage';
 import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
 import { matchingAmountWon } from '../utils/settlementMail';
@@ -73,6 +74,8 @@ function ShopPhotoSlot({
 
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
   const app = useAppState();
+  const merchants = useMerchantState();
+  const session = merchants.accounts.find((item) => item.businessName === merchants.sessionName) ?? null;
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
   const businessNameRef = useRef('');
@@ -80,6 +83,10 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   const mainMenuRef = useRef('');
   const featuresRef = useRef('');
   const addressRef = useRef('');
+  if (session) {
+    if (!businessNameRef.current) businessNameRef.current = session.businessName;
+    if (!businessNumberRef.current) businessNumberRef.current = session.businessNumber;
+  }
   const [discountRate, setDiscountRate] = useState<string>('10');
   const [quantity, setQuantity] = useState<string>('100');
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>('5000');
@@ -128,6 +135,15 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     const selected = festivals.find((item) => item.id === selectedFestivalId);
     if (selected?.managerEmail) setSettlementEmail(selected.managerEmail);
   }, [selectedFestivalId, festivals]);
+
+  useEffect(() => {
+    if (!session) return;
+    businessNameRef.current = session.businessName;
+    businessNumberRef.current = session.businessNumber;
+    if (savedPromoId) return;
+    const existing = app.localPromotions.find((item) => item.business_name === session.businessName);
+    if (existing) setSavedPromoId(existing.id);
+  }, [session?.businessName, app.localPromotions, savedPromoId]);
 
   useEffect(() => {
     if (!savedPromoId) return;
@@ -179,6 +195,24 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     [maxDiscountAmount, preview.gov, qrCount],
   );
 
+  const scanCouponQr = async () => {
+    const uri = await pickFromCamera();
+    if (!uri) return;
+    const at = new Date().toISOString();
+    const amountWon = matchingAmountWon({
+      maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
+      govRate: preview.gov,
+      qrCount: 1,
+    }).perUse;
+    if (savedPromoId) {
+      incrementPromotionQr(savedPromoId, { at, amountWon });
+      return;
+    }
+    setQrScans((prev) => [...prev, { at, amountWon }]);
+    setQrCount((prev) => prev + 1);
+    setLastQrNote(`카메라 확인 ${new Date(at).toLocaleString('ko-KR')}`);
+  };
+
   const handleVerify = async () => {
     if (typeof document !== 'undefined') {
       const active = document.activeElement as HTMLElement | null;
@@ -211,7 +245,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
   };
 
   const handleSubmit = async () => {
-    if (!ntsResult?.data?.verified || ntsResult.data.b_stt_cd !== '01') {
+    if (!session && (!ntsResult?.data?.verified || ntsResult.data.b_stt_cd !== '01')) {
       Alert.alert('알림', '국세청 계속사업자 확인 후에 등록할 수 있습니다.');
       return;
     }
@@ -331,9 +365,35 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
     }
   };
 
+  if (!session) {
+    return (
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+        <MerchantAuthPanel />
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
-      <Text style={styles.note}>국세청 계속사업자 확인 후 상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
+      <View style={styles.sessionBox}>
+        <Text style={styles.matchTitle}>{session.businessName} 로그인됨</Text>
+        <Text style={styles.note}>국세청 확인이 끝난 상호입니다. 손님 쿠폰 QR을 바로 찍거나 할인 쿠폰을 이어서 등록하세요.</Text>
+        <TouchableOpacity style={styles.photoBtnGhost} onPress={logoutMerchant}>
+          <Text style={styles.photoBtnGhostText}>사장님 로그아웃</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.quickQr}>
+        <Text style={[styles.matchTitle, { color: '#F9FAFB' }]}>손님 쿠폰 QR 바로 촬영</Text>
+        <Text style={[styles.qrCount, { color: '#fff' }]}>{qrCount.toLocaleString('ko-KR')}건</Text>
+        <Text style={[styles.note, { color: '#E5E7EB' }]}>카운터에서 한 번만 누르면 카메라가 열립니다. 촬영 일시와 정산액이 바로 기록됩니다.</Text>
+        <TouchableOpacity style={styles.qrHeroBtn} onPress={scanCouponQr}>
+          <Text style={styles.qrHeroText}>QR 바로 촬영</Text>
+        </TouchableOpacity>
+        {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
+      </View>
+
+      <Text style={styles.note}>상가 자체 할인은 즉시 발행됩니다. 지자체 1:1 매칭은 선택 신청입니다.</Text>
 
       <Text style={styles.label}>상호명</Text>
       <IsolatedImeField
@@ -365,7 +425,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         </View>
       )}
 
-      {ntsResult?.data?.verified ? (
+      {ntsResult?.data?.verified || session ? (
         <View style={styles.introBox}>
           <Text style={styles.note}>사업자 확인이 끝났습니다. 쿠폰 등록 전에 상가를 소개해 주세요.</Text>
           <Text style={styles.label}>주요 메뉴</Text>
@@ -468,24 +528,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
             <Text style={styles.matchTitle}>쿠폰 확인 QR 촬영</Text>
             <Text style={styles.qrCount}>{qrCount.toLocaleString('ko-KR')}건</Text>
             <Text style={styles.note}>카운터에서 손님 QR을 촬영하면 일시와 정산액이 기록됩니다. 정산은 행사 종료 후 한 번에 합니다.</Text>
-            <TouchableOpacity style={styles.photoBtn} onPress={async () => {
-              const uri = await pickFromCamera();
-              if (!uri) return;
-              const at = new Date().toISOString();
-              const amountWon = matchingAmountWon({
-                maxDiscountAmount: parseFloat(maxDiscountAmount) || 0,
-                govRate: preview.gov,
-                qrCount: 1,
-              }).perUse;
-              if (savedPromoId) {
-                incrementPromotionQr(savedPromoId, { at, amountWon });
-                return;
-              }
-              setQrScans((prev) => [...prev, { at, amountWon }]);
-              setQrCount((prev) => prev + 1);
-              setLastQrNote(`카메라 확인 ${new Date(at).toLocaleString('ko-KR')}`);
-            }}>
-              <Text style={styles.photoBtnText}>QR 촬영</Text>
+            <TouchableOpacity style={styles.photoBtn} onPress={scanCouponQr}>
+              <Text style={styles.photoBtnText}>QR 바로 촬영</Text>
             </TouchableOpacity>
             {lastQrNote ? <Text style={styles.verifyHint}>{lastQrNote}</Text> : null}
             <View style={styles.settleRow}>
@@ -500,18 +544,17 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
               const festival = festivals.find((item) => item.id === selectedFestivalId);
               const saved = app.localPromotions.find((item) => item.id === savedPromoId);
               const endDate = saved?.festivalEndDate ?? festival?.end_date;
-              const ended = isScheduleEnded(endDate);
               const alreadySettled = Boolean(saved?.settledAt);
               return (
                 <>
                   <Text style={styles.note}>
                     {endDate
-                      ? `행사 종료일 ${endDate}. ${ended ? '종료되어 일괄 정산할 수 있습니다.' : '종료 후에 공문서 PDF로 한 번에 정산합니다.'}`
-                      : '연계 축제 종료일이 확인되면 그 이후 한 번에 정산합니다.'}
+                      ? `행사 종료일 ${endDate}. QR 확인 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.`
+                      : 'QR 확인 후 일괄 정산과 정산서 내려받기를 할 수 있습니다.'}
                   </Text>
                   <TouchableOpacity
-                    style={[styles.mailBtn, (!saved || !ended) && styles.mailBtnOff]}
-                    disabled={!saved || !ended}
+                    style={[styles.mailBtn, !saved && styles.mailBtnOff]}
+                    disabled={!saved}
                     onPress={() => {
                       if (!saved) return;
                       settlePromotion(saved.id, matchPreview.total);
@@ -520,7 +563,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
                     }}
                   >
                     <Text style={styles.mailBtnText}>
-                      {alreadySettled ? '정산 공문 다시 보내기' : '종료 후 일괄 정산 · 담당자 공문 발송'}
+                      {alreadySettled ? '담당자 정산서 다시 보내기' : '일괄 정산.담당자 정산서 발송'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -536,7 +579,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
                       }
                     }}
                   >
-                    <Text style={styles.pdfBtnText}>상가 사장님 공문서 PDF 내려받기</Text>
+                    <Text style={styles.pdfBtnText}>상가 사장님 정산서 내려받기</Text>
                   </TouchableOpacity>
                 </>
               );
@@ -559,7 +602,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         </View>
       )}
 
-      <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading || !ntsResult?.data?.verified}>
+      <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>할인 쿠폰 등록하기</Text>}
       </TouchableOpacity>
     </ScrollView>
@@ -567,6 +610,28 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 }
 
 const styles = StyleSheet.create({
+  sessionBox: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    marginBottom: 12,
+  },
+  quickQr: {
+    backgroundColor: '#111827',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  qrHeroBtn: {
+    marginTop: 10,
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  qrHeroText: { color: '#111827', fontWeight: '900', fontSize: 16 },
   container: { flex: 1, padding: 20, backgroundColor: '#F7F8FA' },
   note: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 8, fontFamily: KOREAN_FONT_FAMILY },
   label: { fontSize: 14, fontWeight: '600', marginTop: 12, marginBottom: 6, color: '#333', fontFamily: KOREAN_FONT_FAMILY },
