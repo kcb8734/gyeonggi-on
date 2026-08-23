@@ -48,6 +48,7 @@ app.get('/api/db-test', async (_req, res) => {
       now: result.rows[0].now,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       error: (error as Error).message,

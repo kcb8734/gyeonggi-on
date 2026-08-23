@@ -46,6 +46,7 @@ node dist/app.js        # 또는 npm run dev (tsx watch)
 - `GET /api/admin/coupons/stats` — 쿠폰 발행·사용 통계
 - `GET /api/admin/budget` — 지자체 예산 잔액/집행률
 - `GET /health` — 헬스체크
+- `GET /api/db-test` — Neon PostgreSQL 연결 확인 (`SELECT NOW()`)
 
 ## 보안/동시성 설계
 `SELECT ... FOR UPDATE` 비관적 잠금 + 원자적 조건부 `UPDATE`로 지자체 예산 동시성 이슈를 방어합니다.
