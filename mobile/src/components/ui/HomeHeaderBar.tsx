@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { BUILD_ID } from '../../buildInfo';
@@ -33,9 +33,13 @@ export default function HomeHeaderBar() {
       </View>
       <TouchableOpacity style={styles.side} onPress={goMy} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="마이페이지로 이동">
         <View style={styles.shortcut}>
-          <View style={styles.avatar}>
-            <ProfileGlyph />
-          </View>
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatar}>
+              <ProfileGlyph />
+            </View>
+          )}
           <Text style={styles.pts} numberOfLines={1}>
             {user ? `${points.toLocaleString('ko-KR')} P` : '로그인 필요'}
           </Text>
@@ -98,6 +102,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#111827',
   },
   pts: {
     fontSize: 10,

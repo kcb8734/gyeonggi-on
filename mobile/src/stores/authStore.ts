@@ -5,7 +5,7 @@ export interface AuthUser {
   id: string;
   nickname: string;
   avatarUrl?: string;
-  provider: 'kakao' | 'google';
+  provider: 'kakao' | 'google' | 'local';
   email?: string;
 }
 
@@ -52,4 +52,30 @@ export function setAuthSession(next: AuthSession) {
 
 export function clearAuthSession() {
   emit(null);
+}
+
+export function updateAuthProfile(input: { nickname?: string; avatarUrl?: string }) {
+  const nickname = (input.nickname ?? session?.user.nickname ?? '온앤온').trim() || '온앤온';
+  const avatarUrl = input.avatarUrl ?? session?.user.avatarUrl;
+  if (session) {
+    emit({
+      ...session,
+      user: {
+        ...session.user,
+        nickname,
+        avatarUrl,
+      },
+    });
+    return;
+  }
+  emit({
+    user: {
+      id: 'local-profile',
+      nickname,
+      avatarUrl,
+      provider: 'local',
+    },
+    accessToken: 'local',
+    refreshToken: 'local',
+  });
 }

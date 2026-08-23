@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type { WalletCoupon } from '../../stores/appStore';
+import ModalExitButton from './ModalExitButton';
 
 interface Props {
   coupon: WalletCoupon | null;
@@ -15,6 +16,7 @@ export default function CouponQrModal({ coupon, onClose }: Props) {
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.card}>
+          <ModalExitButton onPress={onClose} />
           <Text style={styles.kicker}>현장 제시용</Text>
           <Text style={styles.shop}>{coupon.business_name}</Text>
           <Text style={styles.rate}>{coupon.total_discount_rate}% 상생 할인</Text>

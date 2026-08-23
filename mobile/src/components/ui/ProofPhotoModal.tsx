@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { WalletCoupon } from '../../stores/appStore';
+import ModalExitButton from './ModalExitButton';
 
 interface Props {
   coupon: WalletCoupon | null;
@@ -15,6 +16,7 @@ export default function ProofPhotoModal({ coupon, onClose, onUse }: Props) {
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.card}>
+          <ModalExitButton onPress={onClose} />
           <Text style={styles.kicker}>행사 참여 인증사진</Text>
           <Text style={styles.title}>{coupon.festival_title ?? coupon.title}</Text>
           {coupon.proofImageUrl ? (

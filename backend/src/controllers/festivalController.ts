@@ -20,6 +20,9 @@ interface FestivalRow {
   category?: string | null;
   image_url?: string | null;
   is_trending?: boolean;
+  tour_content_id?: string | null;
+  tel?: string | null;
+  source?: string | null;
 }
 
 interface MerchantMapRow {
@@ -50,7 +53,9 @@ function toFestivalPin(row: FestivalRow) {
     category: row.category ?? '문화/예술',
     image_url: row.image_url ?? null,
     is_trending: Boolean(row.is_trending),
-    contentId: row.id,
+    contentId: row.tour_content_id ?? row.id,
+    tel: row.tel ?? undefined,
+    source: row.source ?? 'db',
   };
 }
 
@@ -96,6 +101,7 @@ export const getNearbyFestivals = async (req: Request, res: Response) => {
         `SELECT
            f.id, f.title, f.location_name, f.latitude, f.longitude,
            f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+           f.tour_content_id, f.tel, f.source,
            mu.name AS municipality_name
          FROM festivals f
          JOIN municipalities mu ON mu.id = f.municipality_id
@@ -119,6 +125,7 @@ export const getNearbyFestivals = async (req: Request, res: Response) => {
         `SELECT
            f.id, f.title, f.location_name, f.latitude, f.longitude,
            f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+           f.tour_content_id, f.tel, f.source,
            mu.name AS municipality_name,
            (${distanceSql}) AS distance_km
          FROM festivals f
@@ -139,6 +146,7 @@ export const getNearbyFestivals = async (req: Request, res: Response) => {
       `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
          f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+         f.tour_content_id, f.tel, f.source,
          mu.name AS municipality_name
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id
@@ -172,6 +180,7 @@ export const getFestivalMap = async (req: Request, res: Response) => {
       `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
          f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+         f.tour_content_id, f.tel, f.source,
          mu.name AS municipality_name
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id

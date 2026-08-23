@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type { MerchantPin } from '../../types/map';
+import ModalExitButton from '../ui/ModalExitButton';
 
 interface Props {
   merchant: MerchantPin | null;
@@ -28,6 +29,7 @@ export default function MerchantCouponSheet({
           {merchant && (
             <>
               <View style={styles.handle} />
+              <ModalExitButton onPress={onClose} />
               <Text style={styles.shopName}>{merchant.business_name}</Text>
               <Text style={styles.category}>{merchant.category}</Text>
               {merchant.address ? <Text style={styles.address}>{merchant.address}</Text> : null}

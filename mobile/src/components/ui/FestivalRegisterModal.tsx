@@ -19,6 +19,8 @@ import type { HomeFestival } from '../../types/home';
 import { pickPhotoFromGallery } from '../../utils/pickImage';
 import { formatTel } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
+import { sendManagerEmailCode, verifyManagerEmailCode } from '../../api/emailAuth';
+import ModalExitButton from './ModalExitButton';
 
 const CITIES = METRO_LOCALITIES.GYEONGGI;
 
@@ -148,6 +150,11 @@ export default function FestivalRegisterModal({
   const [managerPhone, setManagerPhone] = useState('');
   const [inquiryTel, setInquiryTel] = useState('');
   const [contactVerified, setContactVerified] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [devCode, setDevCode] = useState('');
   const [localityId, setLocalityId] = useState(CITIES[0]?.id ?? '수원시');
   const [category, setCategory] = useState<string>('먹거리');
   const [startDate, setStartDate] = useState('');
@@ -163,6 +170,9 @@ export default function FestivalRegisterModal({
 
   useEffect(() => {
     setContactVerified(false);
+    setEmailSent(false);
+    setEmailCode('');
+    setDevCode('');
   }, [managerEmail, managerPhone]);
 
   const reset = () => {
@@ -174,6 +184,9 @@ export default function FestivalRegisterModal({
     setManagerPhone('');
     setInquiryTel('');
     setContactVerified(false);
+    setEmailCode('');
+    setEmailSent(false);
+    setDevCode('');
     setLocalityId(CITIES[0]?.id ?? '수원시');
     setCategory('먹거리');
     setStartDate('');
@@ -187,7 +200,7 @@ export default function FestivalRegisterModal({
     if (uri) setPosterUrl(uri);
   };
 
-  const verifyContact = () => {
+  const sendEmailCode = async () => {
     if (!isValidEmail(managerEmail)) {
       Alert.alert('확인', '담당자 메일 형식을 확인해주세요.');
       return;
@@ -196,8 +209,32 @@ export default function FestivalRegisterModal({
       Alert.alert('확인', '연락처는 숫자 9~11자리로 입력해주세요.');
       return;
     }
+    setSendingCode(true);
+    const result = await sendManagerEmailCode(managerEmail.trim());
+    setSendingCode(false);
+    if (!result.success) {
+      Alert.alert('발송 실패', result.message);
+      return;
+    }
+    setEmailSent(true);
+    if (result.devCode) setDevCode(result.devCode);
+    Alert.alert('인증메일 발송', result.devCode ? `${result.message}\n개발용 코드 ${result.devCode}` : result.message);
+  };
+
+  const confirmEmailCode = async () => {
+    if (!emailCode.trim()) {
+      Alert.alert('확인', '메일로 받은 6자리 인증번호를 입력해주세요.');
+      return;
+    }
+    setCheckingCode(true);
+    const result = await verifyManagerEmailCode(managerEmail.trim(), emailCode.trim());
+    setCheckingCode(false);
+    if (!result.success) {
+      Alert.alert('인증 실패', result.message);
+      return;
+    }
     setContactVerified(true);
-    Alert.alert('확인 완료', `${managerEmail.trim()}\n${formatTel(managerPhone)}\n담당자 메일·연락처가 확인되었습니다.`);
+    Alert.alert('확인 완료', `${managerEmail.trim()}\n${formatTel(managerPhone)}\n담당자 메일이 인증되었습니다.`);
   };
 
   const handleSave = async () => {
@@ -296,6 +333,7 @@ export default function FestivalRegisterModal({
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
+          <ModalExitButton onPress={onClose} />
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <Text style={styles.kicker}>지자체 축제 관리</Text>
             <Text style={styles.title}>지자체 축제 등록</Text>
@@ -332,13 +370,35 @@ export default function FestivalRegisterModal({
               keyboardType="phone-pad"
             />
             <TouchableOpacity
-              style={[styles.verifyBtn, contactVerified && styles.verifyBtnOn]}
-              onPress={verifyContact}
+              style={[styles.verifyBtn, emailSent && styles.verifyBtnOn]}
+              onPress={sendEmailCode}
+              disabled={sendingCode || contactVerified}
             >
-              <Text style={[styles.verifyText, contactVerified && styles.verifyTextOn]}>
-                {contactVerified ? '담당자 연락처 확인 완료' : '메일·연락처 확인'}
+              <Text style={[styles.verifyText, emailSent && styles.verifyTextOn]}>
+                {sendingCode ? '인증메일 보내는 중...' : emailSent ? '인증메일 다시 보내기' : '메일·연락처 확인'}
               </Text>
             </TouchableOpacity>
+            {emailSent || contactVerified ? (
+              <>
+                <Text style={styles.label}>인증번호 6자리</Text>
+                <InModalField
+                  value={emailCode}
+                  onChange={setEmailCode}
+                  placeholder="메일로 받은 숫자 6자리"
+                  keyboardType="phone-pad"
+                />
+                {devCode ? <Text style={styles.verifyHint}>개발용 코드 {devCode}</Text> : null}
+                <TouchableOpacity
+                  style={[styles.verifyBtn, contactVerified && styles.verifyBtnOn]}
+                  onPress={confirmEmailCode}
+                  disabled={checkingCode || contactVerified}
+                >
+                  <Text style={[styles.verifyText, contactVerified && styles.verifyTextOn]}>
+                    {checkingCode ? '확인 중...' : contactVerified ? '담당자 메일 인증 완료' : '인증번호 확인'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
             {contactVerified ? (
               <Text style={styles.verifyHint}>확인된 메일로 매칭 정산 안내를 받을 수 있습니다.</Text>
             ) : null}
