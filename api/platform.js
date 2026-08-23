@@ -62,7 +62,7 @@ function enrollCoupon(code, title, discountAmount) {
   return row;
 }
 
-function verifyCoupon(code) {
+function inspectCoupon(code) {
   const token = normalizeCouponCode(code);
   if (!token || (!isIssuedCouponCode(token) && !findCoupon(token))) {
     return { status: 400, body: { success: false, message: '쿠폰 QR이 아닙니다. 손님 쿠폰함의 QR을 스캔해 주세요.' } };
@@ -72,14 +72,28 @@ function verifyCoupon(code) {
   if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) {
     return { status: 410, body: { success: false, message: '만료된 쿠폰입니다.' } };
   }
-  if (coupon.isUsed) return { status: 409, body: { success: false, message: '이미 사용된 쿠폰입니다.' } };
-  return { status: 200, body: { success: true, message: '사용 가능한 쿠폰입니다.', data: coupon } };
+  return { status: 200, body: { success: true, data: coupon } };
+}
+
+function verifyCoupon(code) {
+  const checked = inspectCoupon(code);
+  if (!checked.body.success) return checked;
+  const coupon = checked.body.data;
+  return {
+    status: 200,
+    body: {
+      success: true,
+      message: coupon.isUsed ? '이미 사용된 쿠폰입니다. 정산 집계에 포함할 수 있습니다.' : '사용 가능한 쿠폰입니다.',
+      data: coupon,
+    },
+  };
 }
 
 function useCoupon(code, merchantId) {
-  const checked = verifyCoupon(code);
+  const checked = inspectCoupon(code);
   if (!checked.body.success) return checked;
-  const coupon = findCoupon(code);
+  const coupon = findCoupon(code) || checked.body.data;
+  if (coupon.isUsed) return { status: 409, body: { success: false, message: '이미 사용된 쿠폰입니다.', data: coupon } };
   coupon.isUsed = true;
   coupon.usedAt = new Date().toISOString();
   if (merchantId) coupon.merchantId = merchantId;

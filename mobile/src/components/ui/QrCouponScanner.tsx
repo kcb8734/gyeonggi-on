@@ -112,10 +112,17 @@ export default function QrCouponScanner({
             <Text style={styles.couponTitle}>{coupon?.title}</Text>
             <Text style={styles.meta}>할인 {coupon?.discountAmount?.toLocaleString('ko-KR')}원</Text>
             <Text style={styles.meta}>QR ID {coupon?.code}</Text>
+            {coupon?.isUsed ? <Text style={styles.meta}>이미 사용됨 · 같은 할인액으로 정산 집계에 포함합니다.</Text> : null}
             <TouchableOpacity
               style={styles.btn}
               onPress={async () => {
                 if (!coupon) return;
+                if (coupon.isUsed) {
+                  onUsed?.(coupon);
+                  setCoupon(null);
+                  handled.current = '';
+                  return;
+                }
                 setBusy(true);
                 const used = await useCouponCode(coupon.code, merchantId);
                 setBusy(false);
@@ -128,7 +135,7 @@ export default function QrCouponScanner({
                 onUsed?.(used.data ?? coupon);
               }}
             >
-              <Text style={styles.btnText}>{busy ? '처리 중...' : '사용하기'}</Text>
+              <Text style={styles.btnText}>{coupon?.isUsed ? '정산 집계에 포함' : (busy ? '처리 중...' : '사용하기')}</Text>
             </TouchableOpacity>
           </View>
         </View>

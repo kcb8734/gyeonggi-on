@@ -8,8 +8,8 @@ import { addLocalPromotion, settlePromotion, useAppState } from '../stores/appSt
 import type { ScannedCoupon } from '../api/couponScan';
 import type { HomePromotion } from '../types/home';
 import { formatKoDateTime, isScheduleEnded } from '../utils/festivalSchedule';
-import { downloadSettlementPdf, sendSettlementDocumentMail } from '../utils/settlementDocument';
-import { settlementFromScans } from '../utils/settlementAmounts';
+import { downloadSettlementPdf, resolveSettlementEmail, sendSettlementDocumentMail } from '../utils/settlementDocument';
+import { couponDiscountWon, mergeQrScans, settlementFromScans } from '../utils/settlementAmounts';
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 const SETTLE_PROMO_ID = 'local-settlement-scans';
@@ -19,7 +19,7 @@ function promoFromOfficial(official: OfficialPreview | null, extra?: HomePromoti
     ? extra.qrScans
     : (official?.items ?? []).map((item) => ({
       at: item.usedAt ?? new Date().toISOString(),
-      amountWon: item.discountAmount,
+      amountWon: couponDiscountWon({ discountAmount: item.discountAmount }),
       title: item.title,
       code: item.code,
     }));
@@ -87,6 +87,41 @@ export default function MerchantSettlementScreen() {
     loadOfficial();
   }, []);
 
+  useEffect(() => {
+    if (!official?.items?.length) return;
+    const existing = app.localPromotions.find((item) => item.id === SETTLE_PROMO_ID);
+    const incoming = official.items.map((item) => ({
+      at: item.usedAt ?? new Date().toISOString(),
+      amountWon: couponDiscountWon({ discountAmount: item.discountAmount }),
+      title: item.title,
+      code: item.code,
+    }));
+    const qrScans = mergeQrScans(existing?.qrScans, incoming);
+    if (!qrScans.length) return;
+    if (existing && existing.qrScans?.length === qrScans.length && existing.settlementAmount === settlementFromScans(qrScans).total) {
+      return;
+    }
+    addLocalPromotion({
+      id: SETTLE_PROMO_ID,
+      title: existing?.title ?? '스캔 쿠폰 일괄 정산',
+      business_name: existing?.business_name ?? official.merchant.name ?? '온앤온 가맹점',
+      merchant_discount_rate: existing?.merchant_discount_rate ?? 10,
+      gov_matching_rate: existing?.gov_matching_rate ?? 10,
+      total_discount_rate: existing?.total_discount_rate ?? 20,
+      remaining_quantity: 0,
+      funding_type: existing?.funding_type ?? 'MATCHED',
+      managerEmail: existing?.managerEmail ?? official.municipality.settlementEmail,
+      municipality_name: existing?.municipality_name ?? official.municipality.name,
+      qrScans,
+      qrConfirmCount: qrScans.length,
+      lastQrAt: qrScans[qrScans.length - 1]?.at,
+      settlementAmount: settlementFromScans(qrScans).total,
+      bankName: existing?.bankName ?? '기업은행',
+      bankAccount: existing?.bankAccount ?? '123-456789-01-011',
+      bankHolder: existing?.bankHolder ?? official.merchant.name,
+    });
+  }, [official]);
+
   const rows = data?.rows ?? [];
 
   return (
@@ -149,7 +184,7 @@ export default function MerchantSettlementScreen() {
           const existing = app.localPromotions.find((item) => item.id === SETTLE_PROMO_ID);
           const scan = {
             at: new Date().toISOString(),
-            amountWon: coupon.discountAmount,
+            amountWon: couponDiscountWon({ discountAmount: coupon.discountAmount }),
             title: coupon.title,
             code: coupon.code,
           };
@@ -268,10 +303,6 @@ export default function MerchantSettlementScreen() {
               <TouchableOpacity
                 style={styles.mailBtn}
                 onPress={() => {
-                  if (!promo.managerEmail) {
-                    Alert.alert('알림', '담당자 메일이 없습니다. 쿠폰 등록 화면에서 메일을 입력해주세요.');
-                    return;
-                  }
                   const amount = money.total || promo.settlementAmount || 0;
                   if (!promo.settledAt) settlePromotion(promo.id, amount);
                   const latest = {
@@ -280,8 +311,13 @@ export default function MerchantSettlementScreen() {
                     settlementAmount: amount,
                     qrScans: scans,
                     qrConfirmCount: qrCount,
+                    managerEmail: resolveSettlementEmail(promo, official?.municipality.settlementEmail),
                   };
-                  sendSettlementDocumentMail(latest).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. PDF는 내려받을 수 있습니다.'));
+                  sendOfficialSettlement({
+                    merchantId: DEV_MERCHANT_ID,
+                    toEmail: latest.managerEmail,
+                  }).catch(() => undefined);
+                  sendSettlementDocumentMail(latest).catch(() => Alert.alert('알림', '메일 앱을 열 수 없습니다. 정산서 PDF는 내려받았습니다.'));
                 }}
               >
                 <Text style={styles.mailBtnText}>
