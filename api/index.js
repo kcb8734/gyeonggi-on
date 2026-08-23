@@ -263,8 +263,9 @@ async function setupResendDomain(req, res) {
   }
   const wantVerify = /verify=1|verify=true/i.test(String(req.url || ''))
     || String((readBody(req) || {}).action || '').toLowerCase() === 'verify';
+  let verify = null;
   if (wantVerify && domain && domain.id) {
-    await resendApi('/domains/' + domain.id + '/verify', 'POST');
+    verify = await resendApi('/domains/' + domain.id + '/verify', 'POST');
   }
   const detail = domain && domain.id ? await resendApi('/domains/' + domain.id, 'GET') : { payload: domain };
   const payload = detail.payload || {};
@@ -275,6 +276,8 @@ async function setupResendDomain(req, res) {
     canManageDomains: true,
     status: payload.status || domain.status || '',
     records: resendDnsRecords(payload),
+    verifyStatus: verify ? verify.status : undefined,
+    verifyMessage: verify && verify.payload ? verify.payload.message || verify.payload.status : undefined,
     domain: payload,
   }, headers);
 }
