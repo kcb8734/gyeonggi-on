@@ -67,6 +67,42 @@ export async function fetchMerchantSettlement(merchantId: string): Promise<Merch
   return PREVIEW_SETTLEMENT;
 }
 
+const CANONICAL_VERIFY = 'https://www.kdanji.com/api/merchants/verify';
+const LOCAL_VERIFY = 'http://127.0.0.1:4000/api/merchants/verify';
+
+function isLocalHost(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1';
+}
+
+/** apex kdanji.com 은 POST를 www로 308 해서 브라우저 조회가 실패한다. */
+export function verifyMerchantUrls(options?: {
+  hostname?: string;
+  origin?: string;
+  apiBaseUrl?: string;
+  isDev?: boolean;
+}): string[] {
+  const hostname = options?.hostname
+    ?? (typeof window !== 'undefined' ? window.location.hostname : '');
+  const origin = (options?.origin
+    ?? (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+  const apiBase = (options?.apiBaseUrl ?? API_BASE_URL).replace(/\/$/, '');
+  const isDev = options?.isDev ?? (typeof __DEV__ !== 'undefined' && __DEV__);
+  const local = isLocalHost(hostname);
+  const urls: string[] = [];
+
+  if (local && origin) urls.push(`${origin}/api/merchants/verify`);
+  if (!local && origin && hostname && hostname !== 'kdanji.com') {
+    urls.push(`${origin}/api/merchants/verify`);
+  }
+  if (!local) urls.push(CANONICAL_VERIFY);
+  if (apiBase && !apiBase.includes('kdanji.com') && !apiBase.includes('127.0.0.1')) {
+    urls.push(`${apiBase}/api/merchants/verify`);
+  }
+  if (local || isDev) urls.push(LOCAL_VERIFY);
+
+  return urls.filter((url, index, list) => url && list.indexOf(url) === index);
+}
+
 export async function verifyMerchant(params: {
   merchantId?: string;
   businessNumber?: string;
@@ -78,13 +114,10 @@ export async function verifyMerchant(params: {
     business_name: params.businessName,
   };
 
-  const urls = [
-    typeof window !== 'undefined' ? `${window.location.origin}/api/merchants/verify` : '',
-    API_BASE_URL ? `${API_BASE_URL}/api/merchants/verify` : '',
-    'http://127.0.0.1:4000/api/merchants/verify',
-  ].filter((url, index, list) => url && list.indexOf(url) === index);
-
+  const urls = verifyMerchantUrls();
   let lastMessage = '국세청 상태조회에 실패했습니다.';
+  let sawHttp = false;
+
   for (const url of urls) {
     try {
       const res = await fetch(url, {
@@ -96,9 +129,10 @@ export async function verifyMerchant(params: {
       if (data && typeof data === 'object' && 'success' in data) {
         return data;
       }
+      sawHttp = true;
       lastMessage = `국세청 상태조회에 실패했습니다. (HTTP ${res.status || 0})`;
     } catch {
-      lastMessage = '국세청 확인 서버에 연결하지 못했습니다.';
+      if (!sawHttp) lastMessage = '국세청 확인 서버에 연결하지 못했습니다.';
     }
   }
   return { success: false, message: lastMessage };

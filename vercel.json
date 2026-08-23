@@ -6,8 +6,7 @@
   "outputDirectory": "mobile/dist",
   "functions": {
     "api/index.ts": {
-      "maxDuration": 15,
-      "includeFiles": "backend/**"
+      "maxDuration": 15
     },
     "api/merchants/verify.ts": {
       "maxDuration": 10
@@ -17,9 +16,9 @@
     }
   },
   "rewrites": [
-    { "source": "/api/merchants/verify", "destination": "/api/merchants/verify" },
-    { "source": "/api/health", "destination": "/api/health" },
-    { "source": "/health", "destination": "/api/health" },
+    { "source": "/api/merchants/verify", "destination": "/api" },
+    { "source": "/api/health", "destination": "/api" },
+    { "source": "/health", "destination": "/api" },
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
