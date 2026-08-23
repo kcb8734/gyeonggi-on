@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import IsolatedImeField from './IsolatedImeField';
 import ModalExitButton from './ModalExitButton';
+import { setImeModalLock } from '../../utils/nativeImeHost';
 import { getLocalities, type Locality, type MetroRegion } from '../../constants/regions';
 
 const ALL = '전체';
@@ -24,6 +25,11 @@ export default function LocalityFilter({ metro, value, onChange }: Props) {
   }, [metro.id, query]);
   const selected = getLocalities(metro.id).find((item) => item.id === value) ?? null;
 
+  React.useEffect(() => {
+    setImeModalLock(open);
+    return () => setImeModalLock(false);
+  }, [open]);
+
   const pick = (next: Locality | null) => {
     onChange(next?.id ?? null);
     setOpen(false);
@@ -42,14 +48,19 @@ export default function LocalityFilter({ metro, value, onChange }: Props) {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <ModalExitButton onPress={() => setOpen(false)} />
-            <Text style={styles.sheetTitle}>{metro.label} 시·군·구</Text>
-            <Text style={styles.sheetLead}>{metro.covers} · 가나다순으로 찾고 고를 수 있습니다</Text>
+            <View style={styles.sheetHead}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.sheetTitle}>{metro.label} 시·군·구</Text>
+                <Text style={styles.sheetLead}>{metro.covers} · 가나다순으로 찾고 고를 수 있습니다</Text>
+              </View>
+              <ModalExitButton onPress={() => setOpen(false)} />
+            </View>
             <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
               <IsolatedImeField
                 valueRef={searchRef}
                 placeholder="시·군·구 검색 (가나다순)"
                 onLiveChange={setQuery}
+                ignoreModalLock
               />
             </View>
             <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
@@ -97,11 +108,22 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '72%',
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 12,
+    overflow: 'hidden',
+    zIndex: 30,
   },
-  sheetTitle: { fontSize: 17, fontWeight: '800', paddingHorizontal: 16, paddingRight: 48 },
-  sheetLead: { fontSize: 12, color: '#6B7280', paddingHorizontal: 16, marginTop: 4, marginBottom: 10 },
+  sheetHead: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    minHeight: 56,
+  },
+  sheetTitle: { fontSize: 17, fontWeight: '800', paddingRight: 8 },
+  sheetLead: { fontSize: 12, color: '#6B7280', marginTop: 4, marginBottom: 2 },
   list: { paddingHorizontal: 12 },
   item: {
     paddingVertical: 12,

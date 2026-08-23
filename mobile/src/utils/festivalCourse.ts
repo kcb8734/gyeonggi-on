@@ -12,7 +12,7 @@ export function buildFestivalCourse(input: {
 }): FestivalCourse {
   const title = String(input.title || '').trim();
   const city = resolveCourseCity(input);
-  const festival = title || `${city} 지역 축제`;
+  const festival = !title || title === '축제 상세' ? `${city} 지역 축제` : title;
   const history = landmarkFor('history', city, input.address, title);
   const market = landmarkFor('market', city, input.address, title);
   const camp = landmarkFor('camp', city, input.address, title);

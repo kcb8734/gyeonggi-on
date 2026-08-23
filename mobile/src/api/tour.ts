@@ -1,5 +1,7 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
+import { findFallbackFestival } from '../constants/regionTour';
+import { festivalImageFor } from '../constants/regionMedia';
 import type { HomeFestival } from '../types/home';
 import type {
   TourDetail,
@@ -171,6 +173,26 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
   );
 
   if (!preview) {
+    const known = findFallbackFestival(contentId);
+    if (known) {
+      const image = known.image_url || festivalImageFor(known.title, known.location_name);
+      return {
+        contentId,
+        contentTypeId: contentTypeId ?? '15',
+        title: known.title,
+        overview: known.description ?? `${known.title} 현장 프로그램과 인근 전통시장·캠핑 일정을 On&On 추천코스로 이을 수 있습니다.`,
+        address: known.location_name ?? '',
+        tel: known.tel,
+        firstImage: image ?? undefined,
+        mapX: known.longitude,
+        mapY: known.latitude,
+        eventStartDate: known.start_date,
+        eventEndDate: known.end_date,
+        fee: known.fee ?? '현장 문의',
+        images: image ? [{ originUrl: image }] : [],
+        category: known.category as TourDetail['category'],
+      };
+    }
     return {
       contentId,
       contentTypeId: contentTypeId ?? '15',
@@ -178,8 +200,8 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
       overview: '한국관광공사에서 수집한 행사 정보입니다. 상세 개요가 확인되는 대로 자동 반영됩니다.',
       address: '주소 확인 중',
       tel: undefined,
-      mapX: 127.013,
-      mapY: 37.287,
+      mapX: 0,
+      mapY: 0,
       fee: '현장 문의',
       images: [],
     };

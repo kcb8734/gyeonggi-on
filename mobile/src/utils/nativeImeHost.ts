@@ -96,6 +96,7 @@ export function mountBodyField(options: {
   initialValue?: string;
   fieldKey?: string;
   host: HTMLElement;
+  ignoreModalLock?: boolean;
 }): { field: HTMLInputElement | HTMLTextAreaElement; dispose: () => void } {
   const field = document.createElement(options.tag);
   field.lang = 'ko';
@@ -143,7 +144,7 @@ export function mountBodyField(options: {
       width: Math.max(rect.width, 40),
       height: Math.max(rect.height, options.tag === 'textarea' ? 96 : 48),
     });
-    const hidden = overlayOpen || modalOpen || rect.width < 8;
+    const hidden = overlayOpen || (modalOpen && !options.ignoreModalLock) || rect.width < 8;
     field.style.display = hidden ? 'none' : 'block';
     field.style.visibility = hidden ? 'hidden' : 'visible';
     field.style.pointerEvents = hidden ? 'none' : 'auto';

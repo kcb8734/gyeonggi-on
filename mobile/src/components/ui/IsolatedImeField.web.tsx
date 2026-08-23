@@ -13,6 +13,7 @@ export default function IsolatedImeField({
   onLiveChange,
   multiline = false,
   fieldKey,
+  ignoreModalLock = false,
 }: {
   valueRef: React.MutableRefObject<string>;
   placeholder: string;
@@ -21,6 +22,7 @@ export default function IsolatedImeField({
   onLiveChange?: (value: string) => void;
   multiline?: boolean;
   fieldKey?: string;
+  ignoreModalLock?: boolean;
 }) {
   const hostRef = useRef<View>(null);
   const liveRef = useRef(onLiveChange);
@@ -41,6 +43,7 @@ export default function IsolatedImeField({
       initialValue: valueRefStable.current.current,
       fieldKey,
       host,
+      ignoreModalLock,
     });
     const sync = (event?: Event) => {
       const composing = Boolean(
@@ -62,7 +65,7 @@ export default function IsolatedImeField({
       field.removeEventListener('compositionend', sync);
       dispose();
     };
-  }, [fieldKey, inputMode, maxLength, multiline, placeholder]);
+  }, [fieldKey, ignoreModalLock, inputMode, maxLength, multiline, placeholder]);
 
   return <View ref={hostRef} style={{ height: multiline ? 96 : 48, width: '100%' }} />;
 }

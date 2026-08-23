@@ -28,6 +28,13 @@ export type CourseQuery = {
   longitude?: number;
 };
 
+function looksLikeDefaultSuwon(course: FestivalCourse, input: CourseQuery) {
+  const city = `${input.city || ''} ${input.address || ''} ${input.title || ''} ${input.metro || ''}`;
+  const isSuwonContext = /수원|GYEONGGI/.test(city) && !/보령|여수|제주|서울|인천|춘천|강릉|부산|진주|경주|청주|전주/.test(city);
+  const history = course.itinerary?.[0]?.place_name || '';
+  return !isSuwonContext && /수원화성|화성행궁/.test(history);
+}
+
 export async function fetchRecommendedCourse(query: CourseQuery | string = {}): Promise<FestivalCourse | null> {
   const input = typeof query === 'string' ? { title: query } : query;
   const local = buildFestivalCourse(input);
@@ -42,8 +49,10 @@ export async function fetchRecommendedCourse(query: CourseQuery | string = {}): 
         lng: input.longitude,
       },
     });
-    return res.data?.data ?? local;
+    const remote = res.data?.data;
+    if (remote && !looksLikeDefaultSuwon(remote, input)) return remote;
   } catch {
-    return local;
+    // 로컬 코스 사용
   }
+  return local;
 }
