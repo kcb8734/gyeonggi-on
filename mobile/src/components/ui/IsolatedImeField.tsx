@@ -10,6 +10,7 @@ export default function IsolatedImeField({
   onLiveChange,
   multiline = false,
   fieldKey: _fieldKey,
+  ignoreModalLock: _ignoreModalLock,
 }: {
   valueRef: React.MutableRefObject<string>;
   placeholder: string;
@@ -18,6 +19,7 @@ export default function IsolatedImeField({
   onLiveChange?: (value: string) => void;
   multiline?: boolean;
   fieldKey?: string;
+  ignoreModalLock?: boolean;
 }) {
   return (
     <TextInput

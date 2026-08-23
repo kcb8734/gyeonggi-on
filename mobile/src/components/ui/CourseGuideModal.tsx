@@ -30,9 +30,12 @@ export default function CourseGuideModal({
     return focus === 'all' ? rows : rows.filter((item) => item.category === focus);
   }, [course, focus]);
   const current = steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))];
-  const region = current
-    ? { latitude: current.latitude || 37.28, longitude: current.longitude || 127.01, latitudeDelta: 0.08, longitudeDelta: 0.08 }
-    : { latitude: 37.28, longitude: 127.01, latitudeDelta: 0.2, longitudeDelta: 0.2 };
+  const lat = Number(current?.latitude);
+  const lng = Number(current?.longitude);
+  const hasPin = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+  const region = hasPin
+    ? { latitude: lat, longitude: lng, latitudeDelta: 0.08, longitudeDelta: 0.08 }
+    : { latitude: lat || 0, longitude: lng || 0, latitudeDelta: 0.35, longitudeDelta: 0.35 };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

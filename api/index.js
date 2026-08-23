@@ -446,7 +446,15 @@ async function handler(req, res) {
       const query = readQuery(req);
       const title = body.title || query.title || '';
       const city = body.city || query.city || '';
-      send(res, 200, { success: true, data: recommendCourse(title, city) }, corsHeaders(req));
+      send(res, 200, {
+        success: true,
+        data: recommendCourse(title, city, {
+          address: body.address || query.address || '',
+          metro: body.metro || query.metro || '',
+          latitude: Number(body.latitude || query.lat || query.latitude),
+          longitude: Number(body.longitude || query.lng || query.longitude),
+        }),
+      }, corsHeaders(req));
       return;
     }
     if (/admin\/dashboard/i.test(path)) {

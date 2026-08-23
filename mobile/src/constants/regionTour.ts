@@ -45,6 +45,7 @@ function fest(
   end: string,
   category: string,
   metro: string,
+  description?: string,
 ): HomeFestival {
   return {
     id,
@@ -61,6 +62,7 @@ function fest(
     image_url: festivalImageFor(title, city, metro),
     is_trending: true,
     source: 'gov',
+    description: description ?? `${title} 현장 프로그램과 인근 전통시장·캠핑을 On&On 추천코스로 이을 수 있습니다.`,
   };
 }
 
@@ -84,7 +86,7 @@ export const REGION_FESTIVAL_FALLBACKS: Record<string, HomeFestival[]> = {
   ],
   CHUNGCHEONG: [
     fest('cc-1', '청주직지축제', '충청북도 청주시', 36.6424, 127.4890, '2026-09-03', '2026-09-07', '문화/예술', 'CHUNGCHEONG'),
-    fest('cc-2', '보령머드축제', '충청남도 보령시', 36.3330, 126.6120, '2026-07-17', '2026-07-26', '체험', 'CHUNGCHEONG'),
+    fest('cc-2', '보령머드축제', '충청남도 보령시', 36.3330, 126.6120, '2026-07-17', '2026-07-26', '체험', 'CHUNGCHEONG', '대천해수욕장 머드광장에서 머드 체험·퍼레이드·해변 공연이 이어지는 보령 대표 여름 축제입니다.'),
     fest('cc-3', '부여서동연꽃축제', '충청남도 부여군', 36.2750, 126.9120, '2026-07-04', '2026-07-12', '계절축제', 'CHUNGCHEONG'),
   ],
   JEOLLA: [

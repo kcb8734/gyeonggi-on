@@ -13,6 +13,14 @@ test('jangdan bean festival uses specified course title', () => {
   assert.match(course.local_benefit_tip, /On&On/);
 });
 
+test('generic festival detail title still resolves boryeong landmarks', () => {
+  const course = buildFestivalCourse({ title: '축제 상세', city: '보령시', metro: 'CHUNGCHEONG', latitude: 36.333, longitude: 126.612 });
+  assert.match(course.course_title, /보령/);
+  assert.match(course.itinerary[0].place_name, /성주사|대천/);
+  assert.notEqual(course.itinerary[0].place_name.includes('수원화성'), true);
+  assert.equal(course.itinerary[2].latitude, 36.333);
+});
+
 test('non-gyeonggi festivals use local course and self-discount tip', () => {
   const yeosu = buildFestivalCourse({ title: '여수밤바다불꽃축제', metro: 'JEOLLA', latitude: 34.7604, longitude: 127.6622 });
   assert.match(yeosu.course_title, /여수/);

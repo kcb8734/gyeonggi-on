@@ -78,14 +78,25 @@ export default function FestivalDetailScreen({
     fetchTourDetail(contentId, contentTypeId)
       .then((data) => {
         if (!cancelled) {
+          const genericTitle = !data.title || data.title === '축제 상세';
+          const suwonDefault = data.mapX === 127.013 && data.mapY === 37.287;
+          const mapX = (!suwonDefault && data.mapX) || fallbackLongitude || known?.longitude || data.mapX;
+          const mapY = (!suwonDefault && data.mapY) || fallbackLatitude || known?.latitude || data.mapY;
           setDetail({
             ...data,
             tel: data.tel || fallbackTel,
-            title: data.title || fallbackTitle || data.title,
-            address: data.address || fallbackAddress || known?.location_name || data.address,
-            mapX: data.mapX || fallbackLongitude || known?.longitude || data.mapX,
-            mapY: data.mapY || fallbackLatitude || known?.latitude || data.mapY,
+            title: genericTitle ? (fallbackTitle || known?.title || data.title) : data.title,
+            overview: data.overview && !data.overview.includes('확인되는 대로')
+              ? data.overview
+              : (known?.description || data.overview),
+            address: (data.address && data.address !== '주소 확인 중')
+              ? data.address
+              : (fallbackAddress || known?.location_name || data.address),
+            mapX,
+            mapY,
             firstImage: data.firstImage || fallbackImageUrl || known?.image_url || data.firstImage,
+            eventStartDate: data.eventStartDate || known?.start_date,
+            eventEndDate: data.eventEndDate || known?.end_date,
           });
         }
       })
@@ -97,11 +108,11 @@ export default function FestivalDetailScreen({
             contentTypeId: contentTypeId ?? '15',
             tel: fallbackTel,
             title: fallbackTitle || known?.title || '축제 상세',
-            overview: EMPTY_COPY.overview,
+            overview: known?.description || EMPTY_COPY.overview,
             address: fallbackAddress || known?.location_name || EMPTY_COPY.address,
             fee: EMPTY_COPY.fee,
-            mapX: fallbackLongitude || known?.longitude || 127.013,
-            mapY: fallbackLatitude || known?.latitude || 37.287,
+            mapX: fallbackLongitude || known?.longitude || 0,
+            mapY: fallbackLatitude || known?.latitude || 0,
             images: image ? [{ originUrl: image }] : [],
             firstImage: image,
             category: (known?.category as TourDetail['category']) || '문화/예술',
