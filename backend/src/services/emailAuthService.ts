@@ -30,8 +30,9 @@ export async function sendManagerEmailCode(email: string) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.RESEND_FROM || '온앤온 <beth.t@example.com>',
+          from: process.env.RESEND_FROM || 'beth.t@example.com',
           to: [trimmed],
+          reply_to: 'pizon8113@gmail.com',
           subject,
           html,
         }),
