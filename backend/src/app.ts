@@ -14,7 +14,8 @@ import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
 import { startFestivalCron } from './jobs/festivalCron';
 import { runFestivalSync } from './controllers/festivalListController';
-import { pool } from './db/pool';
+import { pool, connectionString } from './db/pool';
+import { databaseChecks, errorText } from './db/diagnose';
 
 const ALLOWED_ORIGINS = [
   'https://kdanji.com',
@@ -40,18 +41,28 @@ app.use(express.json());
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'gyeonggi-on-backend' }));
 
 app.get('/api/db-test', async (_req, res) => {
+  const checks = databaseChecks();
+  if (!connectionString) {
+    return res.status(500).json({
+      success: false,
+      error: 'DATABASE_URL이 비어 있습니다. backend/.env를 확인하세요.',
+      checks,
+    });
+  }
   try {
     const result = await pool.query('SELECT NOW()');
-    res.json({
+    return res.json({
       success: true,
-      message: 'Neon PostgreSQL 연결 성공!',
+      message: checks.looksNeon ? 'Neon PostgreSQL 연결 성공' : 'PostgreSQL 연결 성공',
       now: result.rows[0].now,
+      checks,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
+    console.error('[db-test]', error);
+    return res.status(500).json({
       success: false,
-      error: (error as Error).message,
+      error: errorText(error),
+      checks,
     });
   }
 });
