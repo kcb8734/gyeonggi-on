@@ -9,8 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { fetchTourDetail } from '../api/tour';
+import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
+import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
 import type { TourDetail } from '../types/tour';
 import { formatTel, telHref } from '../utils/phone';
 
@@ -39,6 +40,7 @@ export default function FestivalDetailScreen({
   fallbackTel?: string;
   fallbackTitle?: string;
 }) {
+  useAppState();
   const [detail, setDetail] = useState<TourDetail | null>(null);
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export default function FestivalDetailScreen({
     );
   }
 
+  const favorited = isFavorite(`tour-${detail.contentId}`);
   const hero = detail.images[0]?.originUrl ?? detail.firstImage;
   const hasMap = detail.mapX !== 0 && detail.mapY !== 0;
   const resolvedTel = detail.tel || fallbackTel;
@@ -114,6 +117,14 @@ export default function FestivalDetailScreen({
         <Text style={styles.meta}>
           {(detail.eventStartDate || '일정 확인 중')} ~ {(detail.eventEndDate || detail.eventStartDate || '')}
         </Text>
+        <TouchableOpacity
+          style={[styles.favBtn, favorited && styles.favBtnOn]}
+          onPress={() => toggleFavorite(homeFestivalFromDetail(detail))}
+        >
+          <Text style={[styles.favText, favorited && styles.favTextOn]}>
+            {favorited ? '즐겨찾기 됨' : '즐겨찾기'}
+          </Text>
+        </TouchableOpacity>
 
         <View style={styles.card}>
           <Text style={styles.label}>상세 개요</Text>
@@ -200,6 +211,19 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '800', color: '#111827' },
   meta: { fontSize: 13, color: '#6B7280' },
+  favBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  favBtnOn: { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' },
+  favText: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  favTextOn: { color: '#92400E' },
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,

@@ -182,7 +182,6 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
         <View style={styles.brandBar}>
-          <Text style={styles.brandName}>온앤온(on&on)</Text>
           <Text style={styles.brandLead}>지자체 축제와 소상공인 할인을 잇는 온앤온</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
@@ -248,7 +247,11 @@ export default function HomeScreen() {
         <FeedRail onPress={(postId) => navigation.navigate('FeedView', { postId })} />
 
         <Text style={styles.section}>지역별 축제 리스트</Text>
-        <View style={styles.catBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.catBar}
+        >
           {[{ id: ALL, label: ALL }, ...FESTIVAL_CATEGORIES].map((item) => {
             const active = category === item.id;
             return (
@@ -261,7 +264,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
 
         {popular.length === 0 ? (
           <Text style={styles.empty}>이 달의 해당 카테고리 축제가 없습니다</Text>
@@ -322,21 +325,20 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
-  brandBar: { paddingHorizontal: 16, paddingTop: 12 },
-  brandName: { fontSize: 13, fontWeight: '800', color: '#111827' },
-  brandLead: { fontSize: 12, color: '#6B7280', marginTop: 3 },
-  regionRow: { paddingHorizontal: 12, paddingTop: 10, gap: 8 },
+  brandBar: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 },
+  brandLead: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  regionRow: { paddingHorizontal: 12, paddingTop: 8, gap: 8 },
   regionTab: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F3F4F6',
     borderRadius: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
   },
   regionTabActive: { backgroundColor: '#111827', borderColor: '#111827' },
-  regionText: { fontSize: 13, fontWeight: '700', color: '#374151' },
-  regionTextActive: { color: '#fff' },
+  regionText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  regionTextActive: { color: '#fff', fontWeight: '700' },
   searchWrap: { paddingHorizontal: 16, marginTop: 12 },
   search: {
     backgroundColor: '#fff',
@@ -371,21 +373,24 @@ const styles = StyleSheet.create({
   carousel: { paddingHorizontal: 16, paddingTop: 10, gap: 10 },
   catBar: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingRight: 20,
+    paddingVertical: 6,
+    marginTop: 8,
+    gap: 8,
+    alignItems: 'center',
   },
   catTab: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
   },
-  catTabActive: { borderBottomColor: '#111827' },
-  catText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  catTextActive: { fontWeight: '800', color: '#111827' },
+  catTabActive: { backgroundColor: '#111827' },
+  catText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  catTextActive: { fontWeight: '700', color: '#fff' },
   grid: {
     paddingHorizontal: 16,
     paddingTop: 12,

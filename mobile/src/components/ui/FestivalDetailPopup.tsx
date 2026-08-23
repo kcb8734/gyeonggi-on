@@ -80,8 +80,8 @@ export default function FestivalDetailPopup({
               </Text>
 
               <View style={styles.actions}>
-                <TouchableOpacity style={styles.ghost} onPress={onFavorite}>
-                  <Text style={styles.ghostText}>{liked ? '찜 해제' : '즐겨찾기'}</Text>
+                <TouchableOpacity style={[styles.ghost, liked && styles.favOn]} onPress={onFavorite}>
+                  <Text style={[styles.ghostText, liked && styles.favOnText]}>{liked ? '즐겨찾기 됨' : '즐겨찾기'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.ghost} onPress={onSchedule}>
                   <Text style={styles.ghostText}>{saved ? '일정 담김' : '알림 받기'}</Text>
@@ -186,6 +186,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ghostText: { fontSize: 12, fontWeight: '800', color: '#374151' },
+  favOn: { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' },
+  favOnText: { color: '#92400E' },
   primary: {
     flex: 1,
     backgroundColor: '#111827',
