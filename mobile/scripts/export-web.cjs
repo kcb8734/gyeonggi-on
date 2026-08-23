@@ -42,7 +42,10 @@ const result = spawnSync(
 const indexPath = path.join(root, 'dist/index.html');
 if (fs.existsSync(indexPath)) {
   const html = fs.readFileSync(indexPath, 'utf8')
-    .replace('<head>', `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />\n    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />`)
+    .replace(
+      '<head>',
+      `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />\n    <link rel="canonical" href="https://www.kdanji.com/" />\n    <script>if(location.hostname==='kdanji.com')location.replace('https://www.kdanji.com'+location.pathname+location.search+location.hash);</script>`,
+    )
     .replace('</body>', `<!-- onandon-build ${sha} ${stamp} -->\n  </body>`);
   fs.writeFileSync(indexPath, html);
 }

@@ -13,7 +13,7 @@ module.exports = {
     extra: {
       ...(app.expo.extra ?? {}),
       apiUrl,
-      webOrigin: (process.env.EXPO_PUBLIC_WEB_ORIGIN || 'https://kdanji.com').replace(/\/$/, ''),
+      webOrigin: (process.env.EXPO_PUBLIC_WEB_ORIGIN || 'https://www.kdanji.com').replace(/\/$/, ''),
     },
   },
 };

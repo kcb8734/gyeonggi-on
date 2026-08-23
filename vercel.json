@@ -16,6 +16,14 @@
       "schedule": "0 3 * * *"
     }
   ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "kdanji.com" }],
+      "destination": "https://www.kdanji.com/:path*",
+      "statusCode": 301
+    }
+  ],
   "rewrites": [
     { "source": "/api/merchants/verify", "destination": "/api" },
     { "source": "/api/health", "destination": "/api" },
@@ -27,15 +35,13 @@
     {
       "source": "/",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "Pragma", "value": "no-cache" }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     },
     {
       "source": "/index.html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "Pragma", "value": "no-cache" }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     },
     {
@@ -48,7 +54,7 @@
   "env": {
     "EXPO_PUBLIC_API_URL": "https://www.kdanji.com",
     "EXPO_PUBLIC_API_BASE_URL": "https://www.kdanji.com",
-    "EXPO_PUBLIC_WEB_ORIGIN": "https://kdanji.com",
+    "EXPO_PUBLIC_WEB_ORIGIN": "https://www.kdanji.com",
     "NTS_SERVICE_KEY": "ef117e7bebbcea7586234f85acd8292dba6a6d95230131aec62a10b5b2610885"
   }
 }
