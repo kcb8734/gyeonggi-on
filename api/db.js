@@ -1,19 +1,22 @@
+/**
+ * Neon PostgreSQL 커넥션 풀.
+ * Vercel /api 함수와 로컬 Express 백엔드가 동일한 DATABASE_URL을 사용한다.
+ */
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { Pool } from 'pg';
 
-// 프로젝트 루트 `.env`와 backend/.env 모두 허용 (루트 값을 먼저 로드)
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../backend/.env') });
 
-// Neon은 SSL 필수. DATABASE_URL에 sslmode=require가 있어도
-// node-pg는 ssl 객체를 명시하는 편이 안전하다.
 const sslEnabled = process.env.DATABASE_SSL !== 'false';
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: sslEnabled ? { rejectUnauthorized: false } : false,
-  max: process.env.VERCEL ? 2 : 20,
+  max: process.env.VERCEL ? 2 : 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
@@ -22,16 +25,15 @@ pool.on('error', (err) => {
   console.error('[PG Pool Error] Unexpected error on idle client', err);
 });
 
-/** 서버 기동 시 Neon PostgreSQL 연결을 한 번 확인한다. */
-export async function testDbConnection(): Promise<boolean> {
+export async function testDbConnection() {
   if (!process.env.DATABASE_URL) {
     console.warn('[DB] DATABASE_URL이 설정되지 않았습니다. 프로젝트 루트 .env를 확인하세요.');
     return false;
   }
 
   try {
-    const result = await pool.query<{ now: Date }>('SELECT NOW() AS now');
-    console.log('[DB] Neon PostgreSQL 연결 성공:', result.rows[0]?.now);
+    const result = await pool.query('SELECT NOW() AS now');
+    console.log('[DB] Neon PostgreSQL 연결 성공:', result.rows[0] && result.rows[0].now);
     return true;
   } catch (err) {
     console.error('[DB] Neon PostgreSQL 연결 실패:', err);

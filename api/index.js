@@ -2,6 +2,8 @@
  * Express/TypeScript 없이 동작하는 단일 Vercel Function.
  * /api/* rewrite 가 이 파일로 들어오므로 국세청 조회·헬스를 여기서 처리한다.
  */
+import { pool } from './db.js';
+
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -391,6 +393,28 @@ async function handler(req, res) {
       || (method === 'POST' && typeof body.business_number === 'string');
     if (looksVerify || (method === 'OPTIONS' && /merchants\/verify/i.test(path))) {
       await verifyNts(req, res);
+      return;
+    }
+
+    if (/\/api\/db-test/i.test(path)) {
+      if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+        send(res, 204, {}, corsHeaders(req));
+        return;
+      }
+      try {
+        const result = await pool.query('SELECT NOW() AS now');
+        send(res, 200, {
+          success: true,
+          message: 'Neon PostgreSQL 연결에 성공했습니다.',
+          now: result.rows[0] && result.rows[0].now,
+        }, corsHeaders(req));
+      } catch (err) {
+        send(res, 500, {
+          success: false,
+          message: '데이터베이스 연결에 실패했습니다.',
+          error: err && err.message ? err.message : String(err),
+        }, corsHeaders(req));
+      }
       return;
     }
 

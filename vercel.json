@@ -1,7 +1,7 @@
 {
   "version": 2,
   "framework": null,
-  "installCommand": "npm ci --prefix backend && npm ci --prefix mobile",
+  "installCommand": "npm ci --prefix backend && npm ci --prefix mobile && npm ci --prefix api",
   "buildCommand": "npm run build --prefix backend && npm run export:web --prefix mobile",
   "outputDirectory": "mobile/dist",
   "functions": {

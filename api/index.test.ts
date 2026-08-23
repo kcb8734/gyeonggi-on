@@ -24,6 +24,19 @@ test('GET /health returns ok without Express', async () => {
   assert.equal((result.body as { status: string }).status, 'ok');
 });
 
+test('GET /api/db-test reports Neon connection result', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/db-test' });
+  const body = result.body as { success: boolean; now?: string; message: string };
+  if (process.env.DATABASE_URL) {
+    assert.equal(result.status, 200);
+    assert.equal(body.success, true);
+    assert.ok(body.now);
+    return;
+  }
+  assert.equal(result.status, 500);
+  assert.equal(body.success, false);
+});
+
 test('POST without business_number is treated as health', async () => {
   const result = await invoke({ method: 'POST', url: '/api', body: { title: '쿠폰' } });
   assert.equal(result.status, 200);
