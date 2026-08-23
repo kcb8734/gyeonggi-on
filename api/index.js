@@ -174,7 +174,6 @@ async function verifyNts(req, res) {
 }
 
 const emailCodes = new Map();
-const EMAIL_TTL_MS = 3 * 60 * 1000;
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
