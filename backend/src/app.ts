@@ -14,6 +14,7 @@ import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
 import { startFestivalCron } from './jobs/festivalCron';
 import { runFestivalSync } from './controllers/festivalListController';
+import { pool } from './db/pool';
 
 const ALLOWED_ORIGINS = [
   'https://kdanji.com',
@@ -37,6 +38,15 @@ app.use(express.json());
 
 // 헬스체크
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'gyeonggi-on-backend' }));
+
+app.get('/api/db-test', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ success: true, message: 'Neon PostgreSQL 연결 성공!', now: result.rows[0].now });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
 
 // 결제/발급 관련 민감 엔드포인트는 별도의 강화된 Rate Limit 적용
 const redeemLimiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
