@@ -1,4 +1,4 @@
-export type FestivalCategory = '먹거리' | '문화/예술' | '가족' | '계절축제' | '플리마켓';
+export type FestivalCategory = '먹거리' | '체험' | '공연' | '문화/예술' | '가족' | '계절축제' | '플리마켓';
 
 export interface HomeFestival {
   id: string;
@@ -15,7 +15,9 @@ export interface HomeFestival {
   is_trending?: boolean;
   contentId?: string;
   contentTypeId?: string;
-  source?: 'tour' | 'db';
+  source?: 'tour' | 'db' | 'gov';
+  summary?: string;
+  rewardEnabled?: boolean;
   tel?: string;
   fee?: string;
 }

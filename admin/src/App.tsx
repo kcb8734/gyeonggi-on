@@ -34,6 +34,8 @@ export default function App() {
     eventStartDate: '',
     eventEndDate: '',
     firstImage: '',
+    category: '먹거리',
+    municipality: '수원시',
     mapX: '127.013',
     mapY: '37.287',
   });
@@ -202,8 +204,8 @@ export default function App() {
       </section>
 
       <section>
-        <h2>TourAPI 수동 보완 (지자체 자체 행사)</h2>
-        <p className="muted">TourAPI에 없거나 최신 자체 행사만 여기서 추가합니다. 앱 상세 화면에 즉시 반영됩니다.</p>
+        <h2>지자체 축제 등록 / TourAPI 수동 보완</h2>
+        <p className="muted">지자체 담당자가 우리 지역 축제를 직접 등록하고 지역화폐 쿠폰을 연동합니다. 앱 홈·상세에 즉시 반영됩니다.</p>
         <form
           className="festival-form"
           onSubmit={async (e) => {
@@ -223,6 +225,8 @@ export default function App() {
                 eventStartDate: '',
                 eventEndDate: '',
                 firstImage: '',
+                category: '먹거리',
+                municipality: '수원시',
                 mapX: '127.013',
                 mapY: '37.287',
               });
@@ -233,16 +237,22 @@ export default function App() {
           }}
         >
           <input placeholder="축제명" value={festivalForm.title} onChange={(e) => setFestivalForm({ ...festivalForm, title: e.target.value })} required />
-          <input placeholder="주소" value={festivalForm.address} onChange={(e) => setFestivalForm({ ...festivalForm, address: e.target.value })} />
+          <input placeholder="지자체 (예: 수원시)" value={festivalForm.municipality} onChange={(e) => setFestivalForm({ ...festivalForm, municipality: e.target.value })} />
+          <input placeholder="장소/주소 검색" value={festivalForm.address} onChange={(e) => setFestivalForm({ ...festivalForm, address: e.target.value })} />
+          <select value={festivalForm.category} onChange={(e) => setFestivalForm({ ...festivalForm, category: e.target.value })}>
+            {['먹거리', '체험', '공연', '문화/예술', '가족', '계절축제', '플리마켓'].map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
           <input placeholder="전화" value={festivalForm.tel} onChange={(e) => setFestivalForm({ ...festivalForm, tel: e.target.value })} />
           <input placeholder="이용요금" value={festivalForm.fee} onChange={(e) => setFestivalForm({ ...festivalForm, fee: e.target.value })} />
-          <input placeholder="시작일 YYYY-MM-DD" value={festivalForm.eventStartDate} onChange={(e) => setFestivalForm({ ...festivalForm, eventStartDate: e.target.value })} />
-          <input placeholder="종료일 YYYY-MM-DD" value={festivalForm.eventEndDate} onChange={(e) => setFestivalForm({ ...festivalForm, eventEndDate: e.target.value })} />
-          <input placeholder="대표 이미지 URL" value={festivalForm.firstImage} onChange={(e) => setFestivalForm({ ...festivalForm, firstImage: e.target.value })} />
+          <input type="date" value={festivalForm.eventStartDate} onChange={(e) => setFestivalForm({ ...festivalForm, eventStartDate: e.target.value })} />
+          <input type="date" value={festivalForm.eventEndDate} onChange={(e) => setFestivalForm({ ...festivalForm, eventEndDate: e.target.value })} />
+          <input placeholder="대표 이미지 / 포스터 URL" value={festivalForm.firstImage} onChange={(e) => setFestivalForm({ ...festivalForm, firstImage: e.target.value })} />
           <input placeholder="경도 mapX" value={festivalForm.mapX} onChange={(e) => setFestivalForm({ ...festivalForm, mapX: e.target.value })} />
           <input placeholder="위도 mapY" value={festivalForm.mapY} onChange={(e) => setFestivalForm({ ...festivalForm, mapY: e.target.value })} />
-          <textarea placeholder="상세 개요" value={festivalForm.overview} onChange={(e) => setFestivalForm({ ...festivalForm, overview: e.target.value })} />
-          <button type="submit">수동 등록</button>
+          <textarea placeholder="한 줄 소개 / 상세 내용" value={festivalForm.overview} onChange={(e) => setFestivalForm({ ...festivalForm, overview: e.target.value })} />
+          <button type="submit">지자체 축제 등록</button>
         </form>
         <table>
           <thead>

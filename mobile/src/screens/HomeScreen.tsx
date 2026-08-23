@@ -75,14 +75,12 @@ export default function HomeScreen() {
     ]).then(([feed, tourFestivals]) => {
       const extra = app.localPromotions.filter((item) => !feed.promotions.some((promo) => promo.id === item.id));
       setPromotions([...extra, ...feed.promotions.map((item) => ({ ...item, metro }))]);
-      if (tourFestivals.length) {
-        setFestivals(tourFestivals.map(homeFestivalFromTour));
-      } else {
-        setFestivals(feed.festivals);
-      }
+      const incoming = tourFestivals.length ? tourFestivals.map(homeFestivalFromTour) : feed.festivals;
+      const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
+      setFestivals([...extras, ...incoming]);
       if (!feed.available) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
-  }, [metro, app.localPromotions]);
+  }, [metro, app.localPromotions, app.localFestivals]);
 
   useEffect(() => {
     if (!toast) return;
