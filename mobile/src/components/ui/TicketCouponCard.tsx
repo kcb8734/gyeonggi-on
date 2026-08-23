@@ -10,6 +10,7 @@ interface Props {
   festival?: string | null;
   rate: number;
   matched?: boolean;
+  couponType?: 'OFFICIAL' | 'SELF';
   expires?: string;
   remaining?: number;
   status?: string;
@@ -27,6 +28,7 @@ export function TicketCouponCard({
   festival,
   rate,
   matched,
+  couponType,
   expires,
   remaining,
   status,
@@ -57,7 +59,9 @@ export function TicketCouponCard({
         {compact ? null : <Text style={styles.title} numberOfLines={2}>{title}</Text>}
         {!compact && festival ? <Text style={styles.fest} numberOfLines={1}>{festival}</Text> : null}
         <View style={[styles.metaRow, compact && styles.metaRowCompact]}>
-          {matched ? <Text style={styles.badge}>지자체 1:1 매칭</Text> : <Text style={styles.self}>상가 자체 할인</Text>}
+          {couponType === 'SELF' || (!matched && couponType !== 'OFFICIAL')
+            ? <Text style={styles.self}>소상공인 자율 할인</Text>
+            : <Text style={styles.badge}>지자체 매칭</Text>}
           {!compact && expires ? <Text style={styles.expire}>~ {expires}</Text> : null}
         </View>
         {!compact && remaining != null ? <Text style={styles.remain}>잔여 {remaining.toLocaleString()}장</Text> : null}
@@ -95,6 +99,7 @@ export function ticketFromPromotion(promo: HomePromotion, cta = '다운로드'):
     festival: promo.festival_title,
     rate: promo.total_discount_rate,
     matched: promo.funding_type !== 'MERCHANT_ONLY',
+    couponType: promo.coupon_type ?? (promo.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
     remaining: promo.remaining_quantity,
     cta,
     rateColor: promotionColor(promo),
@@ -108,6 +113,7 @@ export function ticketFromWallet(item: WalletCoupon): Props {
     festival: item.festival_title,
     rate: item.total_discount_rate,
     matched: item.funding_type !== 'MERCHANT_ONLY',
+    couponType: item.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL',
     expires: item.expires_at,
     status: item.status,
     cta: 'QR 보기',

@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { fetchTourFestivals, homeFestivalFromTour } from '../api/tour';
 import type { HomeFestival } from '../types/home';
 import { addSchedule, rememberFestival, useAppState } from '../stores/appStore';
+import { useSelectedRegionPreset } from '../stores/regionStore';
+import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import { eventColor, overlapsDay, ymd } from '../utils/date';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -27,12 +29,14 @@ export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState(ymd(today));
   const [festivals, setFestivals] = useState<HomeFestival[]>([]);
   const app = useAppState();
+  const region = useSelectedRegionPreset();
 
   useEffect(() => {
-    fetchTourFestivals({ areaCode: '31', month, year }).then((items) => {
-      setFestivals(items.map(homeFestivalFromTour));
+    fetchTourFestivals({ areaCode: region.code, month, year }).then((items) => {
+      const mapped = items.map(homeFestivalFromTour);
+      setFestivals(mapped.length ? mapped : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []));
     });
-  }, [month, year]);
+  }, [month, year, region.code, region.id]);
 
   const cells = useMemo(() => monthCells(year, month), [year, month]);
   const colored = useMemo(

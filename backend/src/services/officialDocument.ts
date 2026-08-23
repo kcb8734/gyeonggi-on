@@ -121,8 +121,9 @@ export function buildOfficialDocumentHtml(input: OfficialDocumentInput): string 
     <p><strong>붙임. QR 스캔 상세 내역</strong></p>
     <table class="data">
       <thead><tr><th>연번</th><th>스캔 시각</th><th>쿠폰명</th><th>할인금액</th><th>QR ID</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr class="sum"><td class="c" colspan="3">합계</td><td class="r">${input.totalAmount.toLocaleString('ko-KR')}</td><td></td></tr></tfoot>
+      <tbody>${rows}
+        <tr class="sum"><td class="c" colspan="3">합계</td><td class="r">${input.totalAmount.toLocaleString('ko-KR')}</td><td></td></tr>
+      </tbody>
     </table>
     <p>위와 같이 정산을 청구하오니 업무에 참고하여 주시기 바랍니다. 끝.</p>
     <div class="end">${escapeHtml(formatKoDateTime(input.issuedAt))}<br/>온앤온 쿠폰 정산 담당</div>

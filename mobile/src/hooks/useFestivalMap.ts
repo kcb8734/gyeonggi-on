@@ -3,10 +3,13 @@ import * as Location from 'expo-location';
 import { fetchFestivalMap, fetchNearbyFestivals } from '../api/festivals';
 import { fetchTourNearby } from '../api/tour';
 import { ALL_CATEGORIES, GYEONGGI_DEFAULT_REGION } from '../constants/map';
+import { regionById } from '../constants/regionTour';
+import { useSelectedRegionPreset } from '../stores/regionStore';
 import type { FestivalPin, MerchantPin } from '../types/map';
 import type { TourPlace } from '../types/tour';
 
 export function useFestivalMap(initialFestivalId?: string) {
+  const region = useSelectedRegionPreset();
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string | null>(initialFestivalId ?? null);
   const [selectedFestival, setSelectedFestival] = useState<FestivalPin | null>(null);
@@ -47,9 +50,10 @@ export function useFestivalMap(initialFestivalId?: string) {
       );
       setFestivals(list);
 
+      const preset = regionById(region.id);
       const center = coords ?? {
-        latitude: GYEONGGI_DEFAULT_REGION.latitude,
-        longitude: GYEONGGI_DEFAULT_REGION.longitude,
+        latitude: preset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
+        longitude: preset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
       };
       setLoadingTour(true);
       fetchTourNearby({ mapX: center.longitude, mapY: center.latitude, radius: 3000 })
@@ -68,7 +72,7 @@ export function useFestivalMap(initialFestivalId?: string) {
     } finally {
       setLoadingFestivals(false);
     }
-  }, [initialFestivalId]);
+  }, [initialFestivalId, region.id]);
 
   useEffect(() => {
     loadFestivals();

@@ -23,9 +23,16 @@ export const createPromotion = async (req: Request, res: Response) => {
     features,
     request_matching,
     funding_type: fundingTypeBody,
+    coupon_type: couponTypeBody,
+    metro,
   } = req.body;
 
+  const couponType = (
+    String(couponTypeBody || '').toUpperCase() === 'SELF'
+    || (Boolean(metro) && String(metro).toUpperCase() !== 'GYEONGGI')
+  ) ? 'SELF' : 'OFFICIAL';
   const selfFunded =
+    couponType === 'SELF' ||
     fundingTypeBody === 'MERCHANT_ONLY' ||
     request_matching === false ||
     request_matching === 'false';
@@ -140,8 +147,8 @@ export const createPromotion = async (req: Request, res: Response) => {
       `INSERT INTO discount_promotions
         (merchant_id, festival_id, title, merchant_discount_rate, gov_matching_rate,
          max_discount_amount, total_quantity, remaining_quantity, start_time, end_time, status,
-         funding_type, matching_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, 'ACTIVE', $10, $11)
+         funding_type, matching_status, coupon_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, 'ACTIVE', $10, $11, $12)
        RETURNING *`,
       [
         merchant_id,
@@ -155,6 +162,7 @@ export const createPromotion = async (req: Request, res: Response) => {
         end_time,
         fundingType,
         matchingStatus,
+        couponType,
       ]
     );
 

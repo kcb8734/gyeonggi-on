@@ -249,7 +249,7 @@ function tourToHome(item) {
   };
 }
 
-async function fetchTourItems(baseUrl, path) {
+async function fetchTourItems(baseUrl, path, areaCode) {
   const key = String(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY || '').trim();
   if (!key) throw new Error('TOUR_API_SERVICE_KEY 가 없습니다.');
   const params = new URLSearchParams();
@@ -257,7 +257,7 @@ async function fetchTourItems(baseUrl, path) {
   params.set('MobileOS', 'ETC');
   params.set('MobileApp', 'kdanji');
   params.set('_type', 'json');
-  params.set('areaCode', '31');
+  params.set('areaCode', String(areaCode || '31'));
   params.set('eventStartDate', todayYmd());
   params.set('numOfRows', '80');
   params.set('pageNo', '1');
@@ -281,17 +281,20 @@ async function listFestivalsLive(req, res) {
     send(res, 204, {}, headers);
     return;
   }
+  const query = readQuery(req);
+  const metroArea = { GYEONGGI: '31', SEOUL: '1', INCHEON: '2', GANGWON: '32', CHUNGCHEONG: '33', JEOLLA: '35', GYEONGSANG: '37', JEJU: '39' };
+  const resolvedArea = String(query.areaCode || metroArea[String(query.metro || '').toUpperCase()] || '31');
   let festivals = [];
   let source = 'none';
   try {
-    festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService1', '/searchFestival1');
+    festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService1', '/searchFestival1', resolvedArea);
     source = festivals.length ? 'searchFestival1' : source;
   } catch (err) {
     console.error('[api] searchFestival1', err && err.message ? err.message : err);
   }
   if (!festivals.length) {
     try {
-      festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService2', '/searchFestival2');
+      festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService2', '/searchFestival2', resolvedArea);
       source = festivals.length ? 'searchFestival2' : source;
     } catch (err) {
       console.error('[api] searchFestival2', err && err.message ? err.message : err);
@@ -299,12 +302,13 @@ async function listFestivalsLive(req, res) {
   }
   send(res, 200, {
     success: true,
-    metro: 'GYEONGGI',
+    metro: query.metro || 'GYEONGGI',
+    areaCode: resolvedArea,
     count: festivals.length,
     source: source,
     festivals: festivals,
     data: festivals,
-    message: festivals.length ? '경기도 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
+    message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
   }, headers);
 }
 

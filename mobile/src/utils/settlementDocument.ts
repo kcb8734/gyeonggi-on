@@ -90,6 +90,10 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
     table.data { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
     table.data th, table.data td { border: 1px solid #111; padding: 7px 8px; font-size: 12px; }
     table.data th { background: #111; color: #fff; }
+    table.data { page-break-inside: auto; }
+    table.data tr { page-break-inside: avoid; }
+    table.data thead { display: table-header-group; }
+    table.data tfoot { display: none; }
     .c { text-align: center; }
     .r { text-align: right; }
     .sum { font-weight: 800; }
@@ -135,13 +139,13 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
     <p><strong>붙임. QR 스캔 일시 및 할인·정산금액</strong></p>
     <table class="data">
       <thead><tr><th class="c">연번</th><th>QR 스캔 일시</th><th>쿠폰</th><th class="r">할인·정산금액</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot>
+      <tbody>
+        ${rows}
         <tr class="sum">
           <td class="c" colspan="3">합계</td>
           <td class="r">${amountWon.toLocaleString('ko-KR')}원</td>
         </tr>
-      </tfoot>
+      </tbody>
     </table>
     <p>위와 같이 행사 종료 후 일괄 정산을 요청하오니 업무에 참고하여 주시기 바랍니다. 끝.</p>
     <div class="end">${escapeHtml(formatKoDate(issuedAt))}<br/>온앤온 쿠폰 정산 담당</div>

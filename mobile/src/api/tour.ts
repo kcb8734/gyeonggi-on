@@ -90,6 +90,9 @@ export async function fetchTourFestivals(params?: {
   } catch {
     // 백엔드/TourAPI 미기동 시 미리보기
   }
+  if (params?.areaCode && params.areaCode !== '31' && params.areaCode !== 'all') {
+    return [];
+  }
   return previewFestivals().filter((item) => {
     if (params?.category && item.category !== params.category) return false;
     if (!params?.month) return true;

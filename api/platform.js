@@ -227,10 +227,10 @@ function recommendCourse(title, city) {
     target_audience: '가족 · 연인 · 캠핑을 즐기는 2030 여행객',
     total_distance: '36km',
     itinerary: [
-      { step: 1, category: '역사체험', place_name: bean ? '임진각 평화누리 / 도라전망대' : place + ' 대표 역사 명소', description: '축제 배경이 되는 역사 명소를 먼저 둘러봅니다.', estimated_time: '1시간 30분' },
-      { step: 2, category: '전통시장 먹거리', place_name: bean ? '문산·금촌 전통시장' : place + ' 전통시장', description: 'On&On 쿠폰으로 전통시장 먹거리를 결제합니다.', estimated_time: '1시간' },
-      { step: 3, category: '메인 축제', place_name: festival, description: '축제 핵심 프로그램을 즐깁니다.', estimated_time: '3시간' },
-      { step: 4, category: '캠핑장/숙박', place_name: bean ? '파주 임진각 오토캠핑장' : place + ' 인근 캠핑장', description: '축제장 인근 캠핑장에서 하루를 머뭅니다.', estimated_time: '숙박' },
+      { step: 1, category: '역사체험', place_name: bean ? '임진각 평화누리 / 도라전망대' : (place === '춘천' ? '남이섬 · 경춘선 숲길' : place === '강릉' ? '오죽헌 · 선교장' : '수원화성 · 화성행궁'), description: '축제 배경이 되는 대표 역사 명소를 먼저 둘러봅니다.', estimated_time: '1시간 30분', latitude: bean ? 37.8906 : 37.2819, longitude: bean ? 126.7402 : 127.0139 },
+      { step: 2, category: '전통시장 먹거리', place_name: bean ? '문산·금촌 전통시장' : (place + ' 전통시장'), description: 'On&On 쿠폰으로 전통시장 먹거리를 결제합니다.', estimated_time: '1시간', latitude: bean ? 37.761 : 37.2786, longitude: bean ? 126.778 : 127.0168 },
+      { step: 3, category: '메인 축제', place_name: festival, description: '축제 핵심 프로그램을 즐깁니다.', estimated_time: '3시간', latitude: 37.28, longitude: 127.01 },
+      { step: 4, category: '캠핑장/숙박', place_name: bean ? '파주 임진각 평화캠핑장' : (place + ' 인근 캠핑장'), description: '축제장 인근 캠핑장에서 하루를 머뭅니다.', estimated_time: '숙박', latitude: bean ? 37.8894 : 37.283, longitude: bean ? 126.747 : 127.065 },
     ],
     local_benefit_tip: 'On&On 플랫폼에서 발급한 모바일 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다.',
   };

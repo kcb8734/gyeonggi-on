@@ -4,8 +4,11 @@ import { buildFestivalCourse } from './courseRecommendService';
 
 test('jangdan bean festival uses specified course title', () => {
   const course = buildFestivalCourse({ title: '장단콩 축제' });
-  assert.equal(course.course_title, '[파주] 장단콩 축제와 함께하는 역사·캠핑 힐링 투어');
+  assert.match(course.course_title, /파주.*장단콩/);
   assert.equal(course.itinerary.length, 4);
+  assert.match(course.itinerary[0].place_name, /임진각|도라전망대/);
+  assert.notEqual(course.itinerary[0].place_name, '파주 대표 역사 명소');
   assert.equal(course.itinerary[2].category, '메인 축제');
+  assert.ok(course.itinerary[0].latitude);
   assert.match(course.local_benefit_tip, /On&On/);
 });

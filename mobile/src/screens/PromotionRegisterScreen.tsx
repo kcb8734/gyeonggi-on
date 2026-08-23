@@ -14,6 +14,8 @@ import { verifyMerchant, type MerchantVerifyResult } from '../api/merchants';
 import { API_BASE_URL } from '../config';
 import type { FestivalPin } from '../types/map';
 import { addLocalPromotion, settlePromotion, useAppState } from '../stores/appStore';
+import { useSelectedRegionPreset } from '../stores/regionStore';
+import { couponTypeForRegion } from '../constants/regionTour';
 import { logoutMerchant, useMerchantState } from '../stores/merchantStore';
 import MerchantAuthPanel from '../components/ui/MerchantAuthPanel';
 import QrCouponScanner from '../components/ui/QrCouponScanner';
@@ -78,6 +80,8 @@ function ShopPhotoSlot({
 export default function PromotionRegisterScreen({ merchantId }: { merchantId?: string }) {
   const app = useAppState();
   const merchants = useMerchantState();
+  const region = useSelectedRegionPreset();
+  const officialRegion = region.officialMatching;
   const session = merchants.accounts.find((item) => item.businessName === merchants.sessionName) ?? null;
   const [festivals, setFestivals] = useState<FestivalPin[]>([]);
   const [selectedFestivalId, setSelectedFestivalId] = useState<string>('');
@@ -220,7 +224,8 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         : (parseFloat(discountRate) || 0),
       remaining_quantity: parseInt(quantity, 10) || 0,
       funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
-      metro: 'GYEONGGI',
+      metro: region.id,
+      coupon_type: officialRegion && requestMatching ? 'OFFICIAL' : 'SELF',
       municipality_name: festival?.municipality_name,
       main_menu: mainMenuRef.current,
       features: featuresRef.current,
@@ -346,7 +351,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       Alert.alert('알림', '연계할 축제를 선택해주세요.');
       return;
     }
-    if (requestMatching) {
+    if (requestMatching && officialRegion) {
       if (!bankName.trim() || !bankAccount.replace(/\D/g, '') || !bankHolder.trim()) {
         Alert.alert('알림', '지자체 매칭 시 사업자 통장 은행·계좌·예금주를 입력해주세요.');
         return;
@@ -372,8 +377,10 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
         total_quantity: parseInt(quantity, 10),
         start_time: new Date().toISOString(),
         end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        request_matching: requestMatching,
-        funding_type: requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+        request_matching: officialRegion && requestMatching,
+        funding_type: officialRegion && requestMatching ? 'MATCHED' : 'MERCHANT_ONLY',
+        coupon_type: couponTypeForRegion(region.id),
+        metro: region.id,
         address,
         latitude: gps?.latitude,
         longitude: gps?.longitude,
@@ -510,13 +517,21 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
       <Text style={styles.label}>건당 최대 할인 한도(원)</Text>
       <TextInput style={styles.input} keyboardType="numeric" value={maxDiscountAmount} onChangeText={setMaxDiscountAmount} />
 
-      <View style={styles.switchRow}>
-        <Text style={styles.label}>지자체 1:1 매칭 신청</Text>
-        <Switch value={requestMatching} onValueChange={setRequestMatching} />
-      </View>
+      {officialRegion ? (
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>지자체 1:1 매칭 신청</Text>
+          <Switch value={requestMatching} onValueChange={setRequestMatching} />
+        </View>
+      ) : (
+        <Text style={styles.note}>
+          {region.label}은 지자체 매칭 권역이 아닙니다. 국세청 계속사업자 확인만 되면 소상공인 자율 할인 쿠폰이 즉시 발행됩니다.
+        </Text>
+      )}
+      {officialRegion ? (
       <Text style={styles.note}>
         끄면 상가가 할인 전액을 부담하고 즉시 쿠폰을 발행합니다. 켜면 관리자 승인 후 매칭률이 붙습니다.
       </Text>
+      ) : null}
 
       {requestMatching ? (
         <View style={styles.matchBox}>

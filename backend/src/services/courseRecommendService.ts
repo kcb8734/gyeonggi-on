@@ -1,3 +1,4 @@
+import { landmarkFor } from '../constants/courseLandmarks';
 import { municipalityFromAddress } from '../constants/gyeonggiCities';
 import { tryQuery } from '../db/pool';
 import { memoryEditorsPicks } from './inMemoryPlatform';
@@ -8,6 +9,8 @@ export type CourseItinerary = {
   place_name: string;
   description: string;
   estimated_time: string;
+  latitude: number;
+  longitude: number;
 };
 
 export type FestivalCourse = {
@@ -20,34 +23,38 @@ export type FestivalCourse = {
 
 export function buildFestivalCourse(input: { title?: string; city?: string; address?: string }): FestivalCourse {
   const title = String(input.title || '').trim();
+  const guessed = municipalityFromAddress(input.address || title);
   const city = input.city
-    || municipalityFromAddress(input.address || title)
-    || '파주';
+    || (/장단콩/.test(title) ? '파주' : '')
+    || (guessed && guessed !== '경기도' ? guessed : '')
+    || '수원';
   const festival = title || `${city} 지역 축제`;
-  const bean = /장단콩/.test(festival);
+  const history = landmarkFor('history', city, input.address, title);
+  const market = landmarkFor('market', city, input.address, title);
+  const camp = landmarkFor('camp', city, input.address, title);
 
   return {
-    course_title: bean
-      ? `[파주] 장단콩 축제와 함께하는 역사·캠핑 힐링 투어`
-      : `[${city}] ${festival}와 함께하는 역사·캠핑 힐링 투어`,
+    course_title: `[${city}] ${festival}와 함께하는 역사·시장·캠핑 투어`,
     target_audience: '가족 · 연인 · 캠핑을 즐기는 2030 여행객',
-    total_distance: bean ? '36km' : '38km',
+    total_distance: '32~40km',
     itinerary: [
       {
         step: 1,
         category: '역사체험',
-        place_name: bean ? '임진각 평화누리 / 도라전망대' : `${city} 대표 역사 명소`,
-        description: bean
-          ? '접경 역사와 평화 전망을 먼저 둘러보고 축제장으로 이어지는 동선을 잡습니다.'
-          : `${city}의 대표 유적·전시 공간을 둘러보며 축제 배경을 이해합니다.`,
+        place_name: history.name,
+        description: history.hint,
         estimated_time: '1시간 30분',
+        latitude: history.lat,
+        longitude: history.lng,
       },
       {
         step: 2,
         category: '전통시장 먹거리',
-        place_name: bean ? '문산·금촌 전통시장' : `${city} 전통시장`,
-        description: '추천 먹거리를 고른 뒤 On&On 쿠폰 QR을 제시하면 지자체 매칭 할인이 적용됩니다.',
+        place_name: market.name,
+        description: market.hint,
         estimated_time: '1시간',
+        latitude: market.lat,
+        longitude: market.lng,
       },
       {
         step: 3,
@@ -55,13 +62,17 @@ export function buildFestivalCourse(input: { title?: string; city?: string; addr
         place_name: festival,
         description: '축제 핵심 프로그램과 체험 부스를 즐기고, 현장 가맹점에서 쿠폰을 사용합니다.',
         estimated_time: '3시간',
+        latitude: (history.lat + market.lat) / 2,
+        longitude: (history.lng + market.lng) / 2,
       },
       {
         step: 4,
         category: '캠핑장/숙박',
-        place_name: bean ? '파주 임진각 오토캠핑장' : `${city} 인근 캠핑장`,
-        description: '축제장에서 가까운 캠핑장에서 하루를 머물며 다음날 아침 시장 브런치를 이어갑니다.',
+        place_name: camp.name,
+        description: camp.hint,
         estimated_time: '숙박',
+        latitude: camp.lat,
+        longitude: camp.lng,
       },
     ],
     local_benefit_tip: 'On&On 플랫폼에서 발급한 모바일 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다. 사용 후 가맹점 정산 공문으로 자동 청구됩니다.',

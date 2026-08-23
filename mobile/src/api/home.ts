@@ -1,5 +1,6 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
+import { REGION_FESTIVAL_FALLBACKS, fallbackPromotions } from '../constants/regionTour';
 import type { HomeFeed } from '../types/home';
 
 export async function fetchHomeFeed(metro: string, category?: string): Promise<HomeFeed> {
@@ -16,14 +17,16 @@ export async function fetchHomeFeed(metro: string, category?: string): Promise<H
   }
 
   if (metro !== 'GYEONGGI') {
+    const festivals = REGION_FESTIVAL_FALLBACKS[metro] ?? [];
+    const promotions = fallbackPromotions(metro);
     return {
       success: true,
-      available: false,
-      message: '해당 지역 서비스 준비 중입니다',
+      available: festivals.length > 0,
+      message: festivals.length ? undefined : '선택하신 권역에 등록된 축제가 없습니다. 다른 권역을 선택해보세요',
       metro,
-      festivals: [],
-      promotions: [],
-      popular: [],
+      festivals,
+      promotions,
+      popular: festivals,
     };
   }
 
