@@ -91,8 +91,8 @@ export const METRO_LOCALITIES: Record<string, Array<{ id: string; label: string 
 
 export function officerDisplayName(label: string) {
   const text = String(label || '');
-  if (text.includes(' ')) return `${text} 담당`;
-  return `${text.replace(/(시|군|구)$/, '')} 담당`;
+  if (text.includes(' ') || /(구)$/.test(text)) return `${text} 담당`;
+  return `${text.replace(/(시|군)$/, '')} 담당`;
 }
 
 export function matchingMatrixRows() {

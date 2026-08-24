@@ -19,4 +19,6 @@ test('duplicate district names stay unique across regions', () => {
   assert.equal(new Set(jung.map((row) => row.id)).size, jung.length);
   assert.ok(jung.some((row) => row.id === 'SEOUL:중구'));
   assert.ok(jung.some((row) => row.id === 'INCHEON:인천-중구'));
+  const seoulJung = jung.find((row) => row.id === 'SEOUL:중구');
+  assert.equal(seoulJung?.officerName, '중구 담당');
 });

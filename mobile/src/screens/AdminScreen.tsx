@@ -30,8 +30,8 @@ const REGION_PHONE: Record<string, string> = {
 
 function officerDisplayName(label: string) {
   const text = String(label || '');
-  if (text.includes(' ')) return `${text} 담당`;
-  return `${text.replace(/(시|군|구)$/, '')} 담당`;
+  if (text.includes(' ') || /(구)$/.test(text)) return `${text} 담당`;
+  return `${text.replace(/(시|군)$/, '')} 담당`;
 }
 
 function matchingRowId(row: any) {
@@ -547,7 +547,7 @@ export default function AdminScreen() {
         <>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>권역별 지자체 담당자</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            <View style={styles.filterRow}>
               {METRO_REGIONS.map((region) => {
                 const miss = matching.filter((row: any) => (row.region || 'GYEONGGI') === region.id && !row.officerName).length;
                 const on = matchRegion === region.id;
@@ -559,7 +559,7 @@ export default function AdminScreen() {
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
             <Text style={styles.hint}>
               {regionMeta.covers} · {matchRegion === 'GYEONGGI' ? '공식 매칭 쿠폰' : '자율 할인'} · 전국 미지정 {unassigned.length}곳
             </Text>
