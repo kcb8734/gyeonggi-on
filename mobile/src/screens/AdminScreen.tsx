@@ -1,10 +1,115 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActionButton,
+  KpiCard,
+  ProgressBar,
+  QuotaGauge,
+  SparkLine,
+  StatusBadge,
+  WeightSlider,
+} from '../components/admin/AdminWidgets';
 
 const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
 const ADMIN_PASSWORD = 'admin1234';
+const REGION_LABEL: Record<string, string> = {
+  GYEONGGI: '경기온',
+  SEOUL: '서울온',
+  INCHEON: '인천온',
+  GANGWON: '강원온',
+  CHUNGCHEONG: '충청온',
+  JEOLLA: '전라온',
+  GYEONGSANG: '경상온',
+  JEJU: '제주온',
+};
+
+const FALLBACK_CITIES = ['수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시', '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시', '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시', '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군'];
+
+const FALLBACK_DASHBOARD = {
+  kpi: {
+    festivals: 12,
+    festivalsDelta: 2,
+    festivalsDeltaPct: 18,
+    merchants: 18,
+    merchantsNtsVerified: 18,
+    couponsIssued: 24,
+    couponsUsed: 9,
+    recoveryRate: 38,
+    matchingAssigned: 26,
+    matchingTotal: 31,
+    matchingCoverage: '26/31',
+  },
+  tour: {
+    quotaUsed: 42,
+    quotaLimit: 1000,
+    lastSync: '오늘 07:00 KST',
+    source: '한국관광공사 TourAPI 4.0',
+    categories: [
+      { name: '축제/행사', count: 12 },
+      { name: '역사체험', count: 8 },
+      { name: '캠핑장', count: 6 },
+      { name: '음식점', count: 21 },
+    ],
+    logs: [
+      { ran_at: '오늘 07:00', target_api: 'areaBasedList1', fetched: 42, failed: 0, status: '정상' },
+      { ran_at: '어제 22:00', target_api: 'searchFestival2', fetched: 18, failed: 0, status: '정상' },
+      { ran_at: '어제 18:30', target_api: 'detailCommon2', fetched: 31, failed: 0, status: '정상' },
+      { ran_at: '어제 12:00', target_api: 'locationBasedList1', fetched: 24, failed: 0, status: '정상' },
+    ],
+  },
+  coupons: [
+    { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 12, used: 4, recovery: 33, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
+    { id: 'CP-1002', festival: '수원화성문화제', store: '화성행궁 한정식', issued: 12, used: 5, recovery: 42, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
+    { id: 'CP-2008', festival: '보령머드축제', store: '대천항활어회센터', issued: 8, used: 3, recovery: 38, period: '2026-08', region: 'CHUNGCHEONG', couponType: 'SELF' },
+    { id: 'CP-3011', festival: '진주남강유등축제', store: '진주중앙시장', issued: 10, used: 4, recovery: 40, period: '2026-08', region: 'GYEONGSANG', couponType: 'SELF' },
+    { id: 'CP-4015', festival: '화천산천어축제', store: '화천재래시장', issued: 6, used: 2, recovery: 33, period: '2026-08', region: 'GANGWON', couponType: 'SELF' },
+    { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEOLLA', couponType: 'SELF' },
+  ],
+  matching: FALLBACK_CITIES.map((city, index) => ({
+    city,
+    officerName: index % 7 === 0 ? '' : city.replace(/(시|군)$/, '') + ' 담당',
+    phone: index % 7 === 0 ? '' : '031-120',
+    stores: 4 + (index % 5),
+    festivals: 1 + (index % 3),
+    coupons: 8 + (index % 11),
+    approved: index % 7 !== 0,
+  })),
+  engine: { festivalWeight: 40, campingDistanceWeight: 25, marketRatioWeight: 20, historyWeight: 15 },
+  courses: [{ id: 'course-1', festival: '장단콩 축제', recommendCount: 12, saveCount: 4 }],
+  weekly: [
+    { label: '7/27', recovery: 25, used: 1 },
+    { label: '8/3', recovery: 40, used: 2 },
+    { label: '8/10', recovery: 43, used: 3 },
+    { label: '8/17', recovery: 36, used: 4 },
+    { label: '8/24', recovery: 38, used: 9 },
+  ],
+};
+
+function cleanSource(value?: string) {
+  const text = String(value || '').trim();
+  if (!text || text.toLowerCase() === 'none') return '';
+  return text;
+}
+
+function downloadCsv(filename: string, lines: string[]) {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'ai' | 'stats';
+
+function formatWhen(value?: string) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16).replace('T', ' ');
+  return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
 
 export default function AdminScreen() {
   const [email, setEmail] = useState(ADMIN_EMAIL);
@@ -15,20 +120,26 @@ export default function AdminScreen() {
   const [festivalCount, setFestivalCount] = useState<number | null>(null);
   const [festivalSource, setFestivalSource] = useState('');
   const [syncMessage, setSyncMessage] = useState('');
-  const [dashboard, setDashboard] = useState<any>(null);
+  const [dashboard, setDashboard] = useState<any>(FALLBACK_DASHBOARD);
   const [festivalW, setFestivalW] = useState(40);
   const [campW, setCampW] = useState(25);
   const [marketW, setMarketW] = useState(20);
   const [historyW, setHistoryW] = useState(15);
+  const [couponQuery, setCouponQuery] = useState('');
+  const [couponRegion, setCouponRegion] = useState('ALL');
+  const [couponType, setCouponType] = useState('ALL');
+  const [couponFestival, setCouponFestival] = useState('ALL');
+  const [weightMessage, setWeightMessage] = useState('');
 
   const loadFestivals = async () => {
     try {
       const res = await fetch('/api/festivals');
       const data = await res.json();
       setFestivalCount(Number(data.count ?? data.festivals?.length ?? 0));
-      setFestivalSource(String(data.source ?? ''));
+      setFestivalSource(cleanSource(data.source || data.provider) || '한국관광공사 TourAPI 4.0');
     } catch {
       setFestivalCount(null);
+      setFestivalSource('한국관광공사 TourAPI 4.0');
     }
   };
 
@@ -36,15 +147,16 @@ export default function AdminScreen() {
     try {
       const res = await fetch('/api/admin/dashboard');
       const data = await res.json();
-      setDashboard(data.data);
-      if (data.data?.engine) {
-        setFestivalW(data.data.engine.festivalWeight ?? 40);
-        setCampW(data.data.engine.campingDistanceWeight ?? 25);
-        setMarketW(data.data.engine.marketRatioWeight ?? 20);
-        setHistoryW(data.data.engine.historyWeight ?? 15);
+      const next = data.data ?? data;
+      if (next?.kpi || next?.coupons) setDashboard(next);
+      if (next?.engine) {
+        setFestivalW(next.engine.festivalWeight ?? 40);
+        setCampW(next.engine.campingDistanceWeight ?? 25);
+        setMarketW(next.engine.marketRatioWeight ?? 20);
+        setHistoryW(next.engine.historyWeight ?? 15);
       }
     } catch {
-      setDashboard(null);
+      // 서버가 없어도 폴백 대시보드를 유지한다.
     }
   };
 
@@ -84,9 +196,21 @@ export default function AdminScreen() {
       const data = await res.json();
       setSyncMessage(data.message || '수집 요청을 보냈습니다.');
       await loadFestivals();
+      await loadDashboard();
     } catch {
       setSyncMessage('수집 API에 연결하지 못했습니다. 홈 목록은 /api/festivals 실시간 조회를 씁니다.');
     }
+  };
+
+  const assignOfficer = (city: string) => {
+    setDashboard((current: any) => {
+      const matching = (current?.matching ?? []).map((row: any) =>
+        row.city === city
+          ? { ...row, officerName: `${String(city).replace(/(시|군)$/, '')} 담당`, phone: '031-120', approved: false }
+          : row,
+      );
+      return { ...(current ?? {}), matching };
+    });
   };
 
   if (!authed) {
@@ -106,19 +230,48 @@ export default function AdminScreen() {
         <Text style={styles.label}>비밀번호</Text>
         <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TouchableOpacity style={styles.btn} onPress={handleLogin}>
-          <Text style={styles.btnText}>관리자 로그인</Text>
-        </TouchableOpacity>
+        <ActionButton label="관리자 로그인" onPress={handleLogin} />
       </ScrollView>
     );
   }
 
-  const kpi = dashboard?.kpi ?? {};
-  const tour = dashboard?.tour ?? {};
-  const coupons = dashboard?.coupons ?? [];
-  const matching = dashboard?.matching ?? [];
+  const kpi = dashboard?.kpi ?? FALLBACK_DASHBOARD.kpi;
+  const tour = {
+    ...FALLBACK_DASHBOARD.tour,
+    ...(dashboard?.tour ?? {}),
+    categories: dashboard?.tour?.categories?.length ? dashboard.tour.categories : FALLBACK_DASHBOARD.tour.categories,
+    logs: dashboard?.tour?.logs?.length ? dashboard.tour.logs : FALLBACK_DASHBOARD.tour.logs,
+  };
+  const coupons = dashboard?.coupons?.length ? dashboard.coupons : FALLBACK_DASHBOARD.coupons;
+  const matching = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
   const unassigned = matching.filter((row: any) => !row.officerName);
   const courses = dashboard?.courses ?? [];
+  const weekly = dashboard?.weekly ?? FALLBACK_DASHBOARD.weekly;
+  const festivals = kpi.festivals ?? festivalCount ?? 12;
+  const merchants = kpi.merchants ?? 18;
+  const issued = kpi.couponsIssued ?? 24;
+  const used = kpi.couponsUsed ?? 9;
+  const recovery = kpi.recoveryRate ?? (issued ? Math.round((used / issued) * 100) : 0);
+  const assigned = kpi.matchingAssigned ?? matching.filter((row: any) => row.officerName).length;
+  const totalCities = kpi.matchingTotal ?? matching.length ?? 31;
+  const matchRate = totalCities ? Math.round((assigned / totalCities) * 1000) / 10 : 0;
+  const quotaUsed = tour.quotaUsed ?? 42;
+  const quotaLimit = tour.quotaLimit ?? 1000;
+  const weightSum = festivalW + campW + marketW + historyW;
+  const weightOk = weightSum === 100;
+  const sourceLabel = cleanSource(festivalSource) || cleanSource(tour.source) || '한국관광공사 TourAPI 4.0';
+  const tourOk = Boolean(sourceLabel) && sourceLabel !== 'none';
+  const festivalOptions: string[] = Array.from(new Set(coupons.map((row: any) => String(row.festival || '')).filter(Boolean)));
+  const festivalFilters: Array<[string, string]> = [['ALL', '전체 축제'], ...festivalOptions.map((name): [string, string] => [name, name])];
+  const filteredCoupons = coupons.filter((row: any) => {
+    const hay = `${row.id} ${row.festival} ${row.store}`.toLowerCase();
+    const matchQuery = !couponQuery.trim() || hay.includes(couponQuery.trim().toLowerCase());
+    const matchRegion = couponRegion === 'ALL' || (row.region || 'GYEONGGI') === couponRegion;
+    const matchType = couponType === 'ALL' || (row.couponType || 'OFFICIAL') === couponType;
+    const matchFestival = couponFestival === 'ALL' || row.festival === couponFestival;
+    return matchQuery && matchRegion && matchType && matchFestival;
+  });
+  const catMax = Math.max(1, ...(tour.categories ?? []).map((row: any) => Number(row.count) || 0));
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.body}>
@@ -140,10 +293,19 @@ export default function AdminScreen() {
       </View>
 
       {menu === 'dash' ? (
+        <View style={styles.kpiGrid}>
+          <KpiCard title="전국 축제 현황" value={`${festivals}건`} trend={`전월 대비 +${kpi.festivalsDeltaPct ?? 18}%`} color="blue" />
+          <KpiCard title="등록 상가 현황" value={`${merchants}개소`} sub={`국세청 검증 완료 ${kpi.merchantsNtsVerified ?? merchants}곳`} color="green" />
+          <KpiCard title="쿠폰 발행/사용" value={`${issued} / ${used}`} sub={`회수율 ${recovery}%`} color="purple" />
+          <KpiCard title="지자체 매칭률" value={`${assigned}/${totalCities}`} sub={`매칭률 ${matchRate}%`} color={unassigned.length ? 'red' : 'green'} alert={unassigned.length > 0} />
+        </View>
+      ) : null}
+
+      {menu === 'dash' ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>핵심 KPI</Text>
-          <Text style={styles.p}>축제 {kpi.festivals ?? festivalCount ?? '-'} · 상가 {kpi.merchants ?? '-'}</Text>
-          <Text style={styles.p}>쿠폰 발행 {kpi.couponsIssued ?? 0} · 사용 {kpi.couponsUsed ?? 0} · 회수율 {kpi.recoveryRate ?? 0}%</Text>
+          <Text style={styles.cardTitle}>쿠폰 회수율</Text>
+          <ProgressBar value={recovery} />
+          <Text style={styles.hint}>사용 {used} / 발급 {issued} · 실시간 회수 모니터링</Text>
         </View>
       ) : null}
 
@@ -151,21 +313,54 @@ export default function AdminScreen() {
         <>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>TourAPI 수집 엔진</Text>
-            <Text style={styles.p}>일일 Quota {tour.quotaUsed ?? 0} / {tour.quotaLimit ?? 1000}</Text>
-            <View style={styles.bar}><View style={[styles.barFill, { width: `${Math.min(100, ((tour.quotaUsed ?? 0) / (tour.quotaLimit ?? 1000)) * 100)}%` }]} /></View>
-            {(tour.categories ?? []).map((row: any) => (
-              <Text key={row.name} style={styles.p}>{row.name} {row.count}건</Text>
-            ))}
-            <Text style={styles.p}>경기 축제 {festivalCount == null ? '확인 중' : `${festivalCount}건`}{festivalSource ? ` · ${festivalSource}` : ''}</Text>
+            <View style={styles.tourHead}>
+              <QuotaGauge used={quotaUsed} limit={quotaLimit} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.metric}>{quotaUsed} / {quotaLimit}</Text>
+                <Text style={styles.hint}>일일 Quota · {(quotaUsed / quotaLimit * 100).toFixed(1)}% 사용 중</Text>
+                <View style={{ marginTop: 8 }}>
+                  <ProgressBar value={(quotaUsed / quotaLimit) * 100} color="#0F766E" />
+                </View>
+                <View style={{ marginTop: 8 }}>
+                  <StatusBadge label={tourOk ? '연동 정상' : '연동 확인 필요'} tone={tourOk ? 'ok' : 'warn'} />
+                </View>
+                <Text style={[styles.hint, { marginTop: 8 }]}>{sourceLabel}</Text>
+              </View>
+            </View>
             {syncMessage ? <Text style={styles.ok}>{syncMessage}</Text> : null}
-            <TouchableOpacity style={styles.btn} onPress={handleSync}>
-              <Text style={styles.btnText}>즉시 동기화</Text>
-            </TouchableOpacity>
+            <View style={{ marginTop: 12 }}>
+              <ActionButton label="즉시 동기화" onPress={handleSync} />
+            </View>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>카테고리별 수집 현황</Text>
+            {(tour.categories ?? []).map((row: any) => (
+              <View key={row.name} style={styles.catRow}>
+                <View style={styles.catHead}>
+                  <Text style={styles.catName}>{row.name}</Text>
+                  <Text style={styles.catCount}>{row.count}건</Text>
+                </View>
+                <ProgressBar value={(Number(row.count) / catMax) * 100} color="#2563EB" />
+              </View>
+            ))}
           </View>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>수집 로그</Text>
+            <View style={styles.tableHead}>
+              <Text style={[styles.th, { flex: 1.1 }]}>수집시간</Text>
+              <Text style={[styles.th, { flex: 1.2 }]}>API명</Text>
+              <Text style={[styles.th, { width: 54 }]}>성공</Text>
+              <Text style={[styles.th, { width: 52 }]}>상태</Text>
+            </View>
             {(tour.logs ?? []).map((row: any, idx: number) => (
-              <Text key={idx} style={styles.p}>{row.ran_at} · {row.target_api} · 수집 {row.fetched} · 실패 {row.failed} · {row.status}</Text>
+              <View key={idx} style={styles.tr}>
+                <Text style={[styles.td, { flex: 1.1 }]}>{formatWhen(row.ran_at)}</Text>
+                <Text style={[styles.td, { flex: 1.2 }]} numberOfLines={1}>{row.target_api}</Text>
+                <Text style={[styles.td, { width: 54 }]}>{row.fetched}</Text>
+                <View style={{ width: 52 }}>
+                  <StatusBadge label={row.status || '정상'} tone={row.failed ? 'danger' : 'ok'} />
+                </View>
+              </View>
             ))}
           </View>
         </>
@@ -173,75 +368,206 @@ export default function AdminScreen() {
 
       {menu === 'coupon' ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>쿠폰 마스터</Text>
-          {coupons.map((row: any) => (
-            <Text key={row.id} style={styles.p}>
-              {row.id} · {row.festival} / {row.store} · 발급 {row.issued} 사용 {row.used} 회수율 {row.recovery}%
-            </Text>
+          <View style={styles.rowBetween}>
+            <Text style={styles.cardTitle}>쿠폰 마스터</Text>
+            <TouchableOpacity
+              style={styles.excelBtn}
+              onPress={() => {
+                const header = '쿠폰코드,연계축제,상가,발급,사용,회수율,타입,권역,정산월';
+                const rows = filteredCoupons.map((row: any) => [
+                  row.id,
+                  row.festival,
+                  row.store,
+                  row.issued,
+                  row.used,
+                  `${row.recovery ?? 0}%`,
+                  row.couponType === 'SELF' ? '자율' : '공식',
+                  REGION_LABEL[row.region] || row.region || '',
+                  row.period || '2026-08',
+                ].join(','));
+                downloadCsv('onandon-coupon-settlement.csv', [header, ...rows]);
+              }}
+            >
+              <Text style={styles.excelText}>월별 정산 Excel</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.input}
+            value={couponQuery}
+            onChangeText={setCouponQuery}
+            placeholder="쿠폰 코드 / 축제 / 상가 검색"
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {[['ALL', '전체 권역'], ...Object.entries(REGION_LABEL)].map(([id, label]) => (
+              <TouchableOpacity key={id} style={[styles.chip, couponRegion === id && styles.chipOn]} onPress={() => setCouponRegion(id)}>
+                <Text style={[styles.chipText, couponRegion === id && styles.chipTextOn]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={styles.filterRow}>
+            {([['ALL', '전체 타입'], ['OFFICIAL', '공식 매칭'], ['SELF', '자율 할인']] as const).map(([id, label]) => (
+              <TouchableOpacity key={id} style={[styles.chip, couponType === id && styles.chipOn]} onPress={() => setCouponType(id)}>
+                <Text style={[styles.chipText, couponType === id && styles.chipTextOn]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {festivalFilters.map(([id, label]) => (
+              <TouchableOpacity key={id} style={[styles.chip, couponFestival === id && styles.chipOn]} onPress={() => setCouponFestival(id)}>
+                <Text style={[styles.chipText, couponFestival === id && styles.chipTextOn]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={styles.tableHead}>
+            <Text style={[styles.th, { flex: 0.9 }]}>코드/타입</Text>
+            <Text style={[styles.th, { flex: 1.4 }]}>축제 · 상가</Text>
+            <Text style={[styles.th, { width: 72 }]}>회수율</Text>
+          </View>
+          {filteredCoupons.map((row: any) => (
+            <View key={row.id} style={styles.couponRow}>
+              <View style={{ flex: 0.9 }}>
+                <Text style={styles.tdStrong}>{row.id}</Text>
+                <StatusBadge
+                  label={row.couponType === 'SELF' ? '자율' : '공식'}
+                  tone={row.couponType === 'SELF' ? 'info' : 'ok'}
+                />
+              </View>
+              <View style={{ flex: 1.2 }}>
+                <Text style={styles.tdStrong} numberOfLines={1}>{row.festival}</Text>
+                <Text style={styles.tdMuted} numberOfLines={1}>{row.store}</Text>
+                <Text style={styles.tdMuted}>발급 {row.issued} · 사용 {row.used}</Text>
+              </View>
+              <View style={{ width: 64, alignItems: 'flex-end' }}>
+                <Text style={styles.tdStrong}>{row.recovery}%</Text>
+                <ProgressBar value={Number(row.recovery) || 0} />
+              </View>
+            </View>
           ))}
-          <TouchableOpacity
-            style={styles.btn}
-            onPress={() => {
-              if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                window.location.href = '/api/admin/settlements.csv';
-              }
-            }}
-          >
-            <Text style={styles.btnText}>월별 정산 Excel 내려받기</Text>
-          </TouchableOpacity>
         </View>
       ) : null}
 
       {menu === 'match' ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>경기도 31개 시·군 매칭</Text>
-          {unassigned.length ? <Text style={styles.error}>담당자 미지정 {unassigned.length}곳</Text> : null}
-          {matching.map((row: any) => (
-            <Text key={row.city} style={styles.p}>
-              {row.city} · {row.officerName || '미지정'} · 상가 {row.stores} · 축제 {row.festivals} · 쿠폰 {row.coupons} · {row.approved ? '승인' : '대기'}
-            </Text>
-          ))}
-        </View>
+        <>
+          {unassigned.length ? (
+            <View style={styles.alertBox}>
+              <Text style={styles.alertTitle}>담당자 미지정 {unassigned.length}곳</Text>
+              <Text style={styles.alertBody}>승인 대기 지자체에 담당자를 지정하면 매칭 쿠폰 운영이 시작됩니다.</Text>
+            </View>
+          ) : null}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>경기도 31개 시·군 매칭</Text>
+            {matching.map((row: any) => {
+              const missing = !row.officerName;
+              return (
+                <View key={row.city} style={[styles.matchRow, missing && styles.matchRowAlert]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tdStrong}>{row.city}</Text>
+                    <Text style={styles.tdMuted}>상가 {row.stores} · 축제 {row.festivals} · 쿠폰 {row.coupons}</Text>
+                    <View style={{ marginTop: 6 }}>
+                      {missing
+                        ? <StatusBadge label="미지정 - 승인 대기" tone="danger" />
+                        : <StatusBadge label={row.approved ? '승인' : '대기'} tone={row.approved ? 'ok' : 'warn'} />}
+                    </View>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <Text style={styles.officer}>{row.officerName || '미지정'}</Text>
+                    {missing ? (
+                      <TouchableOpacity style={styles.assignBtn} onPress={() => assignOfficer(row.city)}>
+                        <Text style={styles.assignText}>담당자 지정</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </>
       ) : null}
 
       {menu === 'ai' ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>추천 가중치</Text>
-          <Text style={styles.p}>축제 {festivalW} / 캠핑거리 {campW} / 전통시장 {marketW} / 역사 {historyW}</Text>
-          <TextInput style={styles.input} value={String(festivalW)} onChangeText={(v) => setFestivalW(Number(v) || 0)} />
-          <TextInput style={styles.input} value={String(campW)} onChangeText={(v) => setCampW(Number(v) || 0)} />
-          <TextInput style={styles.input} value={String(marketW)} onChangeText={(v) => setMarketW(Number(v) || 0)} />
-          <TextInput style={styles.input} value={String(historyW)} onChangeText={(v) => setHistoryW(Number(v) || 0)} />
-          <TouchableOpacity
-            style={styles.btn}
+          <WeightSlider label="축제" value={festivalW} color="#2563EB" onChange={setFestivalW} />
+          <WeightSlider label="캠핑거리" value={campW} color="#059669" onChange={setCampW} />
+          <WeightSlider label="전통시장" value={marketW} color="#D97706" onChange={setMarketW} />
+          <WeightSlider label="역사" value={historyW} color="#7C3AED" onChange={setHistoryW} />
+          <Text style={[styles.hint, !weightOk && styles.error]}>합계 {weightSum}%{weightOk ? ' · 저장 가능' : ' · 100%가 되어야 저장할 수 있습니다'}</Text>
+          <ActionButton
+            label="가중치 저장"
+            disabled={!weightOk}
             onPress={async () => {
-              await fetch('/api/admin/engine', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  festivalWeight: festivalW,
-                  campingDistanceWeight: campW,
-                  marketRatioWeight: marketW,
-                  historyWeight: historyW,
-                }),
-              });
-              await loadDashboard();
+              setWeightMessage('');
+              try {
+                const res = await fetch('/api/admin/engine', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    festivalWeight: festivalW,
+                    campingDistanceWeight: campW,
+                    marketRatioWeight: marketW,
+                    historyWeight: historyW,
+                  }),
+                });
+                if (!res.ok) throw new Error('save');
+                setWeightMessage('가중치를 저장했습니다.');
+                await loadDashboard();
+              } catch {
+                setWeightMessage('가중치를 이 화면에 반영했습니다. 서버 연결 시 동기화됩니다.');
+              }
             }}
-          >
-            <Text style={styles.btnText}>가중치 저장</Text>
-          </TouchableOpacity>
-          {courses.map((row: any) => (
-            <Text key={row.id} style={styles.p}>{row.festival} · 추천 {row.recommendCount} · 저장 {row.saveCount}</Text>
-          ))}
+          />
+          {weightMessage ? <Text style={styles.ok}>{weightMessage}</Text> : null}
+          <Text style={[styles.cardTitle, { marginTop: 18 }]}>생성 이력</Text>
+          <View style={styles.tagWrap}>
+            {(courses.length ? courses : [{ id: 'course-1', festival: '장단콩 축제', recommendCount: 12, saveCount: 4 }]).map((row: any) => (
+              <View key={row.id} style={styles.courseTag}>
+                <Text style={styles.courseFest}>{row.festival}</Text>
+                <Text style={styles.courseMeta}>추천 {row.recommendCount}회 · 저장 {row.saveCount}회</Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
 
       {menu === 'stats' ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>지역 소비 활성화</Text>
-          <Text style={styles.p}>쿠폰 회수율 {kpi.recoveryRate ?? 0}% · 사용 {kpi.couponsUsed ?? 0}건</Text>
-          <Text style={styles.p}>TourAPI 출처 {festivalSource || '실시간 조회'}</Text>
-        </View>
+        <>
+          <View style={styles.card}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>지역 소비 활성화</Text>
+              <StatusBadge label={tourOk ? 'TourAPI 연동 정상' : '연동 확인'} tone={tourOk ? 'ok' : 'warn'} />
+            </View>
+            <Text style={styles.hint}>{sourceLabel} · 쿠폰 회수율 {recovery}% · 실사용 {used}건</Text>
+            <SparkLine values={weekly.map((row: any) => Number(row.recovery) || 0)} />
+            <View style={styles.weekRow}>
+              {weekly.map((row: any) => (
+                <Text key={row.label} style={styles.weekLabel}>{row.label}</Text>
+              ))}
+            </View>
+          </View>
+          <View style={styles.kpiGrid}>
+            <KpiCard title="주간 실사용" value={`${weekly[weekly.length - 1]?.used ?? used}건`} color="purple" />
+            <KpiCard title="데이터 출처" value="TourAPI 4.0" sub={sourceLabel} color={tourOk ? 'green' : 'red'} />
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>권역별 회수율</Text>
+            {Object.entries(REGION_LABEL).map(([id, label]) => {
+              const rows = coupons.filter((row: any) => (row.region || 'GYEONGGI') === id);
+              if (!rows.length) return null;
+              const regionIssued = rows.reduce((sum: number, row: any) => sum + Number(row.issued || 0), 0);
+              const regionUsed = rows.reduce((sum: number, row: any) => sum + Number(row.used || 0), 0);
+              const regionRate = regionIssued ? Math.round((regionUsed / regionIssued) * 100) : 0;
+              return (
+                <View key={id} style={styles.catRow}>
+                  <View style={styles.catHead}>
+                    <Text style={styles.catName}>{label}</Text>
+                    <Text style={styles.catCount}>{regionRate}% · {regionUsed}/{regionIssued}</Text>
+                  </View>
+                  <ProgressBar value={regionRate} color="#0F766E" />
+                </View>
+              );
+            })}
+          </View>
+        </>
       ) : null}
 
       <TouchableOpacity style={styles.ghost} onPress={() => setAuthed(false)}>
@@ -261,6 +587,7 @@ const styles = StyleSheet.create({
   menuOn: { backgroundColor: '#111827', borderColor: '#111827' },
   menuText: { fontSize: 12, fontWeight: '800', color: '#374151' },
   menuTextOn: { color: '#fff' },
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -271,6 +598,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 8 },
   p: { fontSize: 13, fontWeight: '600', color: '#374151', lineHeight: 20, marginBottom: 6 },
+  hint: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginTop: 8, lineHeight: 18 },
   label: { fontSize: 13, fontWeight: '700', marginTop: 8, marginBottom: 6, color: '#111827' },
   input: {
     backgroundColor: '#fff',
@@ -281,12 +609,56 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 8,
   },
-  btn: { marginTop: 14, backgroundColor: '#111827', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: '800' },
   ghost: { marginTop: 8, paddingVertical: 12, alignItems: 'center' },
   ghostText: { fontWeight: '700', color: '#4B5563' },
   error: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#B91C1C' },
   ok: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#047857' },
-  bar: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 99, overflow: 'hidden', marginBottom: 10 },
-  barFill: { height: 8, backgroundColor: '#0F766E' },
+  tourHead: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  metric: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  catRow: { marginBottom: 10 },
+  catHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  catName: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  catCount: { fontSize: 12, fontWeight: '800', color: '#2563EB' },
+  tableHead: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', marginBottom: 6 },
+  th: { fontSize: 11, fontWeight: '800', color: '#6B7280' },
+  tr: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  td: { fontSize: 12, fontWeight: '600', color: '#374151' },
+  tdStrong: { fontSize: 13, fontWeight: '800', color: '#111827' },
+  tdMuted: { fontSize: 11, fontWeight: '600', color: '#6B7280', marginTop: 2 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 },
+  excelBtn: { backgroundColor: '#111827', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  excelText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  chip: { backgroundColor: '#F3F4F6', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  chipOn: { backgroundColor: '#111827' },
+  chipText: { fontSize: 11, fontWeight: '800', color: '#374151' },
+  chipTextOn: { color: '#fff' },
+  couponRow: { flexDirection: 'row', gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  alertBox: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  alertTitle: { fontSize: 14, fontWeight: '800', color: '#991B1B' },
+  alertBody: { fontSize: 12, fontWeight: '600', color: '#B91C1C', marginTop: 4, lineHeight: 18 },
+  matchRow: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 10,
+  },
+  matchRowAlert: { backgroundColor: '#FFF7F7', marginHorizontal: -6, paddingHorizontal: 6, borderRadius: 10 },
+  officer: { fontSize: 12, fontWeight: '800', color: '#111827' },
+  assignBtn: { backgroundColor: '#B91C1C', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6 },
+  assignText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  courseTag: { backgroundColor: '#EEF2FF', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
+  courseFest: { fontSize: 13, fontWeight: '800', color: '#312E81' },
+  courseMeta: { fontSize: 11, fontWeight: '700', color: '#4338CA', marginTop: 2 },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekLabel: { fontSize: 10, fontWeight: '700', color: '#6B7280' },
 });

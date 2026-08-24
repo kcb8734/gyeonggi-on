@@ -220,35 +220,84 @@ async function sendOfficial(merchantId, toEmail) {
   };
 }
 
+function matchingRows() {
+  return CITIES.map((name, index) => ({
+    city: name,
+    officerName: index % 7 === 0 ? '' : name.replace(/(시|군)$/, '') + ' 담당',
+    phone: index % 7 === 0 ? '' : '031-120',
+    stores: 4 + (index % 5),
+    festivals: 1 + (index % 3),
+    coupons: 8 + (index % 11),
+    approved: index % 7 !== 0,
+  }));
+}
+
+function couponMaster() {
+  return [
+    { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 12, used: 4, recovery: 33, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
+    { id: 'CP-1002', festival: '수원화성문화제', store: '화성행궁 한정식', issued: 12, used: 5, recovery: 42, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
+    { id: 'CP-2008', festival: '보령머드축제', store: '대천항활어회센터', issued: 8, used: 3, recovery: 38, period: '2026-08', region: 'CHUNGCHEONG', couponType: 'SELF' },
+    { id: 'CP-3011', festival: '진주남강유등축제', store: '진주중앙시장', issued: 10, used: 4, recovery: 40, period: '2026-08', region: 'GYEONGSANG', couponType: 'SELF' },
+    { id: 'CP-4015', festival: '화천산천어축제', store: '화천재래시장', issued: 6, used: 2, recovery: 33, period: '2026-08', region: 'GANGWON', couponType: 'SELF' },
+    { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEOLLA', couponType: 'SELF' },
+  ];
+}
+
+function updateEngine(input) {
+  const next = input && typeof input === 'object' ? input : {};
+  if (next.festivalWeight != null) engine.festivalWeight = Number(next.festivalWeight);
+  if (next.campingDistanceWeight != null) engine.campingDistanceWeight = Number(next.campingDistanceWeight);
+  if (next.marketRatioWeight != null) engine.marketRatioWeight = Number(next.marketRatioWeight);
+  if (next.historyWeight != null) engine.historyWeight = Number(next.historyWeight);
+  return engine;
+}
+
 function dashboard() {
+  const matching = matchingRows();
+  const assignedCount = matching.filter((row) => row.officerName).length;
   return {
-    kpi: { festivals: 12, merchants: 18, couponsIssued: 24, couponsUsed: 9, recoveryRate: 38 },
+    kpi: {
+      festivals: 12,
+      festivalsDelta: 2,
+      festivalsDeltaPct: 18,
+      merchants: 18,
+      merchantsNtsVerified: 18,
+      couponsIssued: 24,
+      couponsUsed: 9,
+      recoveryRate: 38,
+      matchingAssigned: assignedCount,
+      matchingTotal: matching.length,
+      matchingCoverage: assignedCount + '/' + matching.length,
+    },
     tour: {
       quotaUsed: 42,
       quotaLimit: 1000,
+      lastSync: '오늘 07:00 KST',
+      source: '한국관광공사 TourAPI 4.0',
       categories: [
         { name: '축제/행사', count: 12 },
         { name: '역사체험', count: 8 },
         { name: '캠핑장', count: 6 },
         { name: '음식점', count: 21 },
       ],
-      logs: [{ ran_at: new Date().toISOString(), target_api: 'searchFestival2', fetched: 12, failed: 0, status: '정상' }],
+      logs: [
+        { ran_at: hoursAgo(2), target_api: 'areaBasedList1', fetched: 42, failed: 0, status: '정상' },
+        { ran_at: hoursAgo(9), target_api: 'searchFestival2', fetched: 18, failed: 0, status: '정상' },
+        { ran_at: hoursAgo(15), target_api: 'detailCommon2', fetched: 31, failed: 0, status: '정상' },
+        { ran_at: hoursAgo(21), target_api: 'locationBasedList1', fetched: 24, failed: 0, status: '정상' },
+      ],
     },
-    coupons: [
-      { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 40, used: 18, recovery: 45, period: '2026-08' },
-      { id: 'CP-1002', festival: '수원화성문화제', store: '화성행궁 한정식', issued: 30, used: 11, recovery: 37, period: '2026-08' },
-    ],
-    matching: CITIES.map((name, index) => ({
-      city: name,
-      officerName: index % 7 === 0 ? '' : name.replace(/(시|군)$/, '') + ' 담당',
-      phone: index % 7 === 0 ? '' : '031-120',
-      stores: 4 + (index % 5),
-      festivals: 1 + (index % 3),
-      coupons: 8 + (index % 11),
-      approved: index % 7 !== 0,
-    })),
+    coupons: couponMaster(),
+    matching,
     engine,
     courses: [{ id: 'course-1', festival: '장단콩 축제', elements: '캠핑/역사/시장', recommendCount: 12, saveCount: 4, editorsPick: false }],
+    weekly: [
+      { label: '7/27', recovery: 25, used: 1 },
+      { label: '8/3', recovery: 40, used: 2 },
+      { label: '8/10', recovery: 43, used: 3 },
+      { label: '8/17', recovery: 36, used: 4 },
+      { label: '8/24', recovery: 38, used: 9 },
+    ],
     guardLogs: [{ at: new Date().toISOString(), text: '정상 코스 생성', blocked: false }],
     cities: CITIES,
   };
@@ -270,4 +319,5 @@ export {
   dashboard,
   settlementCsv,
   engine,
+  updateEngine,
 };
