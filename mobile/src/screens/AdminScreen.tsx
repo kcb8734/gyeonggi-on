@@ -91,6 +91,35 @@ function cleanSource(value?: string) {
   return text;
 }
 
+function mergeDashboard(next: any) {
+  const kpi = next?.kpi ?? {};
+  const tour = next?.tour ?? {};
+  return {
+    ...FALLBACK_DASHBOARD,
+    ...next,
+    kpi: {
+      ...FALLBACK_DASHBOARD.kpi,
+      ...kpi,
+      festivals: Number(kpi.festivals) > 0 ? Number(kpi.festivals) : FALLBACK_DASHBOARD.kpi.festivals,
+      merchants: Number(kpi.merchants) > 0 ? Number(kpi.merchants) : FALLBACK_DASHBOARD.kpi.merchants,
+      merchantsNtsVerified: Number(kpi.merchantsNtsVerified) > 0 ? Number(kpi.merchantsNtsVerified) : FALLBACK_DASHBOARD.kpi.merchantsNtsVerified,
+      couponsIssued: Number(kpi.couponsIssued) > 0 ? Number(kpi.couponsIssued) : FALLBACK_DASHBOARD.kpi.couponsIssued,
+      couponsUsed: Number(kpi.couponsUsed) >= 0 && kpi.couponsUsed != null ? Number(kpi.couponsUsed) : FALLBACK_DASHBOARD.kpi.couponsUsed,
+    },
+    tour: {
+      ...FALLBACK_DASHBOARD.tour,
+      ...tour,
+      source: cleanSource(tour.source) || FALLBACK_DASHBOARD.tour.source,
+      categories: tour.categories?.length ? tour.categories : FALLBACK_DASHBOARD.tour.categories,
+      logs: tour.logs?.length ? tour.logs : FALLBACK_DASHBOARD.tour.logs,
+    },
+    coupons: next?.coupons?.length ? next.coupons : FALLBACK_DASHBOARD.coupons,
+    matching: next?.matching?.length ? next.matching : FALLBACK_DASHBOARD.matching,
+    weekly: next?.weekly?.length ? next.weekly : FALLBACK_DASHBOARD.weekly,
+    courses: next?.courses?.length ? next.courses : FALLBACK_DASHBOARD.courses,
+  };
+}
+
 function downloadCsv(filename: string, lines: string[]) {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
   const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -148,12 +177,13 @@ export default function AdminScreen() {
       const res = await fetch('/api/admin/dashboard');
       const data = await res.json();
       const next = data.data ?? data;
-      if (next?.kpi || next?.coupons) setDashboard(next);
-      if (next?.engine) {
-        setFestivalW(next.engine.festivalWeight ?? 40);
-        setCampW(next.engine.campingDistanceWeight ?? 25);
-        setMarketW(next.engine.marketRatioWeight ?? 20);
-        setHistoryW(next.engine.historyWeight ?? 15);
+      if (next?.kpi || next?.coupons || next?.matching) setDashboard(mergeDashboard(next));
+      const engine = next?.engine;
+      if (engine) {
+        setFestivalW(engine.festivalWeight ?? 40);
+        setCampW(engine.campingDistanceWeight ?? 25);
+        setMarketW(engine.marketRatioWeight ?? 20);
+        setHistoryW(engine.historyWeight ?? 15);
       }
     } catch {
       // 서버가 없어도 폴백 대시보드를 유지한다.

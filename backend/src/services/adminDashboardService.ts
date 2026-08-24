@@ -17,6 +17,8 @@ export async function getAdminDashboard() {
 
   const issued = Number(coupons?.rows[0]?.issued ?? 0) + Number(scanCoupons?.rows[0]?.issued ?? 0);
   const used = Number(coupons?.rows[0]?.used ?? 0) + Number(scanCoupons?.rows[0]?.used ?? 0);
+  const festivalCount = Number(festivals?.rows[0]?.n ?? 0) || 12;
+  const merchantCount = Number(merchants?.rows[0]?.n ?? 0) || 18;
   const matrix = matchingMatrix();
   const unassigned = matrix.filter((row) => !row.officerName);
   const assignedCount = matrix.length - unassigned.length;
@@ -39,11 +41,11 @@ export async function getAdminDashboard() {
 
   return {
     kpi: {
-      festivals: Number(festivals?.rows[0]?.n ?? 12),
+      festivals: festivalCount,
       festivalsDelta: 2,
       festivalsDeltaPct: 18,
-      merchants: Number(merchants?.rows[0]?.n ?? 18),
-      merchantsNtsVerified: Number(merchants?.rows[0]?.n ?? 18),
+      merchants: merchantCount,
+      merchantsNtsVerified: merchantCount,
       couponsIssued: issued || 24,
       couponsUsed: used || 9,
       recoveryRate: issued || used ? Math.round((used || 9) / (issued || 24) * 100) : 38,
@@ -57,7 +59,7 @@ export async function getAdminDashboard() {
       lastSync: '오늘 07:00 KST',
       source: '한국관광공사 TourAPI 4.0',
       categories: [
-        { name: '축제/행사', count: Number(festivals?.rows[0]?.n ?? 12) },
+        { name: '축제/행사', count: festivalCount },
         { name: '역사체험', count: 8 },
         { name: '캠핑장', count: 6 },
         { name: '음식점', count: 21 },
