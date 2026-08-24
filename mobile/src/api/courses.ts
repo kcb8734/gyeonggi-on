@@ -30,9 +30,10 @@ export type CourseQuery = {
 
 function looksLikeDefaultSuwon(course: FestivalCourse, input: CourseQuery) {
   const city = `${input.city || ''} ${input.address || ''} ${input.title || ''} ${input.metro || ''}`;
-  const isSuwonContext = /수원|GYEONGGI/.test(city) && !/보령|여수|제주|서울|인천|춘천|강릉|부산|진주|경주|청주|전주/.test(city);
+  const localContext = /수원|용인|GYEONGGI/.test(city)
+    && !/보령|여수|제주|서울|인천|춘천|강릉|부산|진주|경주|청주|전주|강원|GANGWON|속초|평창/.test(city);
   const history = course.itinerary?.[0]?.place_name || '';
-  return !isSuwonContext && /수원화성|화성행궁/.test(history);
+  return !localContext && /수원화성|화성행궁|한국민속촌|광교호수/.test(history);
 }
 
 export async function fetchRecommendedCourse(query: CourseQuery | string = {}): Promise<FestivalCourse | null> {
