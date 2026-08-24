@@ -407,6 +407,6 @@ const styles = StyleSheet.create({
   },
   pdfBtnText: { color: '#fff', fontWeight: '800' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 16 },
-  sheet: { backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 44, maxHeight: '88%' as unknown as number },
+  sheet: { backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 52, maxHeight: '88%' as unknown as number },
   previewFallback: { fontSize: 12, color: '#374151', marginTop: 10, lineHeight: 18 },
 });

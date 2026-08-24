@@ -10,6 +10,7 @@ import {
   normalizeEmailCode,
 } from '../../utils/managerAuth';
 import { formatTel } from '../../utils/phone';
+import ModalExitButton from './ModalExitButton';
 
 function AuthField({
   value,
@@ -223,6 +224,7 @@ export default function ManagerAuthPanel({ onClose }: { onClose: () => void }) {
       <Modal visible={dialogOpen} transparent animationType="fade" onRequestClose={() => setDialogOpen(false)}>
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogCard}>
+            <ModalExitButton onPress={() => setDialogOpen(false)} />
             {dialogStep === 'code' ? (
               <>
                 <Text style={styles.dialogKicker}>인증번호 입력</Text>
@@ -290,8 +292,8 @@ export default function ManagerAuthPanel({ onClose }: { onClose: () => void }) {
 
 const styles = StyleSheet.create({
   root: { paddingBottom: 8 },
-  kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
-  title: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4 },
+  kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E', paddingRight: 88 },
+  title: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4, paddingRight: 88 },
   lead: { fontSize: 13, color: '#374151', marginTop: 6, lineHeight: 20, fontWeight: '600' },
   card: {
     marginTop: 16,
@@ -344,8 +346,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
+    paddingTop: 52,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    overflow: 'visible' as const,
   },
   dialogKicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
   dialogTitle: { fontSize: 18, fontWeight: '800', color: '#111827', marginTop: 4 },

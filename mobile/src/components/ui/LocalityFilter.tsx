@@ -49,7 +49,7 @@ export default function LocalityFilter({ metro, value, onChange }: Props) {
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <View style={styles.sheetHead}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
+              <View style={{ flex: 1, paddingRight: 88 }}>
                 <Text style={styles.sheetTitle}>{metro.label} 시·군·구</Text>
                 <Text style={styles.sheetLead}>{metro.covers} · 가나다순으로 찾고 고를 수 있습니다</Text>
               </View>

@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     borderRadius: 20,
     padding: 16,
+    paddingTop: 52,
     alignItems: 'center',
   },
   kicker: { color: '#FCA5A5', fontSize: 11, fontWeight: '800' },
