@@ -36,6 +36,9 @@ button.danger { background: #b91c1c; }
 .badge.warn { background: #fef3c7; color: #92400e; }
 .badge.danger { background: #fee2e2; color: #991b1b; }
 .row-alert { background: #fff7f7; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+button.chip { background: #f3f4f6; color: #374151; border-radius: 999px; padding: 6px 10px; font-size: 12px; margin-right: 0; }
+button.chip.on { background: #111827; color: #fff; }
 table { width: 100%; border-collapse: collapse; background: #fff; }
 th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
 .error { color: #b91c1c; font-weight: 700; }

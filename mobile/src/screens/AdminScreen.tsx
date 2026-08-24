@@ -9,22 +9,87 @@ import {
   StatusBadge,
   WeightSlider,
 } from '../components/admin/AdminWidgets';
+import { METRO_LOCALITIES, METRO_REGIONS } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
 
 const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
 const ADMIN_PASSWORD = 'admin1234';
-const REGION_LABEL: Record<string, string> = {
-  GYEONGGI: '경기온',
-  SEOUL: '서울온',
-  INCHEON: '인천온',
-  GANGWON: '강원온',
-  CHUNGCHEONG: '충청온',
-  JEOLLA: '전라온',
-  GYEONGSANG: '경상온',
-  JEJU: '제주온',
+const REGION_LABEL: Record<string, string> = Object.fromEntries(
+  METRO_REGIONS.map((region) => [region.id, region.label]),
+);
+const REGION_PHONE: Record<string, string> = {
+  GYEONGGI: '031',
+  SEOUL: '02',
+  INCHEON: '032',
+  GANGWON: '033',
+  CHUNGCHEONG: '041',
+  JEOLLA: '063',
+  GYEONGSANG: '055',
+  JEJU: '064',
 };
 
-const FALLBACK_CITIES = ['수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시', '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시', '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시', '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군'];
+function officerDisplayName(label: string) {
+  const text = String(label || '');
+  if (text.includes(' ') || /(구)$/.test(text)) return `${text} 담당`;
+  return `${text.replace(/(시|군)$/, '')} 담당`;
+}
+
+function matchingRowId(row: any) {
+  return String(row?.id || `${row?.region || 'GYEONGGI'}:${row?.city || ''}`);
+}
+
+function buildFallbackMatching() {
+  return METRO_REGIONS.flatMap((region) =>
+    (METRO_LOCALITIES[region.id] ?? []).map((loc, index) => ({
+      id: `${region.id}:${loc.id}`,
+      region: region.id,
+      regionLabel: region.label,
+      couponType: region.id === 'GYEONGGI' ? 'OFFICIAL' : 'SELF',
+      city: loc.label,
+      officerName: index % 7 === 0 ? '' : officerDisplayName(loc.label),
+      phone: index % 7 === 0 ? '' : `${REGION_PHONE[region.id]}-120`,
+      stores: 4 + (index % 5),
+      festivals: 1 + (index % 3),
+      coupons: 8 + (index % 11),
+      approved: index % 7 !== 0,
+    })),
+  );
+}
+
+const FALLBACK_MATCHING = buildFallbackMatching();
+const FALLBACK_ASSIGNED = FALLBACK_MATCHING.filter((row) => row.officerName).length;
+
+function mergeMatching(apiRows: any[] | undefined) {
+  const fallback = FALLBACK_MATCHING;
+  if (!apiRows?.length) return fallback;
+  const normalized = apiRows.map((row) => ({
+    ...row,
+    id: matchingRowId(row),
+    region: row.region || 'GYEONGGI',
+    regionLabel: row.regionLabel || REGION_LABEL[row.region || 'GYEONGGI'] || '경기온',
+  }));
+  const regions = new Set(normalized.map((row) => row.region));
+  if (regions.size > 1 || normalized.length >= fallback.length * 0.8) return normalized;
+  const byId = new Map(normalized.map((row) => [row.id, row]));
+  const byCity = new Map(
+    normalized
+      .filter((row) => row.region === 'GYEONGGI')
+      .map((row) => [row.city, row]),
+  );
+  return fallback.map((row) => {
+    const overlay = byId.get(row.id) || (row.region === 'GYEONGGI' ? byCity.get(row.city) : null);
+    if (!overlay) return row;
+    return {
+      ...row,
+      officerName: overlay.officerName ?? row.officerName,
+      phone: overlay.phone ?? row.phone,
+      stores: overlay.stores ?? row.stores,
+      festivals: overlay.festivals ?? row.festivals,
+      coupons: overlay.coupons ?? row.coupons,
+      approved: overlay.approved ?? row.approved,
+    };
+  });
+}
 
 const FALLBACK_DASHBOARD = {
   kpi: {
@@ -36,9 +101,9 @@ const FALLBACK_DASHBOARD = {
     couponsIssued: 24,
     couponsUsed: 9,
     recoveryRate: 38,
-    matchingAssigned: 26,
-    matchingTotal: 31,
-    matchingCoverage: '26/31',
+    matchingAssigned: FALLBACK_ASSIGNED,
+    matchingTotal: FALLBACK_MATCHING.length,
+    matchingCoverage: `${FALLBACK_ASSIGNED}/${FALLBACK_MATCHING.length}`,
   },
   tour: {
     quotaUsed: 42,
@@ -66,15 +131,7 @@ const FALLBACK_DASHBOARD = {
     { id: 'CP-4015', festival: '화천산천어축제', store: '화천재래시장', issued: 6, used: 2, recovery: 33, period: '2026-08', region: 'GANGWON', couponType: 'SELF' },
     { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEOLLA', couponType: 'SELF' },
   ],
-  matching: FALLBACK_CITIES.map((city, index) => ({
-    city,
-    officerName: index % 7 === 0 ? '' : city.replace(/(시|군)$/, '') + ' 담당',
-    phone: index % 7 === 0 ? '' : '031-120',
-    stores: 4 + (index % 5),
-    festivals: 1 + (index % 3),
-    coupons: 8 + (index % 11),
-    approved: index % 7 !== 0,
-  })),
+  matching: FALLBACK_MATCHING,
   engine: { festivalWeight: 40, campingDistanceWeight: 25, marketRatioWeight: 20, historyWeight: 15 },
   courses: [{ id: 'course-1', festival: '장단콩 축제', recommendCount: 12, saveCount: 4 }],
   weekly: [
@@ -115,7 +172,7 @@ function mergeDashboard(next: any) {
       logs: tour.logs?.length ? tour.logs : FALLBACK_DASHBOARD.tour.logs,
     },
     coupons: next?.coupons?.length ? next.coupons : FALLBACK_DASHBOARD.coupons,
-    matching: next?.matching?.length ? next.matching : FALLBACK_DASHBOARD.matching,
+    matching: mergeMatching(next?.matching),
     weekly: next?.weekly?.length ? next.weekly : FALLBACK_DASHBOARD.weekly,
     courses: next?.courses?.length ? next.courses : FALLBACK_DASHBOARD.courses,
   };
@@ -148,6 +205,7 @@ export default function AdminScreen() {
   const [couponRegion, setCouponRegion] = useState('ALL');
   const [couponType, setCouponType] = useState('ALL');
   const [couponFestival, setCouponFestival] = useState('ALL');
+  const [matchRegion, setMatchRegion] = useState('GYEONGGI');
   const [weightMessage, setWeightMessage] = useState('');
 
   const loadFestivals = async () => {
@@ -222,13 +280,18 @@ export default function AdminScreen() {
     }
   };
 
-  const assignOfficer = (city: string) => {
+  const assignOfficer = (rowId: string) => {
     setDashboard((current: any) => {
-      const matching = (current?.matching ?? []).map((row: any) =>
-        row.city === city
-          ? { ...row, officerName: `${String(city).replace(/(시|군)$/, '')} 담당`, phone: '031-120', approved: false }
-          : row,
-      );
+      const matching = (current?.matching ?? []).map((row: any) => {
+        if (matchingRowId(row) !== rowId) return row;
+        const region = row.region || 'GYEONGGI';
+        return {
+          ...row,
+          officerName: officerDisplayName(row.city),
+          phone: `${REGION_PHONE[region] || '031'}-120`,
+          approved: false,
+        };
+      });
       return { ...(current ?? {}), matching };
     });
   };
@@ -237,8 +300,9 @@ export default function AdminScreen() {
     const filename = settlementFilename();
     const rows = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
     const localCsv = [
-      '시군,담당자,매칭상가,활성축제,쿠폰,승인',
+      '권역,시군,담당자,매칭상가,활성축제,쿠폰,승인',
       ...rows.map((row: any) => [
+        row.regionLabel || REGION_LABEL[row.region] || '',
         row.city,
         row.officerName || '미지정',
         row.stores,
@@ -292,6 +356,9 @@ export default function AdminScreen() {
   const coupons = dashboard?.coupons?.length ? dashboard.coupons : FALLBACK_DASHBOARD.coupons;
   const matching = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
   const unassigned = matching.filter((row: any) => !row.officerName);
+  const regionMatching = matching.filter((row: any) => (row.region || 'GYEONGGI') === matchRegion);
+  const regionUnassigned = regionMatching.filter((row: any) => !row.officerName);
+  const regionMeta = METRO_REGIONS.find((region) => region.id === matchRegion) ?? METRO_REGIONS[0];
   const courses = dashboard?.courses ?? [];
   const weekly = dashboard?.weekly ?? FALLBACK_DASHBOARD.weekly;
   const festivals = kpi.festivals ?? festivalCount ?? 12;
@@ -299,8 +366,8 @@ export default function AdminScreen() {
   const issued = kpi.couponsIssued ?? 24;
   const used = kpi.couponsUsed ?? 9;
   const recovery = kpi.recoveryRate ?? (issued ? Math.round((used / issued) * 100) : 0);
-  const assigned = kpi.matchingAssigned ?? matching.filter((row: any) => row.officerName).length;
-  const totalCities = kpi.matchingTotal ?? matching.length ?? 31;
+  const assigned = matching.filter((row: any) => row.officerName).length;
+  const totalCities = matching.length;
   const matchRate = totalCities ? Math.round((assigned / totalCities) * 1000) / 10 : 0;
   const quotaUsed = tour.quotaUsed ?? 42;
   const quotaLimit = tour.quotaLimit ?? 1000;
@@ -478,18 +545,44 @@ export default function AdminScreen() {
 
       {menu === 'match' ? (
         <>
-          {unassigned.length ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>권역별 지자체 담당자</Text>
+            <View style={styles.filterRow}>
+              {METRO_REGIONS.map((region) => {
+                const miss = matching.filter((row: any) => (row.region || 'GYEONGGI') === region.id && !row.officerName).length;
+                const on = matchRegion === region.id;
+                return (
+                  <TouchableOpacity key={region.id} style={[styles.chip, on && styles.chipOn]} onPress={() => setMatchRegion(region.id)}>
+                    <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                      {region.label}{miss ? ` · ${miss}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.hint}>
+              {regionMeta.covers} · {matchRegion === 'GYEONGGI' ? '공식 매칭 쿠폰' : '자율 할인'} · 전국 미지정 {unassigned.length}곳
+            </Text>
+          </View>
+          {regionUnassigned.length ? (
             <View style={styles.alertBox}>
-              <Text style={styles.alertTitle}>담당자 미지정 {unassigned.length}곳</Text>
+              <Text style={styles.alertTitle}>{regionMeta.label} 담당자 미지정 {regionUnassigned.length}곳</Text>
               <Text style={styles.alertBody}>승인 대기 지자체에 담당자를 지정하면 매칭 쿠폰 운영이 시작됩니다.</Text>
             </View>
           ) : null}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>경기도 31개 시·군 매칭</Text>
-            {matching.map((row: any) => {
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>{regionMeta.label} · {regionMatching.length}곳</Text>
+              <StatusBadge
+                label={matchRegion === 'GYEONGGI' ? '공식 매칭' : '자율 할인'}
+                tone={matchRegion === 'GYEONGGI' ? 'ok' : 'info'}
+              />
+            </View>
+            {regionMatching.map((row: any) => {
               const missing = !row.officerName;
+              const rowId = matchingRowId(row);
               return (
-                <View key={row.city} style={[styles.matchRow, missing && styles.matchRowAlert]}>
+                <View key={rowId} style={[styles.matchRow, missing && styles.matchRowAlert]}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.tdStrong}>{row.city}</Text>
                     <Text style={styles.tdMuted}>상가 {row.stores} · 축제 {row.festivals} · 쿠폰 {row.coupons}</Text>
@@ -502,7 +595,7 @@ export default function AdminScreen() {
                   <View style={{ alignItems: 'flex-end', gap: 6 }}>
                     <Text style={styles.officer}>{row.officerName || '미지정'}</Text>
                     {missing ? (
-                      <TouchableOpacity style={styles.assignBtn} onPress={() => assignOfficer(row.city)}>
+                      <TouchableOpacity style={styles.assignBtn} onPress={() => assignOfficer(rowId)}>
                         <Text style={styles.assignText}>담당자 지정</Text>
                       </TouchableOpacity>
                     ) : null}

@@ -1,4 +1,5 @@
 import { recommendCourse } from './festivalCourse.js';
+import { matchingRows, METRO_LOCALITIES, REGION_LABEL } from './metroLocalities.js';
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -38,7 +39,7 @@ function isIssuedCouponCode(code) {
 
 const settlements = [];
 const engine = { festivalWeight: 40, campingDistanceWeight: 25, marketRatioWeight: 20, historyWeight: 15 };
-const CITIES = ['수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시', '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시', '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시', '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군'];
+const CITIES = (METRO_LOCALITIES.GYEONGGI || []).map((loc) => loc.label);
 
 function findCoupon(code) {
   const token = normalizeCouponCode(code);
@@ -220,18 +221,6 @@ async function sendOfficial(merchantId, toEmail) {
   };
 }
 
-function matchingRows() {
-  return CITIES.map((name, index) => ({
-    city: name,
-    officerName: index % 7 === 0 ? '' : name.replace(/(시|군)$/, '') + ' 담당',
-    phone: index % 7 === 0 ? '' : '031-120',
-    stores: 4 + (index % 5),
-    festivals: 1 + (index % 3),
-    coupons: 8 + (index % 11),
-    approved: index % 7 !== 0,
-  }));
-}
-
 function couponMaster() {
   return [
     { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 12, used: 4, recovery: 33, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
@@ -289,6 +278,7 @@ function dashboard() {
     },
     coupons: couponMaster(),
     matching,
+    regions: Object.entries(REGION_LABEL).map(([id, label]) => ({ id, label })),
     engine,
     courses: [{ id: 'course-1', festival: '장단콩 축제', elements: '캠핑/역사/시장', recommendCount: 12, saveCount: 4, editorsPick: false }],
     weekly: [
@@ -305,8 +295,16 @@ function dashboard() {
 
 function settlementCsv() {
   const data = dashboard();
-  const header = '시군,담당자,매칭상가,활성축제,쿠폰,승인';
-  const rows = data.matching.map((row) => [row.city, row.officerName || '미지정', row.stores, row.festivals, row.coupons, row.approved ? '승인' : '대기'].join(','));
+  const header = '권역,시군,담당자,매칭상가,활성축제,쿠폰,승인';
+  const rows = data.matching.map((row) => [
+    row.regionLabel || REGION_LABEL[row.region] || row.region || '',
+    row.city,
+    row.officerName || '미지정',
+    row.stores,
+    row.festivals,
+    row.coupons,
+    row.approved ? '승인' : '대기',
+  ].join(','));
   return '\uFEFF' + [header, ...rows].join('\n');
 }
 

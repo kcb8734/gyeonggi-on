@@ -1,4 +1,4 @@
-import { GYEONGGI_CITIES } from '../constants/gyeonggiCities';
+import { matchingMatrixRows } from '../constants/metroLocalities';
 import type { CouponScanRecord } from '../types/couponScan';
 
 export const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
@@ -151,13 +151,5 @@ export function memoryMunicipality() {
 }
 
 export function matchingMatrix() {
-  return GYEONGGI_CITIES.map((name, index) => ({
-    city: name,
-    officerName: index % 7 === 0 ? '' : `${name.replace(/(시|군)$/, '')} 담당`,
-    phone: index % 7 === 0 ? '' : '031-120',
-    stores: 4 + (index % 5),
-    festivals: 1 + (index % 3),
-    coupons: 8 + (index % 11),
-    approved: index % 7 !== 0,
-  }));
+  return matchingMatrixRows();
 }
