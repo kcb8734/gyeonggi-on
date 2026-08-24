@@ -40,19 +40,26 @@ function send(res, status, body, extraHeaders) {
 }
 
 function sendCsv(res, req, csv, filename) {
+  const value = String(csv || '');
+  const body = value.charCodeAt(0) === 0xFEFF ? value : '\uFEFF' + value;
+  const month = new Date().toISOString().slice(0, 7);
+  const asciiName = 'monthly_settlement_' + month + '.csv';
   const headers = Object.assign(corsHeaders(req), {
     'Content-Type': 'text/csv; charset=utf-8',
-    'Content-Disposition': 'attachment; filename="' + filename + '"',
+    'Content-Disposition': 'attachment; filename="' + asciiName + '"; filename*=UTF-8\'\'' + encodeURIComponent(filename || asciiName),
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
   });
   if (typeof res.setHeader === 'function') {
     Object.keys(headers).forEach((key) => res.setHeader(key, headers[key]));
   }
+  const payload = Buffer.from(body, 'utf8');
   if (typeof res.status === 'function' && typeof res.send === 'function') {
-    res.status(200).send(csv);
+    res.status(200).send(payload);
     return;
   }
   res.statusCode = 200;
-  res.end(csv);
+  res.end(payload);
 }
 
 function originOf(req) {
@@ -483,8 +490,9 @@ async function handler(req, res) {
       send(res, 200, { success: true, data: updateEngine(body) }, corsHeaders(req));
       return;
     }
-    if (/admin\/settlements\.csv/i.test(path)) {
-      sendCsv(res, req, settlementCsv(), 'onandon-settlement.csv');
+    if (/admin\/settlement\/excel|admin\/settlements?\.csv/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      sendCsv(res, req, settlementCsv(), '월별정산내역_' + new Date().toISOString().slice(0, 7) + '.csv');
       return;
     }
     if (/admin\/login/i.test(path)) {

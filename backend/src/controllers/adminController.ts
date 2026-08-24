@@ -325,7 +325,13 @@ export const markCoursePick = async (req: Request, res: Response) => {
 export const downloadSettlementExcel = async (_req: Request, res: Response) => {
   const { settlementCsv } = await import('../services/adminDashboardService');
   const csv = settlementCsv();
+  const body = csv.charCodeAt(0) === 0xFEFF ? csv : `\uFEFF${csv}`;
+  const month = new Date().toISOString().slice(0, 7);
+  const asciiName = `monthly_settlement_${month}.csv`;
+  const filename = `월별정산내역_${month}.csv`;
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="onandon-settlement.csv"');
-  return res.send(`\uFEFF${csv}`);
+  res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  return res.status(200).send(Buffer.from(body, 'utf8'));
 };

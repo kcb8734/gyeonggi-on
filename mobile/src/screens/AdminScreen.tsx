@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
   ActionButton,
   KpiCard,
@@ -9,6 +9,7 @@ import {
   StatusBadge,
   WeightSlider,
 } from '../components/admin/AdminWidgets';
+import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
 
 const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
 const ADMIN_PASSWORD = 'admin1234';
@@ -118,17 +119,6 @@ function mergeDashboard(next: any) {
     weekly: next?.weekly?.length ? next.weekly : FALLBACK_DASHBOARD.weekly,
     courses: next?.courses?.length ? next.courses : FALLBACK_DASHBOARD.courses,
   };
-}
-
-function downloadCsv(filename: string, lines: string[]) {
-  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'ai' | 'stats';
@@ -241,6 +231,33 @@ export default function AdminScreen() {
       );
       return { ...(current ?? {}), matching };
     });
+  };
+
+  const handleDownloadExcel = async () => {
+    const filename = settlementFilename();
+    const rows = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
+    const localCsv = [
+      '시군,담당자,매칭상가,활성축제,쿠폰,승인',
+      ...rows.map((row: any) => [
+        row.city,
+        row.officerName || '미지정',
+        row.stores,
+        row.festivals,
+        row.coupons,
+        row.approved ? '승인' : '대기',
+      ].join(',')),
+    ].join('\n');
+    try {
+      const csv = await fetchSettlementCsv([
+        '/api/admin/settlement/excel',
+        '/api/admin/settlements.csv',
+      ]).catch(() => localCsv);
+      triggerCsvDownload(filename, csv || localCsv);
+    } catch {
+      if (typeof window !== 'undefined') {
+        window.alert('엑셀 다운로드 중 오류가 발생했습니다.');
+      }
+    }
   };
 
   if (!authed) {
@@ -400,24 +417,7 @@ export default function AdminScreen() {
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>쿠폰 마스터</Text>
-            <TouchableOpacity
-              style={styles.excelBtn}
-              onPress={() => {
-                const header = '쿠폰코드,연계축제,상가,발급,사용,회수율,타입,권역,정산월';
-                const rows = filteredCoupons.map((row: any) => [
-                  row.id,
-                  row.festival,
-                  row.store,
-                  row.issued,
-                  row.used,
-                  `${row.recovery ?? 0}%`,
-                  row.couponType === 'SELF' ? '자율' : '공식',
-                  REGION_LABEL[row.region] || row.region || '',
-                  row.period || '2026-08',
-                ].join(','));
-                downloadCsv('onandon-coupon-settlement.csv', [header, ...rows]);
-              }}
-            >
+            <TouchableOpacity style={styles.excelBtn} onPress={handleDownloadExcel}>
               <Text style={styles.excelText}>월별 정산 Excel</Text>
             </TouchableOpacity>
           </View>

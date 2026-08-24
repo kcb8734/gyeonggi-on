@@ -28,6 +28,7 @@ router.delete('/festivals/:contentId', adminAuthMiddleware, removeAdminFestival)
 router.get('/dashboard', getAdminDashboard);
 router.post('/engine', updateAdminEngine);
 router.post('/courses/pick', markCoursePick);
+router.get('/settlement/excel', downloadSettlementExcel);
 router.get('/settlements.csv', downloadSettlementExcel);
 
 export default router;
