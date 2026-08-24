@@ -1,4 +1,4 @@
-import { GYEONGGI_CITIES } from '../constants/gyeonggiCities';
+import { REGION_LABEL } from '../constants/metroLocalities';
 import { tryQuery } from '../db/pool';
 import { matchingMatrix, memoryEngine, memoryGuardLogs, memoryEditorsPicks } from './inMemoryPlatform';
 
@@ -76,7 +76,8 @@ export async function getAdminDashboard() {
     coupons: couponRows,
     matching: matrix,
     unassigned,
-    cities: GYEONGGI_CITIES,
+    regions: Object.entries(REGION_LABEL).map(([id, label]) => ({ id, label })),
+    cities: matrix.map((row) => row.city),
     engine: weights?.rows[0] ? {
       festivalWeight: Number(weights.rows[0].festival_weight),
       campingDistanceWeight: Number(weights.rows[0].camping_distance_weight),
@@ -136,7 +137,15 @@ export function addGuardLog(text: string) {
 }
 
 export function settlementCsv() {
-  const header = '시군,담당자,매칭상가,활성축제,쿠폰,승인';
-  const rows = matchingMatrix().map((row) => [row.city, row.officerName || '미지정', row.stores, row.festivals, row.coupons, row.approved ? '승인' : '대기'].join(','));
+  const header = '권역,시군,담당자,매칭상가,활성축제,쿠폰,승인';
+  const rows = matchingMatrix().map((row) => [
+    row.regionLabel || REGION_LABEL[row.region] || row.region || '',
+    row.city,
+    row.officerName || '미지정',
+    row.stores,
+    row.festivals,
+    row.coupons,
+    row.approved ? '승인' : '대기',
+  ].join(','));
   return [header, ...rows].join('\n');
 }

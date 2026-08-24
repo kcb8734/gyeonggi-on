@@ -27,6 +27,7 @@ export default function App() {
   const [budget, setBudget] = useState<any[]>([]);
   const [manualFestivals, setManualFestivals] = useState<any[]>([]);
   const [dashboard, setDashboard] = useState<any>(null);
+  const [matchRegion, setMatchRegion] = useState('GYEONGGI');
   const [festivalForm, setFestivalForm] = useState({
     title: '',
     address: '',
@@ -77,9 +78,22 @@ export default function App() {
   const kpi = dashboard?.kpi ?? {};
   const matching = dashboard?.matching ?? [];
   const unassigned = matching.filter((row: any) => !row.officerName);
+  const regionMatching = matching.filter((row: any) => (row.region || 'GYEONGGI') === matchRegion);
+  const regionUnassigned = regionMatching.filter((row: any) => !row.officerName);
   const recovery = kpi.recoveryRate ?? 38;
-  const assigned = kpi.matchingAssigned ?? matching.filter((row: any) => row.officerName).length;
-  const totalCities = kpi.matchingTotal ?? matching.length ?? 31;
+  const assigned = matching.filter((row: any) => row.officerName).length || kpi.matchingAssigned || 0;
+  const totalCities = matching.length || kpi.matchingTotal || 0;
+  const REGION_TABS = [
+    ['GYEONGGI', '경기온'],
+    ['SEOUL', '서울온'],
+    ['INCHEON', '인천온'],
+    ['GANGWON', '강원온'],
+    ['CHUNGCHEONG', '충청온'],
+    ['JEOLLA', '전라온'],
+    ['GYEONGSANG', '경상온'],
+    ['JEJU', '제주온'],
+  ] as const;
+  const regionLabel = REGION_TABS.find(([id]) => id === matchRegion)?.[1] ?? '경기온';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,13 +342,29 @@ export default function App() {
 
       <section>
         <h2>지자체 매칭 매트릭스</h2>
-        {unassigned.length ? (
-          <div className="alert">담당자 미지정 {unassigned.length}곳 — 승인 대기 지자체에 담당자를 지정해 주세요.</div>
+        <p className="muted">{regionLabel} · {regionMatching.length}곳 · {matchRegion === 'GYEONGGI' ? '공식 매칭' : '자율 할인'} · 전국 미지정 {unassigned.length}곳</p>
+        <div className="chip-row">
+          {REGION_TABS.map(([id, label]) => {
+            const miss = matching.filter((row: any) => (row.region || 'GYEONGGI') === id && !row.officerName).length;
+            return (
+              <button
+                key={id}
+                type="button"
+                className={matchRegion === id ? 'chip on' : 'chip'}
+                onClick={() => setMatchRegion(id)}
+              >
+                {label}{miss ? ` · ${miss}` : ''}
+              </button>
+            );
+          })}
+        </div>
+        {regionUnassigned.length ? (
+          <div className="alert">{regionLabel} 담당자 미지정 {regionUnassigned.length}곳 — 승인 대기 지자체에 담당자를 지정해 주세요.</div>
         ) : null}
         <table>
           <thead>
             <tr>
-              <th>시·군</th>
+              <th>시·군·구</th>
               <th>담당자</th>
               <th>매칭 상가</th>
               <th>활성 축제</th>
@@ -343,8 +373,8 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {matching.map((row: any) => (
-              <tr key={row.city} className={row.officerName ? '' : 'row-alert'}>
+            {regionMatching.map((row: any) => (
+              <tr key={row.id || `${row.region || 'GYEONGGI'}:${row.city}`} className={row.officerName ? '' : 'row-alert'}>
                 <td>{row.city}</td>
                 <td>{row.officerName || '미지정'}</td>
                 <td>{row.stores}</td>
