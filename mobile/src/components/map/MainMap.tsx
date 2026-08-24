@@ -137,8 +137,15 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         festivals.map((f) => ({ latitude: f.latitude, longitude: f.longitude })),
         { edgePadding: { top: 160, right: 40, bottom: 140, left: 40 }, animated: true },
       );
+      return;
     }
-  }, [selectedFestival, festivals]);
+    mapRef.current.animateToRegion({
+      latitude: regionPreset.latitude,
+      longitude: regionPreset.longitude,
+      latitudeDelta: regionPreset.latitudeDelta,
+      longitudeDelta: regionPreset.longitudeDelta,
+    });
+  }, [selectedFestival, festivals, regionPreset]);
 
   const handleSelectFestival = (id: string) => {
     const found = festivals.find((item) => item.id === id);
@@ -225,6 +232,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         style={styles.map}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={initialRegion}
+        region={initialRegion}
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass

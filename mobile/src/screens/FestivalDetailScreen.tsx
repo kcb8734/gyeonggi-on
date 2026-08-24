@@ -251,8 +251,15 @@ export default function FestivalDetailScreen({
         {hasMap ? (
           <View style={styles.mapCard}>
             <MapView
+              key={`${detail.mapY}-${detail.mapX}`}
               style={styles.map}
               initialRegion={{
+                latitude: detail.mapY,
+                longitude: detail.mapX,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              }}
+              region={{
                 latitude: detail.mapY,
                 longitude: detail.mapX,
                 latitudeDelta: 0.02,

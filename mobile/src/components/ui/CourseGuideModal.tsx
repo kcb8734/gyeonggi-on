@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FestivalCourse } from '../../api/courses';
-import { MapView, Marker } from '../map/CompatibleMap';
+import { MapView, Marker, Polyline } from '../map/CompatibleMap';
+import { categoryPinColor, regionFromPoints, validLatLng } from '../../utils/mapCamera';
 import ModalExitButton from './ModalExitButton';
 
 type Focus = 'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박';
@@ -24,18 +25,45 @@ export default function CourseGuideModal({
   focus?: Focus;
   onClose: () => void;
 }) {
+  const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const steps = useMemo(() => {
     const rows = course?.itinerary ?? [];
     return focus === 'all' ? rows : rows.filter((item) => item.category === focus);
   }, [course, focus]);
+  const points = useMemo(
+    () => steps
+      .filter((step) => validLatLng(step.latitude, step.longitude))
+      .map((step) => ({ latitude: Number(step.latitude), longitude: Number(step.longitude) })),
+    [steps],
+  );
+  const overview = useMemo(() => regionFromPoints(points, 0.05), [points]);
   const current = steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))];
-  const lat = Number(current?.latitude);
-  const lng = Number(current?.longitude);
-  const hasPin = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
-  const region = hasPin
-    ? { latitude: lat, longitude: lng, latitudeDelta: 0.08, longitudeDelta: 0.08 }
-    : { latitude: lat || 0, longitude: lng || 0, latitudeDelta: 0.35, longitudeDelta: 0.35 };
+
+  useEffect(() => {
+    if (visible) setStepIndex(0);
+  }, [visible, course?.course_title, focus]);
+
+  useEffect(() => {
+    if (!visible || !points.length) return;
+    const timer = setTimeout(() => {
+      mapRef.current?.fitToCoordinates(points, { edgePadding: { top: 36, right: 36, bottom: 36, left: 36 } });
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [visible, course?.course_title, focus, points]);
+
+  const focusStep = (index: number) => {
+    const next = Math.max(0, Math.min(steps.length - 1, index));
+    setStepIndex(next);
+    const step = steps[next];
+    if (!validLatLng(step?.latitude, step?.longitude)) return;
+    mapRef.current?.animateToRegion({
+      latitude: Number(step.latitude),
+      longitude: Number(step.longitude),
+      latitudeDelta: 0.04,
+      longitudeDelta: 0.04,
+    });
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -46,23 +74,48 @@ export default function CourseGuideModal({
           <Text style={styles.title}>{FOCUS_LABEL[focus]}</Text>
           <Text style={styles.lead}>{course?.course_title}</Text>
           <View style={styles.mapCard}>
-            <MapView style={styles.map} region={region}>
-              {steps.map((step) => (
-                <Marker
-                  key={`${step.step}-${step.place_name}`}
-                  coordinate={{ latitude: step.latitude || region.latitude, longitude: step.longitude || region.longitude }}
-                  title={`${step.step}. ${step.place_name}`}
-                  pinColor={current?.step === step.step ? 'red' : 'blue'}
-                />
-              ))}
-            </MapView>
+            {overview ? (
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                initialRegion={overview}
+                region={overview}
+              >
+                {points.length > 1 ? (
+                  <Polyline
+                    coordinates={points}
+                    strokeColor="#0047FF"
+                    strokeWidth={4}
+                    lineDashPattern={[6, 8]}
+                  />
+                ) : null}
+                {steps.map((step, index) => (
+                  validLatLng(step.latitude, step.longitude) ? (
+                    <Marker
+                      key={`${step.step}-${step.place_name}`}
+                      coordinate={{ latitude: Number(step.latitude), longitude: Number(step.longitude) }}
+                      title={`${step.step}. ${step.place_name}`}
+                      description={step.category}
+                      pinColor={categoryPinColor(step.category)}
+                      badgeLabel={String(step.step || index + 1)}
+                      emphasized={String(step.category).includes('축제') || current?.step === step.step}
+                      onPress={() => focusStep(index)}
+                    />
+                  ) : null
+                ))}
+              </MapView>
+            ) : (
+              <View style={[styles.map, styles.mapEmpty]}>
+                <Text style={styles.emptyText}>코스 좌표를 준비 중입니다.</Text>
+              </View>
+            )}
           </View>
           <ScrollView style={styles.list}>
             {steps.map((step, index) => (
               <TouchableOpacity
                 key={`${step.step}-${step.place_name}`}
                 style={[styles.card, current?.step === step.step && styles.cardOn]}
-                onPress={() => setStepIndex(index)}
+                onPress={() => focusStep(index)}
               >
                 <Text style={styles.step}>{step.step}. [{step.category}] {step.place_name}</Text>
                 <Text style={styles.meta}>{step.estimated_time} · {step.description}</Text>
@@ -70,16 +123,10 @@ export default function CourseGuideModal({
             ))}
           </ScrollView>
           <View style={styles.row}>
-            <TouchableOpacity
-              style={styles.nav}
-              onPress={() => setStepIndex((value) => Math.max(0, value - 1))}
-            >
+            <TouchableOpacity style={styles.nav} onPress={() => focusStep(stepIndex - 1)}>
               <Text style={styles.navText}>이전 코스</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.nav}
-              onPress={() => setStepIndex((value) => Math.min(steps.length - 1, value + 1))}
-            >
+            <TouchableOpacity style={styles.nav} onPress={() => focusStep(stepIndex + 1)}>
               <Text style={styles.navText}>다음 코스</Text>
             </TouchableOpacity>
           </View>
@@ -97,6 +144,8 @@ const styles = StyleSheet.create({
   lead: { fontSize: 13, color: '#4B5563', marginTop: 4, marginBottom: 10, fontWeight: '600' },
   mapCard: { height: 220, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#E5E7EB' },
   map: { flex: 1 },
+  mapEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6' },
+  emptyText: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
   list: { maxHeight: 180, marginTop: 10 },
   card: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#E5E7EB' },
   cardOn: { borderColor: '#0F766E', backgroundColor: '#ECFDF5' },
