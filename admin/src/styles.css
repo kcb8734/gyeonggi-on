@@ -18,6 +18,24 @@ button.danger { background: #b91c1c; }
 .cards article { background: #111827; color: #fff; border-radius: 14px; padding: 16px; }
 .cards span { display: block; font-size: 12px; opacity: .8; }
 .cards strong { display: block; font-size: 24px; margin-top: 8px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+.kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; }
+.kpi span { display: block; font-size: 12px; font-weight: 700; color: #6b7280; }
+.kpi strong { display: block; font-size: 24px; margin-top: 6px; }
+.kpi em { display: block; margin-top: 6px; font-style: normal; font-size: 12px; font-weight: 700; color: #059669; }
+.kpi.blue strong { color: #2563eb; }
+.kpi.green strong { color: #059669; }
+.kpi.purple strong { color: #7c3aed; }
+.kpi.red { background: #fef2f2; border-color: #fecaca; }
+.kpi.red strong, .kpi.red em { color: #b91c1c; }
+.bar { height: 8px; background: #e5e7eb; border-radius: 99px; overflow: hidden; margin-top: 10px; }
+.bar i { display: block; height: 8px; background: #7c3aed; }
+.alert { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 12px; padding: 12px 14px; font-weight: 700; margin-bottom: 12px; }
+.badge { display: inline-block; border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 800; background: #f3f4f6; }
+.badge.ok { background: #d1fae5; color: #065f46; }
+.badge.warn { background: #fef3c7; color: #92400e; }
+.badge.danger { background: #fee2e2; color: #991b1b; }
+.row-alert { background: #fff7f7; }
 table { width: 100%; border-collapse: collapse; background: #fff; }
 th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
 .error { color: #b91c1c; font-weight: 700; }
@@ -27,4 +45,4 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; 
 .festival-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 20px; }
 .festival-form textarea, .festival-form button { grid-column: 1 / -1; }
 .festival-form textarea { min-height: 80px; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-family: inherit; }
-@media (max-width: 800px) { .cards { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 800px) { .cards, .kpi-grid { grid-template-columns: 1fr 1fr; } }

@@ -14,6 +14,7 @@ import {
   recommendCourse,
   sendOfficial,
   settlementCsv,
+  updateEngine,
   useCoupon,
   verifyCoupon,
 } from './platform.js';
@@ -36,6 +37,22 @@ function send(res, status, body, extraHeaders) {
   res.statusCode = status;
   Object.keys(headers).forEach((key) => res.setHeader(key, headers[key]));
   res.end(JSON.stringify(body));
+}
+
+function sendCsv(res, req, csv, filename) {
+  const headers = Object.assign(corsHeaders(req), {
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': 'attachment; filename="' + filename + '"',
+  });
+  if (typeof res.setHeader === 'function') {
+    Object.keys(headers).forEach((key) => res.setHeader(key, headers[key]));
+  }
+  if (typeof res.status === 'function' && typeof res.send === 'function') {
+    res.status(200).send(csv);
+    return;
+  }
+  res.statusCode = 200;
+  res.end(csv);
 }
 
 function originOf(req) {
@@ -461,8 +478,13 @@ async function handler(req, res) {
       send(res, 200, { success: true, data: dashboard() }, corsHeaders(req));
       return;
     }
+    if (/admin\/engine/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      send(res, 200, { success: true, data: updateEngine(body) }, corsHeaders(req));
+      return;
+    }
     if (/admin\/settlements\.csv/i.test(path)) {
-      send(res, 200, { success: true, csv: settlementCsv() }, corsHeaders(req));
+      sendCsv(res, req, settlementCsv(), 'onandon-settlement.csv');
       return;
     }
     if (/admin\/login/i.test(path)) {

@@ -74,6 +74,12 @@ export default function App() {
     () => merchants.filter((row) => row.matching_status === 'PENDING'),
     [merchants],
   );
+  const kpi = dashboard?.kpi ?? {};
+  const matching = dashboard?.matching ?? [];
+  const unassigned = matching.filter((row: any) => !row.officerName);
+  const recovery = kpi.recoveryRate ?? 38;
+  const assigned = kpi.matchingAssigned ?? matching.filter((row: any) => row.officerName).length;
+  const totalCities = kpi.matchingTotal ?? matching.length ?? 31;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,14 +141,38 @@ export default function App() {
         </ol>
       </section>
 
+      <section className="kpi-grid">
+        <article className="kpi blue">
+          <span>전국 축제 현황</span>
+          <strong>{kpi.festivals ?? 12}건</strong>
+          <em>전월 대비 +{kpi.festivalsDeltaPct ?? 18}%</em>
+        </article>
+        <article className="kpi green">
+          <span>등록 상가 현황</span>
+          <strong>{kpi.merchants ?? (merchants.length || 18)}개소</strong>
+          <em>국세청 검증 완료 {kpi.merchantsNtsVerified ?? (merchants.length || 18)}곳</em>
+        </article>
+        <article className="kpi purple">
+          <span>쿠폰 발행/사용</span>
+          <strong>{kpi.couponsIssued ?? stats?.summary?.issued_count ?? 24} / {kpi.couponsUsed ?? stats?.summary?.used_count ?? 9}</strong>
+          <div className="bar"><i style={{ width: `${recovery}%` }} /></div>
+          <em>회수율 {recovery}%</em>
+        </article>
+        <article className={`kpi ${unassigned.length ? 'red' : 'green'}`}>
+          <span>지자체 매칭률</span>
+          <strong>{assigned}/{totalCities}</strong>
+          <em>매칭률 {totalCities ? Math.round((assigned / totalCities) * 1000) / 10 : 0}%</em>
+        </article>
+      </section>
+
       <section className="cards">
         <article>
           <span>총 발행 쿠폰</span>
-          <strong>{stats?.summary?.issued_count ?? 0}</strong>
+          <strong>{stats?.summary?.issued_count ?? kpi.couponsIssued ?? 0}</strong>
         </article>
         <article>
           <span>QR 사용 완료</span>
-          <strong>{stats?.summary?.used_count ?? 0}</strong>
+          <strong>{stats?.summary?.used_count ?? kpi.couponsUsed ?? 0}</strong>
         </article>
         <article>
           <span>총 할인 지원액</span>
@@ -298,6 +328,9 @@ export default function App() {
 
       <section>
         <h2>지자체 매칭 매트릭스</h2>
+        {unassigned.length ? (
+          <div className="alert">담당자 미지정 {unassigned.length}곳 — 승인 대기 지자체에 담당자를 지정해 주세요.</div>
+        ) : null}
         <table>
           <thead>
             <tr>
@@ -306,18 +339,22 @@ export default function App() {
               <th>매칭 상가</th>
               <th>활성 축제</th>
               <th>쿠폰</th>
-              <th>승인</th>
+              <th>상태</th>
             </tr>
           </thead>
           <tbody>
-            {(dashboard?.matching ?? []).map((row: any) => (
-              <tr key={row.city}>
+            {matching.map((row: any) => (
+              <tr key={row.city} className={row.officerName ? '' : 'row-alert'}>
                 <td>{row.city}</td>
                 <td>{row.officerName || '미지정'}</td>
                 <td>{row.stores}</td>
                 <td>{row.festivals}</td>
                 <td>{row.coupons}</td>
-                <td>{row.approved ? '승인' : '대기'}</td>
+                <td>
+                  {row.officerName
+                    ? <span className={`badge ${row.approved ? 'ok' : 'warn'}`}>{row.approved ? '승인' : '대기'}</span>
+                    : <span className="badge danger">미지정 - 승인 대기</span>}
+                </td>
               </tr>
             ))}
           </tbody>
