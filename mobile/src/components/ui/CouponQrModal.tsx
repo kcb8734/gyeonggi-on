@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 22,
     padding: 22,
+    paddingTop: 52,
     alignItems: 'center',
   },
   kicker: { fontSize: 11, fontWeight: '800', color: '#E0392A', letterSpacing: 1 },

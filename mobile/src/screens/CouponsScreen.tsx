@@ -295,9 +295,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
+    paddingTop: 48,
     paddingBottom: 24,
   },
-  captureTitle: { fontSize: 17, fontWeight: '800', paddingRight: 40 },
+  captureTitle: { fontSize: 17, fontWeight: '800', paddingRight: 92 },
   captureLead: { fontSize: 13, color: '#6B7280', marginTop: 6, marginBottom: 14, lineHeight: 20 },
   captureBtn: {
     backgroundColor: '#111827',

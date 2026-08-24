@@ -120,10 +120,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 22,
     padding: 18,
-    paddingTop: 22,
+    paddingTop: 52,
   },
-  kicker: { fontSize: 12, fontWeight: '800', color: '#6B7280' },
-  title: { fontSize: 20, fontWeight: '800', color: '#111827', marginTop: 4, marginBottom: 14 },
+  kicker: { fontSize: 12, fontWeight: '800', color: '#6B7280', paddingRight: 88 },
+  title: { fontSize: 20, fontWeight: '800', color: '#111827', marginTop: 4, marginBottom: 14, paddingRight: 88 },
   avatar: {
     width: 84,
     height: 84,

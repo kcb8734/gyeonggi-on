@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   body: { padding: 16, paddingBottom: 32 },
-  kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
-  title: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4 },
+  kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E', paddingRight: 88 },
+  title: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 4, paddingRight: 88 },
   lead: { fontSize: 13, color: '#374151', marginTop: 6, lineHeight: 20, fontWeight: '600' },
   loginBox: {
     marginTop: 14,

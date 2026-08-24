@@ -138,8 +138,8 @@ export default function CourseGuideModal({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 14 },
-  sheet: { backgroundColor: '#fff', borderRadius: 18, padding: 16, paddingTop: 44, maxHeight: '92%' as unknown as number },
-  kicker: { fontSize: 11, fontWeight: '800', color: '#0F766E' },
+  sheet: { backgroundColor: '#fff', borderRadius: 18, padding: 16, paddingTop: 52, paddingRight: 16, maxHeight: '92%' as unknown as number },
+  kicker: { fontSize: 11, fontWeight: '800', color: '#0F766E', paddingRight: 88 },
   title: { fontSize: 20, fontWeight: '900', color: '#111827', marginTop: 4 },
   lead: { fontSize: 13, color: '#4B5563', marginTop: 4, marginBottom: 10, fontWeight: '600' },
   mapCard: { height: 220, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#E5E7EB' },

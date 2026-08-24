@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '800' },
   error: { marginTop: 8, color: '#B91C1C', fontWeight: '700', fontSize: 12 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 20 },
-  sheet: { backgroundColor: '#fff', borderRadius: 16, padding: 18, paddingTop: 44 },
+  sheet: { backgroundColor: '#fff', borderRadius: 16, padding: 18, paddingTop: 52 },
   kicker: { fontSize: 12, fontWeight: '800', color: '#0F766E' },
   couponTitle: { fontSize: 20, fontWeight: '800', marginTop: 4 },
   meta: { fontSize: 13, color: '#4B5563', marginTop: 6, fontWeight: '600' },

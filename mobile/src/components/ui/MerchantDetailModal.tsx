@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     overflow: 'hidden',
   },
-  rateBanner: { padding: 18, paddingTop: 22 },
+  rateBanner: { padding: 18, paddingTop: 22, paddingRight: 92 },
   rateKicker: { color: '#FECACA', fontSize: 11, fontWeight: '800' },
   rate: { color: '#fff', fontSize: 32, fontWeight: '900', marginTop: 4 },
   rateShop: { color: '#fff', fontSize: 16, fontWeight: '800', marginTop: 4 },
