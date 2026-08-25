@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
-import { REGION_PRESETS, regionById } from '../constants/regionTour';
+import { metroMatchIds } from '../constants/metroLocalities';
+import { REGION_PRESETS, normalizeMetroId, regionById, regionalZoneFor } from '../constants/regionTour';
 import { searchFestivals, toHomeFestival } from '../services/tourApiService';
 import { toNumber } from '../utils/geo';
 
@@ -12,8 +13,9 @@ export const METRO_REGIONS = REGION_PRESETS.map((item) => ({
 
 /** GET /api/home — 메인 피드 (광역 탭 + 쿠폰 캐러셀 + 인기 축제) */
 export const getHomeFeed = async (req: Request, res: Response) => {
-  const metro = String(req.query.metro ?? 'GYEONGGI').toUpperCase();
+  const metro = normalizeMetroId(String(req.query.metro ?? 'GYEONGGI'));
   const category = typeof req.query.category === 'string' ? req.query.category : null;
+  const matchIds = metroMatchIds(metro);
 
   const preset = regionById(metro);
 
@@ -26,11 +28,11 @@ export const getHomeFeed = async (req: Request, res: Response) => {
          mu.name AS municipality_name
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id
-       WHERE COALESCE(mu.metro_region, 'GYEONGGI') = $1
+       WHERE COALESCE(mu.metro_region, 'GYEONGGI') = ANY($1::text[])
          AND f.end_date >= CURRENT_DATE
          AND f.latitude IS NOT NULL
        ORDER BY f.is_trending DESC, f.start_date ASC`,
-      [metro],
+      [matchIds],
     );
 
     const promotionResult = await pool.query(
@@ -47,10 +49,10 @@ export const getHomeFeed = async (req: Request, res: Response) => {
          AND dp.start_time <= now()
          AND dp.end_time >= now()
          AND dp.remaining_quantity > 0
-         AND COALESCE(mu.metro_region, 'GYEONGGI') = $1
+         AND COALESCE(mu.metro_region, 'GYEONGGI') = ANY($1::text[])
        ORDER BY dp.total_discount_rate DESC, dp.remaining_quantity DESC
        LIMIT 20`,
-      [metro],
+      [matchIds],
     );
 
     const dbFestivals = festivalResult.rows.map((row) => ({
@@ -70,6 +72,10 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       is_trending: Boolean(row.is_trending),
       source: row.source === 'tour' ? 'tour' : 'db',
       tel: row.tel ?? undefined,
+      regionalZone: metro,
+      metro,
+      areaCode: preset.code,
+      moiCode: preset.moiCode,
     }));
 
     const synced = dbFestivals.filter((item) => item.source === 'tour');
@@ -83,7 +89,7 @@ export const getHomeFeed = async (req: Request, res: Response) => {
           year: now.getFullYear(),
         });
         if (tourFestivals.length) {
-          festivals = tourFestivals.map(toHomeFestival);
+          festivals = tourFestivals.map((item) => toHomeFestival(item, regionalZoneFor(preset.code, metro)));
         }
       } catch (err) {
         console.warn('[getHomeFeed] TourAPI fallback to DB festivals:', err);
@@ -98,6 +104,7 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       success: true,
       available: true,
       metro,
+      regionalZone: metro,
       regions: METRO_REGIONS,
       festivals,
       promotions: promotionResult.rows.map((row) => ({

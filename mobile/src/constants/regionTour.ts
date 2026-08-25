@@ -1,5 +1,6 @@
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalImageFor, shopPhotosFor } from './regionMedia';
+import { METRO_REGIONS, normalizeMetroId } from './regions';
 
 export type CouponKind = 'OFFICIAL' | 'SELF';
 
@@ -17,19 +18,35 @@ export interface RegionPreset {
 }
 
 export const REGION_PRESETS: RegionPreset[] = [
-  { id: 'GYEONGGI', label: '경기온', code: '31', name: '경기도', areaCodes: ['31'], officialMatching: true, latitude: 37.4138, longitude: 127.5183, latitudeDelta: 1.6, longitudeDelta: 1.6 },
   { id: 'SEOUL', label: '서울온', code: '1', name: '서울특별시', areaCodes: ['1'], officialMatching: false, latitude: 37.5665, longitude: 126.9780, latitudeDelta: 0.35, longitudeDelta: 0.35 },
+  { id: 'BUSAN', label: '부산온', code: '6', name: '부산광역시', areaCodes: ['6'], officialMatching: false, latitude: 35.1796, longitude: 129.0756, latitudeDelta: 0.45, longitudeDelta: 0.45 },
+  { id: 'DAEGU', label: '대구온', code: '4', name: '대구광역시', areaCodes: ['4'], officialMatching: false, latitude: 35.8714, longitude: 128.6014, latitudeDelta: 0.4, longitudeDelta: 0.4 },
   { id: 'INCHEON', label: '인천온', code: '2', name: '인천광역시', areaCodes: ['2'], officialMatching: false, latitude: 37.4563, longitude: 126.7052, latitudeDelta: 0.45, longitudeDelta: 0.45 },
+  { id: 'GWANGJU', label: '광주온', code: '5', name: '광주광역시', areaCodes: ['5'], officialMatching: false, latitude: 35.1595, longitude: 126.8526, latitudeDelta: 0.35, longitudeDelta: 0.35 },
+  { id: 'DAEJEON', label: '대전온', code: '3', name: '대전광역시', areaCodes: ['3'], officialMatching: false, latitude: 36.3504, longitude: 127.3845, latitudeDelta: 0.35, longitudeDelta: 0.35 },
+  { id: 'ULSAN', label: '울산온', code: '7', name: '울산광역시', areaCodes: ['7'], officialMatching: false, latitude: 35.5384, longitude: 129.3114, latitudeDelta: 0.4, longitudeDelta: 0.4 },
+  { id: 'SEJONG', label: '세종온', code: '8', name: '세종특별자치시', areaCodes: ['8'], officialMatching: false, latitude: 36.4800, longitude: 127.2890, latitudeDelta: 0.35, longitudeDelta: 0.35 },
+  { id: 'GYEONGGI', label: '경기온', code: '31', name: '경기도', areaCodes: ['31'], officialMatching: true, latitude: 37.4138, longitude: 127.5183, latitudeDelta: 1.6, longitudeDelta: 1.6 },
   { id: 'GANGWON', label: '강원온', code: '32', name: '강원특별자치도', areaCodes: ['32'], officialMatching: false, latitude: 37.8228, longitude: 128.1555, latitudeDelta: 1.8, longitudeDelta: 1.8 },
-  { id: 'CHUNGCHEONG', label: '충청온', code: '33', name: '충청권', areaCodes: ['33', '34', '3', '8'], officialMatching: false, latitude: 36.6372, longitude: 127.4897, latitudeDelta: 1.6, longitudeDelta: 1.6 },
-  { id: 'JEOLLA', label: '전라온', code: '35', name: '전라권', areaCodes: ['35', '36', '5'], officialMatching: false, latitude: 35.8242, longitude: 127.1480, latitudeDelta: 2.0, longitudeDelta: 2.0 },
-  { id: 'GYEONGSANG', label: '경상온', code: '37', name: '경상권', areaCodes: ['37', '38', '4', '6', '7'], officialMatching: false, latitude: 35.8714, longitude: 128.6014, latitudeDelta: 2.2, longitudeDelta: 2.2 },
+  { id: 'CHUNGBUK', label: '충북온', code: '33', name: '충청북도', areaCodes: ['33'], officialMatching: false, latitude: 36.6357, longitude: 127.4914, latitudeDelta: 1.1, longitudeDelta: 1.1 },
+  { id: 'CHUNGNAM', label: '충남온', code: '34', name: '충청남도', areaCodes: ['34'], officialMatching: false, latitude: 36.5184, longitude: 126.8000, latitudeDelta: 1.2, longitudeDelta: 1.2 },
+  { id: 'JEONBUK', label: '전북온', code: '35', name: '전북특별자치도', areaCodes: ['35'], officialMatching: false, latitude: 35.7175, longitude: 127.1530, latitudeDelta: 1.2, longitudeDelta: 1.2 },
+  { id: 'JEONNAM', label: '전남온', code: '36', name: '전라남도', areaCodes: ['36'], officialMatching: false, latitude: 34.8161, longitude: 126.4629, latitudeDelta: 1.6, longitudeDelta: 1.6 },
+  { id: 'GYEONGBUK', label: '경북온', code: '37', name: '경상북도', areaCodes: ['37'], officialMatching: false, latitude: 36.4919, longitude: 128.8889, latitudeDelta: 1.6, longitudeDelta: 1.6 },
+  { id: 'GYEONGNAM', label: '경남온', code: '38', name: '경상남도', areaCodes: ['38'], officialMatching: false, latitude: 35.4606, longitude: 128.2132, latitudeDelta: 1.4, longitudeDelta: 1.4 },
   { id: 'JEJU', label: '제주온', code: '39', name: '제주특별자치도', areaCodes: ['39'], officialMatching: false, latitude: 33.4996, longitude: 126.5312, latitudeDelta: 0.7, longitudeDelta: 0.7 },
 ];
 
 export function regionById(id?: string) {
-  return REGION_PRESETS.find((item) => item.id === id) ?? REGION_PRESETS[0];
+  const key = normalizeMetroId(id);
+  return REGION_PRESETS.find((item) => item.id === key || item.id === id || item.code === id) ?? REGION_PRESETS.find((item) => item.id === 'GYEONGGI')!;
 }
+
+export function regionByAreaCode(areaCode?: string) {
+  return REGION_PRESETS.find((item) => item.areaCodes.includes(String(areaCode || ''))) ?? REGION_PRESETS.find((item) => item.id === 'GYEONGGI')!;
+}
+
+export const ALL_TOUR_AREA_CODES = METRO_REGIONS.map((item) => item.tourAreaCode);
 
 export function couponTypeForRegion(id?: string): CouponKind {
   return regionById(id).officialMatching ? 'OFFICIAL' : 'SELF';
@@ -63,6 +80,8 @@ function fest(
     is_trending: true,
     source: 'gov',
     description: description ?? `${title} 현장 프로그램과 인근 전통시장·캠핑을 On&On 추천코스로 이을 수 있습니다.`,
+    regionalZone: metro,
+    metro,
   };
 }
 
@@ -84,20 +103,43 @@ export const REGION_FESTIVAL_FALLBACKS: Record<string, HomeFestival[]> = {
     fest('ic-2', '강화고인돌문화축제', '인천광역시 강화군', 37.7460, 126.4880, '2026-10-10', '2026-10-12', '체험', 'INCHEON'),
     fest('ic-3', '인천개항장문화재야행', '인천광역시 중구', 37.4728, 126.6219, '2026-10-17', '2026-10-18', '문화/예술', 'INCHEON'),
   ],
-  CHUNGCHEONG: [
-    fest('cc-1', '청주직지축제', '충청북도 청주시', 36.6424, 127.4890, '2026-09-03', '2026-09-07', '문화/예술', 'CHUNGCHEONG'),
-    fest('cc-2', '보령머드축제', '충청남도 보령시', 36.3330, 126.6120, '2026-07-17', '2026-07-26', '체험', 'CHUNGCHEONG', '대천해수욕장 머드광장에서 머드 체험·퍼레이드·해변 공연이 이어지는 보령 대표 여름 축제입니다.'),
-    fest('cc-3', '부여서동연꽃축제', '충청남도 부여군', 36.2750, 126.9120, '2026-07-04', '2026-07-12', '계절축제', 'CHUNGCHEONG'),
+  CHUNGBUK: [
+    fest('cb-1', '청주직지축제', '충청북도 청주시', 36.6424, 127.4890, '2026-09-03', '2026-09-07', '문화/예술', 'CHUNGBUK'),
   ],
-  JEOLLA: [
-    fest('jl-1', '전주한지문화축제', '전북특별자치도 전주시', 35.8150, 127.1530, '2026-05-01', '2026-05-05', '문화/예술', 'JEOLLA'),
-    fest('jl-2', '여수밤바다불꽃축제', '전라남도 여수시', 34.7604, 127.6622, '2026-10-31', '2026-11-01', '공연', 'JEOLLA'),
-    fest('jl-3', '순천만갈대축제', '전라남도 순천시', 34.8860, 127.5090, '2026-10-24', '2026-11-02', '계절축제', 'JEOLLA'),
+  CHUNGNAM: [
+    fest('cn-1', '보령머드축제', '충청남도 보령시', 36.3330, 126.6120, '2026-07-17', '2026-07-26', '체험', 'CHUNGNAM', '대천해수욕장 머드광장에서 머드 체험·퍼레이드·해변 공연이 이어지는 보령 대표 여름 축제입니다.'),
+    fest('cn-2', '부여서동연꽃축제', '충청남도 부여군', 36.2750, 126.9120, '2026-07-04', '2026-07-12', '계절축제', 'CHUNGNAM'),
   ],
-  GYEONGSANG: [
-    fest('gs-1', '진주남강유등축제', '경상남도 진주시', 35.1800, 128.1080, '2026-10-01', '2026-10-12', '문화/예술', 'GYEONGSANG'),
-    fest('gs-2', '경주벚꽃축제', '경상북도 경주시', 35.8562, 129.2247, '2026-04-03', '2026-04-12', '계절축제', 'GYEONGSANG'),
-    fest('gs-3', '부산불꽃축제', '부산광역시 수영구', 35.1530, 129.1180, '2026-10-24', '2026-10-25', '공연', 'GYEONGSANG'),
+  DAEJEON: [
+    fest('dj-1', '대전 0시 축제', '대전광역시 중구', 36.3280, 127.4270, '2026-08-08', '2026-08-11', '공연', 'DAEJEON'),
+  ],
+  SEJONG: [
+    fest('sj-1', '세종축제', '세종특별자치시', 36.4800, 127.2890, '2026-10-10', '2026-10-12', '가족', 'SEJONG'),
+  ],
+  JEONBUK: [
+    fest('jb-1', '전주한지문화축제', '전북특별자치도 전주시', 35.8150, 127.1530, '2026-05-01', '2026-05-05', '문화/예술', 'JEONBUK'),
+  ],
+  JEONNAM: [
+    fest('jn-1', '여수밤바다불꽃축제', '전라남도 여수시', 34.7604, 127.6622, '2026-10-31', '2026-11-01', '공연', 'JEONNAM'),
+    fest('jn-2', '순천만갈대축제', '전라남도 순천시', 34.8860, 127.5090, '2026-10-24', '2026-11-02', '계절축제', 'JEONNAM'),
+  ],
+  GWANGJU: [
+    fest('gj-1', '광주김치축제', '광주광역시 서구', 35.1595, 126.8526, '2026-10-23', '2026-10-27', '먹거리', 'GWANGJU'),
+  ],
+  GYEONGBUK: [
+    fest('gb-1', '경주벚꽃축제', '경상북도 경주시', 35.8562, 129.2247, '2026-04-03', '2026-04-12', '계절축제', 'GYEONGBUK'),
+  ],
+  GYEONGNAM: [
+    fest('gn-1', '진주남강유등축제', '경상남도 진주시', 35.1800, 128.1080, '2026-10-01', '2026-10-12', '문화/예술', 'GYEONGNAM'),
+  ],
+  BUSAN: [
+    fest('bs-1', '부산불꽃축제', '부산광역시 수영구', 35.1530, 129.1180, '2026-10-24', '2026-10-25', '공연', 'BUSAN'),
+  ],
+  DAEGU: [
+    fest('dg-1', '대구치맥페스티벌', '대구광역시 수성구', 35.8290, 128.6940, '2026-07-24', '2026-07-28', '먹거리', 'DAEGU'),
+  ],
+  ULSAN: [
+    fest('us-1', '울산고래축제', '울산광역시 남구', 35.5040, 129.4300, '2026-05-22', '2026-05-25', '가족', 'ULSAN'),
   ],
   JEJU: [
     fest('jj-1', '제주들불축제', '제주특별자치도 제주시', 33.4590, 126.5170, '2026-03-06', '2026-03-09', '계절축제', 'JEJU'),
@@ -142,15 +184,16 @@ function shopHint(title: string) {
 }
 
 export function fallbackPromotions(metro: string): HomePromotion[] {
-  const official = couponTypeForRegion(metro) === 'OFFICIAL';
-  const festivals = REGION_FESTIVAL_FALLBACKS[metro] ?? [];
+  const zone = normalizeMetroId(metro);
+  const official = couponTypeForRegion(zone) === 'OFFICIAL';
+  const festivals = REGION_FESTIVAL_FALLBACKS[zone] ?? [];
   return festivals.map((item, index) => {
     const hint = shopHint(item.title);
     const photos = shopPhotosFor(hint.kind);
     const merchant = official ? 10 : 15;
     const gov = official ? 10 : 0;
     return {
-      id: `${official ? 'off' : 'self'}-${metro}-${item.id}`,
+      id: `${official ? 'off' : 'self'}-${zone}-${item.id}`,
       title: `${item.title} 제휴 할인`,
       festival_id: item.id,
       festival_title: item.title,
@@ -161,7 +204,7 @@ export function fallbackPromotions(metro: string): HomePromotion[] {
       remaining_quantity: 80 - index * 6,
       funding_type: official ? 'MATCHED' : 'MERCHANT_ONLY',
       coupon_type: official ? 'OFFICIAL' : 'SELF',
-      metro,
+      metro: zone,
       municipality_name: item.municipality_name,
       address: item.location_name,
       latitude: item.latitude,
@@ -187,9 +230,11 @@ export function findFallbackFestival(contentId?: string, title?: string): HomeFe
 }
 
 export function withFestivalImage(festival: HomeFestival, metro?: string): HomeFestival {
-  if (festival.image_url) return festival;
+  const zone = festival.regionalZone || festival.metro || metro;
   return {
     ...festival,
-    image_url: festivalImageFor(festival.title, festival.location_name, metro),
+    regionalZone: festival.regionalZone ?? zone,
+    metro: festival.metro ?? zone,
+    image_url: festival.image_url || festivalImageFor(festival.title, festival.location_name, zone),
   };
 }

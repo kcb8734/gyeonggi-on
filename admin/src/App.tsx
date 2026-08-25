@@ -84,13 +84,22 @@ export default function App() {
   const assigned = matching.filter((row: any) => row.officerName).length || kpi.matchingAssigned || 0;
   const totalCities = matching.length || kpi.matchingTotal || 0;
   const REGION_TABS = [
-    ['GYEONGGI', '경기온'],
     ['SEOUL', '서울온'],
+    ['BUSAN', '부산온'],
+    ['DAEGU', '대구온'],
     ['INCHEON', '인천온'],
+    ['GWANGJU', '광주온'],
+    ['DAEJEON', '대전온'],
+    ['ULSAN', '울산온'],
+    ['SEJONG', '세종온'],
+    ['GYEONGGI', '경기온'],
     ['GANGWON', '강원온'],
-    ['CHUNGCHEONG', '충청온'],
-    ['JEOLLA', '전라온'],
-    ['GYEONGSANG', '경상온'],
+    ['CHUNGBUK', '충북온'],
+    ['CHUNGNAM', '충남온'],
+    ['JEONBUK', '전북온'],
+    ['JEONNAM', '전남온'],
+    ['GYEONGBUK', '경북온'],
+    ['GYEONGNAM', '경남온'],
     ['JEJU', '제주온'],
   ] as const;
   const regionLabel = REGION_TABS.find(([id]) => id === matchRegion)?.[1] ?? '경기온';

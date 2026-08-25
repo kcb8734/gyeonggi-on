@@ -1,3 +1,4 @@
+import { AREA_TO_LDONG as REGION_AREA_TO_LDONG, regionalZoneFor, regionByAreaCode } from '../constants/regionTour';
 import { TtlCache, TWELVE_HOURS_MS, tourApiCache } from '../utils/ttlCache';
 import { getFestivalOverride, listFestivalOverrides, type AdminFestivalOverride } from './festivalOverrideStore';
 import { filterFallbackFestivals, findFallbackFestival } from './tourFallback';
@@ -25,12 +26,8 @@ export const NEARBY_CONTENT_TYPES = new Set<string>([
   CONTENT_TYPE.FOOD,
 ]);
 
-/** 구 지역코드 → 법정동 광역코드. 경기(31)는 lDongRegnCd=41이 결과 수가 많다. */
-export const AREA_TO_LDONG: Record<string, string> = {
-  '1': '11',
-  '31': '41',
-  '32': '51',
-};
+/** TourAPI areaCode → 행안부 법정동 광역코드 (17개 광역 1:1) */
+export const AREA_TO_LDONG: Record<string, string> = REGION_AREA_TO_LDONG;
 
 export const FESTIVAL_CATEGORIES = ['먹거리', '체험', '공연', '문화/예술', '가족', '계절축제', '플리마켓'] as const;
 export type FestivalCategory = (typeof FESTIVAL_CATEGORIES)[number];
@@ -92,6 +89,7 @@ export interface TourFestival {
   overview?: string;
   fee?: string;
   eventPlace?: string;
+  areaCode?: string;
 }
 
 export interface TourPlace {
@@ -163,6 +161,7 @@ interface FestivalItem {
   cat2?: string;
   cat3?: string;
   overview?: string;
+  areacode?: string;
 }
 
 interface NearbyItem {
@@ -401,6 +400,7 @@ function toFestival(item: FestivalItem, extra = ''): TourFestival | null {
     tel: text(item.tel) || undefined,
     category: classifyFestival(title, `${extra} ${item.overview ?? ''} ${item.cat3 ?? ''}`),
     overview: stripHtml(item.overview) || undefined,
+    areaCode: text(item.areacode) || undefined,
   };
 }
 
@@ -636,6 +636,7 @@ export async function searchFestivals(
         next = next.filter((item) => item.category === params.category);
       }
 
+      next = next.map((item) => ({ ...item, areaCode: item.areaCode || areaCode }));
       return enrichFestivalDetails(next, options, params.enrichLimit ?? 20);
     }, ttlOf(options));
 
@@ -842,7 +843,9 @@ export async function getTourDetail(
   }
 }
 
-export function toHomeFestival(festival: TourFestival) {
+export function toHomeFestival(festival: TourFestival, regionalZone?: string) {
+  const zone = regionalZone || regionalZoneFor(festival.areaCode);
+  const preset = regionByAreaCode(festival.areaCode);
   return {
     id: `tour-${festival.contentId}`,
     contentId: festival.contentId,
@@ -861,5 +864,9 @@ export function toHomeFestival(festival: TourFestival) {
     source: 'tour' as const,
     tel: festival.tel,
     fee: festival.fee,
+    regionalZone: zone,
+    metro: zone,
+    areaCode: festival.areaCode ?? preset.code,
+    moiCode: preset.moiCode,
   };
 }

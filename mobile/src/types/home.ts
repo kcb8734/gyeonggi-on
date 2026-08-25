@@ -16,6 +16,10 @@ export interface HomeFestival {
   contentId?: string;
   contentTypeId?: string;
   source?: 'tour' | 'db' | 'gov';
+  regionalZone?: string;
+  metro?: string;
+  areaCode?: string;
+  moiCode?: string;
   summary?: string;
   rewardEnabled?: boolean;
   tel?: string;
@@ -77,6 +81,7 @@ export interface HomeFeed {
   available: boolean;
   message?: string;
   metro: string;
+  regionalZone?: string;
   festivals: HomeFestival[];
   promotions: HomePromotion[];
   popular: HomeFestival[];

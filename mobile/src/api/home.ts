@@ -1,6 +1,7 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
 import { REGION_FESTIVAL_FALLBACKS, fallbackPromotions, withFestivalImage } from '../constants/regionTour';
+import { normalizeMetroId } from '../constants/regions';
 import type { HomeFeed } from '../types/home';
 
 export async function fetchHomeFeed(metro: string, category?: string): Promise<HomeFeed> {
@@ -21,7 +22,8 @@ export async function fetchHomeFeed(metro: string, category?: string): Promise<H
   }
 
   if (metro !== 'GYEONGGI') {
-    const festivals = REGION_FESTIVAL_FALLBACKS[metro] ?? [];
+    const zone = normalizeMetroId(metro);
+    const festivals = REGION_FESTIVAL_FALLBACKS[zone] ?? [];
     const promotions = fallbackPromotions(metro);
     return {
       success: true,

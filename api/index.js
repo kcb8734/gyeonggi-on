@@ -18,6 +18,7 @@ import {
   useCoupon,
   verifyCoupon,
 } from './platform.js';
+import { AREA_CODE_BY_METRO, METRO_AREA, MOI_CODE_BY_METRO, REGION_LABEL, normalizeMetroId } from './metroLocalities.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -249,10 +250,13 @@ function asList(value) {
   return Array.isArray(value) ? value : [value];
 }
 
-function tourToHome(item) {
+function tourToHome(item, areaCode) {
   const contentId = String(item.contentid || item.contentId || '');
   const start = formatYmd(item.eventstartdate) || formatYmd(item.eventStartDate);
   const end = formatYmd(item.eventenddate) || start;
+  const resolvedArea = String(item.areacode || areaCode || '31');
+  const regionalZone = Object.entries(AREA_CODE_BY_METRO).find(([, code]) => code === resolvedArea)?.[0]
+    || normalizeMetroId(item.metro) || 'GYEONGGI';
   return {
     id: contentId ? 'tour-' + contentId : '',
     contentId: contentId,
@@ -270,6 +274,10 @@ function tourToHome(item) {
     is_trending: Boolean(item.firstimage),
     source: 'tour',
     tel: item.tel || undefined,
+    regionalZone: regionalZone,
+    metro: regionalZone,
+    areaCode: resolvedArea,
+    moiCode: MOI_CODE_BY_METRO[regionalZone] || '41',
   };
 }
 
@@ -296,7 +304,7 @@ async function fetchTourItems(baseUrl, path, areaCode) {
   }
   const items = payload && payload.response && payload.response.body && payload.response.body.items;
   if (!items || typeof items === 'string') return [];
-  return asList(items.item).map(tourToHome).filter((item) => item.contentId && item.title);
+  return asList(items.item).map((item) => tourToHome(item, areaCode)).filter((item) => item.contentId && item.title);
 }
 
 async function listFestivalsLive(req, res) {
@@ -306,8 +314,9 @@ async function listFestivalsLive(req, res) {
     return;
   }
   const query = readQuery(req);
-  const metroArea = { GYEONGGI: '31', SEOUL: '1', INCHEON: '2', GANGWON: '32', CHUNGCHEONG: '33', JEOLLA: '35', GYEONGSANG: '37', JEJU: '39' };
-  const resolvedArea = String(query.areaCode || metroArea[String(query.metro || '').toUpperCase()] || '31');
+  const metroKey = normalizeMetroId(query.metro);
+  const resolvedArea = String(query.areaCode || METRO_AREA[metroKey] || METRO_AREA[String(query.metro || '').toUpperCase()] || '31');
+  const regionalZone = Object.entries(AREA_CODE_BY_METRO).find(([, code]) => code === resolvedArea)?.[0] || metroKey || 'GYEONGGI';
   let festivals = [];
   let source = 'none';
   try {
@@ -326,8 +335,11 @@ async function listFestivalsLive(req, res) {
   }
   send(res, 200, {
     success: true,
-    metro: query.metro || 'GYEONGGI',
+    metro: regionalZone,
+    regionalZone: regionalZone,
     areaCode: resolvedArea,
+    moiCode: MOI_CODE_BY_METRO[regionalZone] || '41',
+    regionLabel: REGION_LABEL[regionalZone] || '경기온',
     count: festivals.length,
     source: source,
     festivals: festivals,
