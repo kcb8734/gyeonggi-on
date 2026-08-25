@@ -9,6 +9,7 @@
     "start": "node dist/app.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/utils/*.test.ts src/services/*.test.ts src/constants/*.test.ts src/db/*.test.ts",
+    "deploy:prod": "node ../scripts/deploy-prod.mjs",
     "db:migrate": "for f in migrations/*.sql; do echo \"Applying $f\"; psql \"$DATABASE_URL\" -f \"$f\"; done"
   },
   "dependencies": {

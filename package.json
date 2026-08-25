@@ -1,4 +1,7 @@
 {
   "name": "gyeonggi-on",
-  "private": true
+  "private": true,
+  "scripts": {
+    "deploy:prod": "node scripts/deploy-prod.mjs"
+  }
 }

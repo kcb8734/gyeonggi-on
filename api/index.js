@@ -18,7 +18,16 @@ import {
   useCoupon,
   verifyCoupon,
 } from './platform.js';
-import { AREA_CODE_BY_METRO, METRO_AREA, MOI_CODE_BY_METRO, REGION_LABEL, normalizeMetroId } from './metroLocalities.js';
+import { METRO_AREA, MOI_CODE_BY_METRO, REGION_LABEL, normalizeMetroId } from './metroLocalities.js';
+import { sendResendEmail } from './resendFrom.js';
+import {
+  getTourDetail2,
+  metroRegions,
+  searchFestival2,
+  searchNearby2,
+  toHomeFestival,
+  tourServiceKey,
+} from './tourLive.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -228,83 +237,21 @@ function resendConfigured() {
   return Boolean(String(process.env.RESEND_API_KEY || '').trim());
 }
 
-function resendFrom() {
-  return String(process.env.RESEND_FROM || '').trim() || '온앤온+ <beth.t@example.com>';
-}
-
-function todayYmd() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return now.getFullYear() + month + day;
-}
-
-function formatYmd(raw) {
-  const digits = String(raw || '').replace(/\D/g, '');
-  if (digits.length !== 8) return '';
-  return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
-}
-
-function asList(value) {
-  if (value == null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-
-function tourToHome(item, areaCode) {
-  const contentId = String(item.contentid || item.contentId || '');
-  const start = formatYmd(item.eventstartdate) || formatYmd(item.eventStartDate);
-  const end = formatYmd(item.eventenddate) || start;
-  const resolvedArea = String(item.areacode || areaCode || '31');
-  const regionalZone = Object.entries(AREA_CODE_BY_METRO).find(([, code]) => code === resolvedArea)?.[0]
-    || normalizeMetroId(item.metro) || 'GYEONGGI';
-  return {
-    id: contentId ? 'tour-' + contentId : '',
-    contentId: contentId,
-    contentTypeId: String(item.contenttypeid || '15'),
-    title: String(item.title || ''),
-    location_name: [item.addr1, item.addr2].filter(Boolean).join(' '),
-    latitude: Number(item.mapy) || 0,
-    longitude: Number(item.mapx) || 0,
-    start_date: start,
-    end_date: end,
-    municipality_name: String(item.addr1 || '').split(' ')[1] || null,
-    description: null,
-    category: '문화/예술',
-    image_url: String(item.firstimage || item.firstimage2 || '').replace(/^http:\/\//i, 'https://') || null,
-    is_trending: Boolean(item.firstimage),
-    source: 'tour',
-    tel: item.tel || undefined,
-    regionalZone: regionalZone,
-    metro: regionalZone,
-    areaCode: resolvedArea,
-    moiCode: MOI_CODE_BY_METRO[regionalZone] || '41',
-  };
-}
-
-async function fetchTourItems(baseUrl, path, areaCode) {
-  const key = String(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY || '').trim();
-  if (!key) throw new Error('TOUR_API_SERVICE_KEY 가 없습니다.');
-  const params = new URLSearchParams();
-  params.set('serviceKey', key);
-  params.set('MobileOS', 'ETC');
-  params.set('MobileApp', 'kdanji');
-  params.set('_type', 'json');
-  params.set('areaCode', String(areaCode || '31'));
-  params.set('eventStartDate', todayYmd());
-  params.set('numOfRows', '80');
-  params.set('pageNo', '1');
-  params.set('arrange', 'C');
-  const url = baseUrl.replace(/\/$/, '') + path + '?' + params.toString();
-  const response = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!response.ok) throw new Error('TourAPI HTTP ' + response.status);
-  const payload = await response.json();
-  const code = payload && payload.response && payload.response.header && payload.response.header.resultCode;
-  if (code && code !== '0000') {
-    throw new Error(payload.response.header.resultMsg || code);
-  }
-  const items = payload && payload.response && payload.response.body && payload.response.body.items;
-  if (!items || typeof items === 'string') return [];
-  return asList(items.item).map((item) => tourToHome(item, areaCode)).filter((item) => item.contentId && item.title);
+function homeFromTour(item, metro, areaCode) {
+  return toHomeFestival({
+    contentid: item.contentId,
+    contenttypeid: item.contentTypeId,
+    title: item.title,
+    addr1: item.address,
+    eventstartdate: item.eventStartDate,
+    eventenddate: item.eventEndDate,
+    firstimage: item.firstImage,
+    mapx: item.mapX,
+    mapy: item.mapY,
+    tel: item.tel,
+    overview: item.overview,
+    areacode: item.areaCode || areaCode,
+  }, metro, areaCode);
 }
 
 async function listFestivalsLive(req, res) {
@@ -315,37 +262,175 @@ async function listFestivalsLive(req, res) {
   }
   const query = readQuery(req);
   const metroKey = normalizeMetroId(query.metro);
-  const resolvedArea = String(query.areaCode || METRO_AREA[metroKey] || METRO_AREA[String(query.metro || '').toUpperCase()] || '31');
-  const regionalZone = Object.entries(AREA_CODE_BY_METRO).find(([, code]) => code === resolvedArea)?.[0] || metroKey || 'GYEONGGI';
-  let festivals = [];
-  let source = 'none';
   try {
-    festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService1', '/searchFestival1', resolvedArea);
-    source = festivals.length ? 'searchFestival1' : source;
+    const result = await searchFestival2({
+      metro: metroKey,
+      areaCode: query.areaCode || METRO_AREA[metroKey],
+      month: query.month,
+      year: query.year,
+      category: query.category,
+    });
+    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    send(res, 200, {
+      success: true,
+      metro: result.metro,
+      regionalZone: result.metro,
+      areaCode: result.areaCode,
+      moiCode: MOI_CODE_BY_METRO[result.metro] || result.lDongRegnCd,
+      regionLabel: result.regionLabel,
+      count: festivals.length,
+      source: result.source,
+      festivals: festivals,
+      data: festivals,
+      message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
+    }, headers);
   } catch (err) {
-    console.error('[api] searchFestival1', err && err.message ? err.message : err);
+    console.error('[api] searchFestival2', err && err.message ? err.message : err);
+    send(res, 200, {
+      success: true,
+      metro: metroKey,
+      regionalZone: metroKey,
+      areaCode: METRO_AREA[metroKey] || '31',
+      moiCode: MOI_CODE_BY_METRO[metroKey] || '41',
+      regionLabel: REGION_LABEL[metroKey] || '경기온',
+      count: 0,
+      source: 'none',
+      festivals: [],
+      data: [],
+      message: 'TourAPI 목록이 비어 있습니다.',
+    }, headers);
   }
-  if (!festivals.length) {
-    try {
-      festivals = await fetchTourItems('https://apis.data.go.kr/B551011/KorService2', '/searchFestival2', resolvedArea);
-      source = festivals.length ? 'searchFestival2' : source;
-    } catch (err) {
-      console.error('[api] searchFestival2', err && err.message ? err.message : err);
-    }
+}
+
+async function listTourFestivals(req, res) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
   }
-  send(res, 200, {
-    success: true,
-    metro: regionalZone,
-    regionalZone: regionalZone,
-    areaCode: resolvedArea,
-    moiCode: MOI_CODE_BY_METRO[regionalZone] || '41',
-    regionLabel: REGION_LABEL[regionalZone] || '경기온',
-    count: festivals.length,
-    source: source,
-    festivals: festivals,
-    data: festivals,
-    message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
-  }, headers);
+  const query = readQuery(req);
+  try {
+    const result = await searchFestival2({
+      areaCode: query.areaCode || 'all',
+      metro: query.metro,
+      month: query.month,
+      year: query.year,
+      category: query.category,
+    });
+    send(res, 200, {
+      success: true,
+      areaCode: query.areaCode || 'all',
+      month: result.month,
+      year: result.year,
+      count: result.festivals.length,
+      source: result.source,
+      data: result.festivals,
+    }, headers);
+  } catch (err) {
+    send(res, 502, {
+      success: false,
+      message: err && err.message ? err.message : 'TourAPI 축제 조회에 실패했습니다.',
+    }, headers);
+  }
+}
+
+async function listTourNearby(req, res) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  const query = readQuery(req);
+  const mapX = Number(query.mapX || query.lng);
+  const mapY = Number(query.mapY || query.lat);
+  if (!Number.isFinite(mapX) || !Number.isFinite(mapY)) {
+    send(res, 400, { success: false, message: 'mapX(경도), mapY(위도)가 필요합니다.' }, headers);
+    return;
+  }
+  try {
+    const places = await searchNearby2({
+      mapX: mapX,
+      mapY: mapY,
+      radius: Number(query.radius) || 3000,
+      contentTypeId: query.contentTypeId,
+    });
+    send(res, 200, {
+      success: true,
+      mapX: mapX,
+      mapY: mapY,
+      radius: Number(query.radius) || 3000,
+      count: places.length,
+      data: places,
+    }, headers);
+  } catch (err) {
+    send(res, 502, {
+      success: false,
+      message: err && err.message ? err.message : '주변 관광 조회에 실패했습니다.',
+    }, headers);
+  }
+}
+
+async function getTourDetail(req, res, contentId) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  const query = readQuery(req);
+  try {
+    const detail = await getTourDetail2(contentId, query.contentTypeId);
+    send(res, 200, { success: true, data: detail }, headers);
+  } catch (err) {
+    send(res, 502, {
+      success: false,
+      message: err && err.message ? err.message : '관광 상세 조회에 실패했습니다.',
+    }, headers);
+  }
+}
+
+async function getHomeFeed(req, res) {
+  const headers = corsHeaders(req);
+  if (String(req.method || '').toUpperCase() === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  const query = readQuery(req);
+  const metro = normalizeMetroId(query.metro);
+  try {
+    const now = new Date();
+    const result = await searchFestival2({
+      metro: metro,
+      areaCode: METRO_AREA[metro],
+      month: query.month || (now.getMonth() + 1),
+      year: query.year || now.getFullYear(),
+      category: query.category,
+    });
+    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    send(res, 200, {
+      success: true,
+      available: festivals.length > 0,
+      metro: metro,
+      regionalZone: metro,
+      regions: metroRegions(),
+      festivals: festivals,
+      promotions: [],
+      popular: festivals,
+      source: result.source,
+    }, headers);
+  } catch (err) {
+    console.error('[api] /api/home', err && err.message ? err.message : err);
+    send(res, 200, {
+      success: true,
+      available: false,
+      metro: metro,
+      regionalZone: metro,
+      regions: metroRegions(),
+      festivals: [],
+      promotions: [],
+      popular: [],
+      message: 'TourAPI 목록이 비어 있습니다.',
+    }, headers);
+  }
 }
 
 async function sendEmailCode(req, res) {
@@ -365,37 +450,14 @@ async function sendEmailCode(req, res) {
   emailCodes.set(normalizeEmail(email), { code: code, expiresAt: issued.expiresAt, challenge: issued.challenge });
   const key = String(process.env.RESEND_API_KEY || '').trim();
   if (key) {
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: resendFrom(),
-          to: [email],
-          subject: '[온앤온+] 지자체 담당자 인증번호',
-          html: '<p>온앤온+ 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
-        }),
-      });
-      if (!response.ok) {
-        let detail = '';
-        try {
-          const payload = await response.json();
-          detail = payload && payload.message ? String(payload.message) : '';
-        } catch (_err) {
-          detail = '';
-        }
-        console.error('[api] Resend 실패', response.status, detail);
-        const domainFail = /domain|from/i.test(detail);
-        send(res, 502, {
-          success: false,
-          message: domainFail
-            ? '발신 메일 주소가 Resend에서 확인되지 않았습니다. RESEND_FROM을 확인해주세요.'
-            : '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
-        }, headers);
-        return;
-      }
-    } catch (_err) {
-      send(res, 502, { success: false, message: '인증 메일 서버에 연결하지 못했습니다.' }, headers);
+    const sent = await sendResendEmail({
+      key: key,
+      to: email,
+      subject: '[온앤온+] 지자체 담당자 인증번호',
+      html: '<p>온앤온+ 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
+    });
+    if (!sent.ok) {
+      send(res, 502, { success: false, message: sent.message }, headers);
       return;
     }
     send(res, 200, {
@@ -527,6 +589,23 @@ async function handler(req, res) {
       await verifyEmailCode(req, res);
       return;
     }
+    if (/\/api\/home/i.test(path)) {
+      await getHomeFeed(req, res);
+      return;
+    }
+    if (/\/api\/tour\/festivals/i.test(path)) {
+      await listTourFestivals(req, res);
+      return;
+    }
+    if (/\/api\/tour\/nearby/i.test(path)) {
+      await listTourNearby(req, res);
+      return;
+    }
+    const tourDetail = path.match(/\/api\/tour\/detail\/([^/?\s]+)/i);
+    if (tourDetail) {
+      await getTourDetail(req, res, decodeURIComponent(tourDetail[1]));
+      return;
+    }
     if (/\/api\/festivals\/?(\?|$)/i.test(path) || /\/api\/festivals["\s]/i.test(path) || /(^|[^\w])\/api\/festivals([^\w]|$)/i.test(path)) {
       if (!/festivals\/(nearby|sync|[^/]+\/map)/i.test(path)) {
         await listFestivalsLive(req, res);
@@ -549,12 +628,13 @@ async function handler(req, res) {
       return;
     }
 
-    if (/\/health|\/api\/health/i.test(path)) {
+    if (/\/health|\/api\/health/i.test(path) || /(^|\s)\/api\/?(\?|$)/.test(path)) {
       send(res, 200, {
         status: 'ok',
         service: 'gyeonggi-on-api',
         nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
         email: resendConfigured(),
+        tour: Boolean(tourServiceKey()),
       }, corsHeaders(req));
       return;
     }

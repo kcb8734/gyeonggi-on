@@ -55,7 +55,25 @@ webapp/
 - ⬜ `mobile/` 의 `npm install` 및 Expo 앱 실행(Expo Go/EAS Build)
 - ⬜ Google Maps API Key 발급 및 `mobile/app.json`에 설정
 
-## ⚠️ 배포 관련 중요 안내
+## ⚠️ 프로덕션 배포 (www.kdanji.com)
+
+GitHub에 머지해도 **Vercel 프로덕션은 자동으로 올라가지 않습니다.** `www.kdanji.com`은 저장소 **최상위(root)** 의 `kdanji` 프로젝트입니다.
+
+**반드시 프로젝트 최상위 디렉토리에서** 아래 중 하나를 실행하세요.
+
+```bash
+# 저장소 루트에서
+npm run deploy:prod
+
+# 또는
+npx vercel --prod --yes
+```
+
+- 루트 `.vercel/project.json` → `kdanji` → **https://www.kdanji.com**
+- `backend/.vercel` → 다른 프로젝트(`backend`)라 **사이트가 갱신되지 않습니다.**
+- `backend/`에서 `npx vercel --prod --yes` 를 실행하지 마세요. `o`/`O` 입력 실수로 그 경로에 들어가 있어도, `npm run deploy:prod` 는 루트로 강제합니다.
+
+## ⚠️ 그 외 배포 안내
 - **backend**: `pg` 드라이버로 PostgreSQL에 직접 TCP 연결하는 구조라 **Cloudflare Workers/Pages에 배포할 수 없습니다.** Railway/Render/Fly.io 등 Node 서버 호스팅이나 Cloudflare Hyperdrive+Workers 재작성이 필요합니다.
 - **mobile**: React Native 앱이므로 Cloudflare Pages 대상이 아닙니다. Expo Go 미리보기 또는 EAS Build로 네이티브 빌드해야 합니다.
 

@@ -4,6 +4,9 @@
 
 > ⚠️ 이 백엔드는 `pg` 드라이버로 PostgreSQL에 직접 TCP 연결하는 방식이라 **Cloudflare Workers/Pages에는 배포할 수 없습니다.**
 > Railway / Render / Fly.io 같은 Node 서버 호스팅, 또는 Cloudflare Hyperdrive + Workers 재작성이 필요합니다.
+>
+> **www.kdanji.com 프로덕션 배포는 `backend/`가 아니라 저장소 최상위에서 합니다.**
+> `npm run deploy:prod` 또는 루트에서 `npx vercel --prod --yes`. `backend/`에서 vercel 하면 kdanji.com이 갱신되지 않습니다.
 
 ## 폴더 구조
 ```
