@@ -1,13 +1,27 @@
 /** 지자체(시·군·구)별 할인율 칸 색. 같은 지자체 쿠폰이 한눈에 구분되도록 고정한다. */
+import { normalizeMetroId } from '../constants/regions';
+
 export const METRO_RATE_COLORS: Record<string, string> = {
   GYEONGGI: '#E0392A',
   SEOUL: '#2563EB',
   INCHEON: '#0D9488',
   GANGWON: '#059669',
+  CHUNGBUK: '#D97706',
+  CHUNGNAM: '#B45309',
+  DAEJEON: '#CA8A04',
+  SEJONG: '#A16207',
+  JEONBUK: '#7C3AED',
+  JEONNAM: '#6D28D9',
+  GWANGJU: '#5B21B6',
+  GYEONGBUK: '#DB2777',
+  GYEONGNAM: '#BE185D',
+  BUSAN: '#9D174D',
+  DAEGU: '#E11D48',
+  ULSAN: '#F43F5E',
+  JEJU: '#EA580C',
   CHUNGCHEONG: '#D97706',
   JEOLLA: '#7C3AED',
   GYEONGSANG: '#DB2777',
-  JEJU: '#EA580C',
 };
 
 const LOCALITY_RATE_COLORS: Array<{ token: string; color: string }> = [
@@ -54,5 +68,5 @@ export function couponRateColor(source?: string | null, metro?: string | null): 
   const hay = source ?? '';
   const found = LOCALITY_RATE_COLORS.find((item) => hay.includes(item.token));
   if (found) return found.color;
-  return METRO_RATE_COLORS[metro ?? 'GYEONGGI'] ?? '#E0392A';
+  return METRO_RATE_COLORS[normalizeMetroId(metro ?? 'GYEONGGI')] ?? '#E0392A';
 }

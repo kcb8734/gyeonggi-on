@@ -1,5 +1,5 @@
 import { recommendCourse } from './festivalCourse.js';
-import { matchingRows, METRO_LOCALITIES, REGION_LABEL } from './metroLocalities.js';
+import { matchingRows, feedRewardRows, METRO_LOCALITIES, REGION_LABEL } from './metroLocalities.js';
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -225,10 +225,10 @@ function couponMaster() {
   return [
     { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 12, used: 4, recovery: 33, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
     { id: 'CP-1002', festival: '수원화성문화제', store: '화성행궁 한정식', issued: 12, used: 5, recovery: 42, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
-    { id: 'CP-2008', festival: '보령머드축제', store: '대천항활어회센터', issued: 8, used: 3, recovery: 38, period: '2026-08', region: 'CHUNGCHEONG', couponType: 'SELF' },
-    { id: 'CP-3011', festival: '진주남강유등축제', store: '진주중앙시장', issued: 10, used: 4, recovery: 40, period: '2026-08', region: 'GYEONGSANG', couponType: 'SELF' },
+    { id: 'CP-2008', festival: '보령머드축제', store: '대천항활어회센터', issued: 8, used: 3, recovery: 38, period: '2026-08', region: 'CHUNGNAM', couponType: 'SELF' },
+    { id: 'CP-3011', festival: '진주남강유등축제', store: '진주중앙시장', issued: 10, used: 4, recovery: 40, period: '2026-08', region: 'GYEONGNAM', couponType: 'SELF' },
     { id: 'CP-4015', festival: '화천산천어축제', store: '화천재래시장', issued: 6, used: 2, recovery: 33, period: '2026-08', region: 'GANGWON', couponType: 'SELF' },
-    { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEOLLA', couponType: 'SELF' },
+    { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEONNAM', couponType: 'SELF' },
   ];
 }
 
@@ -278,6 +278,7 @@ function dashboard() {
     },
     coupons: couponMaster(),
     matching,
+    feedRewards: feedRewardRows(),
     regions: Object.entries(REGION_LABEL).map(([id, label]) => ({ id, label })),
     engine,
     courses: [{ id: 'course-1', festival: '장단콩 축제', elements: '캠핑/역사/시장', recommendCount: 12, saveCount: 4, editorsPick: false }],

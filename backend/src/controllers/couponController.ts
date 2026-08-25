@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
+import { normalizeMetroId } from '../constants/regionTour';
 import { generateCouponCode } from '../utils/couponCode';
 
 /**
@@ -129,7 +130,14 @@ export const listMyCoupons = async (req: Request, res: Response) => {
        ORDER BY uc.issued_at DESC`,
       [userId],
     );
-    return res.json({ success: true, data: result.rows });
+    return res.json({
+      success: true,
+      data: result.rows.map((row) => ({
+        ...row,
+        metro: normalizeMetroId(row.metro),
+        regionalZone: normalizeMetroId(row.metro),
+      })),
+    });
   } catch (err) {
     console.error('[listMyCoupons] Error:', err);
     return res.status(500).json({ success: false, message: '쿠폰함을 불러오지 못했습니다.' });

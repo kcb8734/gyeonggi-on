@@ -1,5 +1,7 @@
 import { pool } from '../db/pool';
 import { municipalityFromAddress, municipalityRegionCode } from '../constants/gyeonggiCities';
+import { localityFromAddress, municipalityRegionCodeFor } from '../constants/metroLocalities';
+import { regionalZoneFor } from '../constants/regionTour';
 import {
   searchFestival1,
   TourApiError,
@@ -48,27 +50,41 @@ export async function collectRegionFestivals(areaCode = '31'): Promise<{ items: 
     eventStartDate,
     numOfRows: 120,
   }));
-  return { items, source: items.length ? 'searchFestival2' : 'none' };
+  const stamped = items.map((item) => ({ ...item, areaCode: item.areaCode || areaCode }));
+  return { items: stamped, source: stamped.length ? 'searchFestival2' : 'none' };
 }
 
 export async function collectGyeonggiFestivals() {
   return collectRegionFestivals('31');
 }
 
-export async function ensureMunicipalityId(address: string): Promise<string | null> {
-  const name = municipalityFromAddress(address);
-  const regionCode = municipalityRegionCode(name);
+export async function ensureMunicipalityId(address: string, metroRegion?: string): Promise<string | null> {
+  const zone = metroRegion || regionalZoneFor(undefined, 'GYEONGGI');
+  const name = zone === 'GYEONGGI'
+    ? municipalityFromAddress(address)
+    : localityFromAddress(address, zone);
+  const regionCode = zone === 'GYEONGGI'
+    ? municipalityRegionCode(name)
+    : municipalityRegionCodeFor(zone, name);
   const existing = await pool.query<{ id: string }>(
     `SELECT id FROM municipalities WHERE name = $1 OR region_code = $2 LIMIT 1`,
     [name, regionCode],
   );
-  if (existing.rowCount) return existing.rows[0].id;
+  if (existing.rowCount) {
+    await pool.query(
+      `UPDATE municipalities SET metro_region = COALESCE($2, metro_region) WHERE id = $1`,
+      [existing.rows[0].id, zone],
+    );
+    return existing.rows[0].id;
+  }
   const inserted = await pool.query<{ id: string }>(
-    `INSERT INTO municipalities (name, region_code, budget_balance)
-     VALUES ($1, $2, 0)
-     ON CONFLICT (region_code) DO UPDATE SET name = EXCLUDED.name
+    `INSERT INTO municipalities (name, region_code, budget_balance, metro_region)
+     VALUES ($1, $2, 0, $3)
+     ON CONFLICT (region_code) DO UPDATE SET
+       name = EXCLUDED.name,
+       metro_region = COALESCE(EXCLUDED.metro_region, municipalities.metro_region)
      RETURNING id`,
-    [name, regionCode],
+    [name, regionCode, zone],
   );
   return inserted.rows[0]?.id ?? null;
 }
@@ -85,7 +101,7 @@ export async function upsertTourFestivals(items: TourFestival[]): Promise<{ upse
       skipped += 1;
       continue;
     }
-    const municipalityId = await ensureMunicipalityId(item.address);
+    const municipalityId = await ensureMunicipalityId(item.address, regionalZoneFor(item.areaCode));
     const start = item.eventStartDate.slice(0, 10);
     const end = (item.eventEndDate || item.eventStartDate).slice(0, 10);
     await pool.query(
@@ -197,5 +213,5 @@ export async function syncNationwideFestivals(): Promise<FestivalSyncResult> {
 }
 
 export function tourItemsToHome(items: TourFestival[]) {
-  return items.map(toHomeFestival);
+  return items.map((item) => toHomeFestival(item, regionalZoneFor(item.areaCode)));
 }

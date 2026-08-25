@@ -4,6 +4,11 @@ export interface MetroRegion {
   ready: boolean;
   covers: string;
   governments: string[];
+  /** 한국관광공사 TourAPI areaCode (1:1) */
+  tourAreaCode: string;
+  /** 행안부 법정동 광역코드 (lDongRegnCd) */
+  moiCode: string;
+  phonePrefix: string;
 }
 
 export interface Locality {
@@ -15,16 +20,54 @@ export interface Locality {
   areaTokens?: string[];
 }
 
+/** 구 8권역 ID → 17개 광역 ID */
+export const LEGACY_METRO_ALIASES: Record<string, string> = {
+  CHUNGCHEONG: 'CHUNGNAM',
+  JEOLLA: 'JEONBUK',
+  GYEONGSANG: 'GYEONGNAM',
+};
+
+export function normalizeMetroId(id?: string | null): string {
+  const raw = String(id || 'GYEONGGI').toUpperCase();
+  return LEGACY_METRO_ALIASES[raw] ?? raw;
+}
+
 export const METRO_REGIONS: MetroRegion[] = [
-  { id: 'GYEONGGI', label: '경기온', ready: true, covers: '경기도 31개 시·군', governments: ['경기도'] },
-  { id: 'SEOUL', label: '서울온', ready: true, covers: '서울특별시 25개 자치구', governments: ['서울특별시'] },
-  { id: 'INCHEON', label: '인천온', ready: true, covers: '인천광역시 8구 2군', governments: ['인천광역시'] },
-  { id: 'GANGWON', label: '강원온', ready: true, covers: '강원특별자치도 18개 시·군', governments: ['강원특별자치도'] },
-  { id: 'CHUNGCHEONG', label: '충청온', ready: true, covers: '충북·충남·세종·대전', governments: ['충청북도', '충청남도', '세종특별자치시', '대전광역시'] },
-  { id: 'JEOLLA', label: '전라온', ready: true, covers: '전북·전남·광주', governments: ['전북특별자치도', '전라남도', '광주광역시'] },
-  { id: 'GYEONGSANG', label: '경상온', ready: true, covers: '경북·경남·대구·울산·부산', governments: ['경상북도', '경상남도', '대구광역시', '울산광역시', '부산광역시'] },
-  { id: 'JEJU', label: '제주온', ready: true, covers: '제주특별자치도 제주시·서귀포시', governments: ['제주특별자치도'] },
+  { id: 'SEOUL', label: '서울온', ready: true, covers: '서울특별시 25개 자치구', governments: ['서울특별시'], tourAreaCode: '1', moiCode: '11', phonePrefix: '02' },
+  { id: 'BUSAN', label: '부산온', ready: true, covers: '부산광역시 16개 구·군', governments: ['부산광역시'], tourAreaCode: '6', moiCode: '26', phonePrefix: '051' },
+  { id: 'DAEGU', label: '대구온', ready: true, covers: '대구광역시 8구 1군', governments: ['대구광역시'], tourAreaCode: '4', moiCode: '27', phonePrefix: '053' },
+  { id: 'INCHEON', label: '인천온', ready: true, covers: '인천광역시 8구 2군', governments: ['인천광역시'], tourAreaCode: '2', moiCode: '28', phonePrefix: '032' },
+  { id: 'GWANGJU', label: '광주온', ready: true, covers: '광주광역시 5개 자치구', governments: ['광주광역시'], tourAreaCode: '5', moiCode: '29', phonePrefix: '062' },
+  { id: 'DAEJEON', label: '대전온', ready: true, covers: '대전광역시 5개 자치구', governments: ['대전광역시'], tourAreaCode: '3', moiCode: '30', phonePrefix: '042' },
+  { id: 'ULSAN', label: '울산온', ready: true, covers: '울산광역시 4구 1군', governments: ['울산광역시'], tourAreaCode: '7', moiCode: '31', phonePrefix: '052' },
+  { id: 'SEJONG', label: '세종온', ready: true, covers: '세종특별자치시', governments: ['세종특별자치시'], tourAreaCode: '8', moiCode: '36', phonePrefix: '044' },
+  { id: 'GYEONGGI', label: '경기온', ready: true, covers: '경기도 31개 시·군', governments: ['경기도'], tourAreaCode: '31', moiCode: '41', phonePrefix: '031' },
+  { id: 'GANGWON', label: '강원온', ready: true, covers: '강원특별자치도 18개 시·군', governments: ['강원특별자치도'], tourAreaCode: '32', moiCode: '51', phonePrefix: '033' },
+  { id: 'CHUNGBUK', label: '충북온', ready: true, covers: '충청북도 11개 시·군', governments: ['충청북도'], tourAreaCode: '33', moiCode: '43', phonePrefix: '043' },
+  { id: 'CHUNGNAM', label: '충남온', ready: true, covers: '충청남도 15개 시·군', governments: ['충청남도'], tourAreaCode: '34', moiCode: '44', phonePrefix: '041' },
+  { id: 'JEONBUK', label: '전북온', ready: true, covers: '전북특별자치도 14개 시·군', governments: ['전북특별자치도'], tourAreaCode: '35', moiCode: '52', phonePrefix: '063' },
+  { id: 'JEONNAM', label: '전남온', ready: true, covers: '전라남도 22개 시·군', governments: ['전라남도'], tourAreaCode: '36', moiCode: '46', phonePrefix: '061' },
+  { id: 'GYEONGBUK', label: '경북온', ready: true, covers: '경상북도 22개 시·군', governments: ['경상북도'], tourAreaCode: '37', moiCode: '47', phonePrefix: '054' },
+  { id: 'GYEONGNAM', label: '경남온', ready: true, covers: '경상남도 18개 시·군', governments: ['경상남도'], tourAreaCode: '38', moiCode: '48', phonePrefix: '055' },
+  { id: 'JEJU', label: '제주온', ready: true, covers: '제주특별자치도 제주시·서귀포시', governments: ['제주특별자치도'], tourAreaCode: '39', moiCode: '50', phonePrefix: '064' },
 ];
+
+export const REGION_PHONE: Record<string, string> = Object.fromEntries(
+  METRO_REGIONS.map((region) => [region.id, region.phonePrefix]),
+);
+
+export const REGION_LABEL: Record<string, string> = Object.fromEntries(
+  METRO_REGIONS.map((region) => [region.id, region.label]),
+);
+
+export function metroByTourAreaCode(areaCode?: string): MetroRegion {
+  return METRO_REGIONS.find((item) => item.tourAreaCode === String(areaCode || '')) ?? METRO_REGIONS.find((item) => item.id === 'GYEONGGI')!;
+}
+
+export function metroById(id?: string | null): MetroRegion {
+  const key = normalizeMetroId(id);
+  return METRO_REGIONS.find((item) => item.id === key) ?? METRO_REGIONS.find((item) => item.id === 'GYEONGGI')!;
+}
 
 function city(name: string, area?: string, areaTokens?: string[]): Locality {
   const stripped = name.replace(/(시|군)$/, '');
@@ -42,71 +85,65 @@ function cities(names: string[], area?: string, areaTokens?: string[]): Locality
 }
 
 export const METRO_LOCALITIES: Record<string, Locality[]> = {
+  SEOUL: cities([
+    '종로구', '중구', '용산구', '성동구', '광진구', '동대문구', '중랑구', '성북구',
+    '강북구', '도봉구', '노원구', '은평구', '서대문구', '마포구', '양천구', '강서구',
+    '구로구', '금천구', '영등포구', '동작구', '관악구', '서초구', '강남구', '송파구', '강동구',
+  ], undefined, ['서울']),
+  BUSAN: cities(
+    ['중구', '서구', '동구', '영도구', '부산진구', '동래구', '남구', '북구', '해운대구', '사하구', '금정구', '강서구', '연제구', '수영구', '사상구', '기장군'],
+    '부산',
+    ['부산'],
+  ),
+  DAEGU: cities(['중구', '동구', '서구', '남구', '북구', '수성구', '달서구', '달성군', '군위군'], '대구', ['대구']),
+  INCHEON: cities([
+    '중구', '동구', '미추홀구', '연수구', '남동구', '부평구', '계양구', '서구', '강화군', '옹진군',
+  ], '인천', ['인천']),
+  GWANGJU: cities(['동구', '서구', '남구', '북구', '광산구'], '광주', ['광주']),
+  DAEJEON: cities(['동구', '중구', '서구', '유성구', '대덕구'], '대전', ['대전']),
+  ULSAN: cities(['중구', '남구', '동구', '북구', '울주군'], '울산', ['울산']),
+  SEJONG: [city('세종시', undefined, ['세종'])],
   GYEONGGI: cities([
     '수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시',
     '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시',
     '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시',
     '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군',
   ]),
-  SEOUL: cities([
-    '종로구', '중구', '용산구', '성동구', '광진구', '동대문구', '중랑구', '성북구',
-    '강북구', '도봉구', '노원구', '은평구', '서대문구', '마포구', '양천구', '강서구',
-    '구로구', '금천구', '영등포구', '동작구', '관악구', '서초구', '강남구', '송파구', '강동구',
-  ], undefined, ['서울']),
-  INCHEON: cities([
-    '중구', '동구', '미추홀구', '연수구', '남동구', '부평구', '계양구', '서구', '강화군', '옹진군',
-  ], '인천', ['인천']),
   GANGWON: cities([
     '춘천시', '원주시', '강릉시', '동해시', '태백시', '속초시', '삼척시',
     '홍천군', '횡성군', '영월군', '평창군', '정선군', '철원군', '화천군',
     '양구군', '인제군', '고성군', '양양군',
   ]),
-  CHUNGCHEONG: [
-    ...cities(['동구', '중구', '서구', '유성구', '대덕구'], '대전', ['대전']),
-    city('세종시', undefined, ['세종']),
-    ...cities(
-      ['청주시', '충주시', '제천시', '보은군', '옥천군', '영동군', '증평군', '진천군', '괴산군', '음성군', '단양군'],
-      '충북',
-      ['충북', '충청북'],
-    ),
-    ...cities(
-      ['천안시', '공주시', '보령시', '아산시', '서산시', '논산시', '계룡시', '당진시', '금산군', '부여군', '서천군', '청양군', '홍성군', '예산군', '태안군'],
-      '충남',
-      ['충남', '충청남'],
-    ),
-  ],
-  JEOLLA: [
-    ...cities(['동구', '서구', '남구', '북구', '광산구'], '광주', ['광주']),
-    ...cities(
-      ['전주시', '군산시', '익산시', '정읍시', '남원시', '김제시', '완주군', '진안군', '무주군', '장수군', '임실군', '순창군', '고창군', '부안군'],
-      '전북',
-      ['전북', '전라북'],
-    ),
-    ...cities(
-      ['목포시', '여수시', '순천시', '나주시', '광양시', '담양군', '곡성군', '구례군', '고흥군', '보성군', '화순군', '장흥군', '강진군', '해남군', '영암군', '무안군', '함평군', '영광군', '장성군', '완도군', '진도군', '신안군'],
-      '전남',
-      ['전남', '전라남'],
-    ),
-  ],
-  GYEONGSANG: [
-    ...cities(['중구', '동구', '서구', '남구', '북구', '수성구', '달서구', '달성군', '군위군'], '대구', ['대구']),
-    ...cities(['중구', '남구', '동구', '북구', '울주군'], '울산', ['울산']),
-    ...cities(
-      ['중구', '서구', '동구', '영도구', '부산진구', '동래구', '남구', '북구', '해운대구', '사하구', '금정구', '강서구', '연제구', '수영구', '사상구', '기장군'],
-      '부산',
-      ['부산'],
-    ),
-    ...cities(
-      ['포항시', '경주시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시', '문경시', '경산시', '의성군', '청송군', '영양군', '영덕군', '청도군', '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군'],
-      '경북',
-      ['경북', '경상북'],
-    ),
-    ...cities(
-      ['창원시', '진주시', '통영시', '사천시', '김해시', '밀양시', '거제시', '양산시', '의령군', '함안군', '창녕군', '고성군', '남해군', '하동군', '산청군', '함양군', '거창군', '합천군'],
-      '경남',
-      ['경남', '경상남'],
-    ),
-  ],
+  CHUNGBUK: cities(
+    ['청주시', '충주시', '제천시', '보은군', '옥천군', '영동군', '증평군', '진천군', '괴산군', '음성군', '단양군'],
+    '충북',
+    ['충북', '충청북'],
+  ),
+  CHUNGNAM: cities(
+    ['천안시', '공주시', '보령시', '아산시', '서산시', '논산시', '계룡시', '당진시', '금산군', '부여군', '서천군', '청양군', '홍성군', '예산군', '태안군'],
+    '충남',
+    ['충남', '충청남'],
+  ),
+  JEONBUK: cities(
+    ['전주시', '군산시', '익산시', '정읍시', '남원시', '김제시', '완주군', '진안군', '무주군', '장수군', '임실군', '순창군', '고창군', '부안군'],
+    '전북',
+    ['전북', '전라북'],
+  ),
+  JEONNAM: cities(
+    ['목포시', '여수시', '순천시', '나주시', '광양시', '담양군', '곡성군', '구례군', '고흥군', '보성군', '화순군', '장흥군', '강진군', '해남군', '영암군', '무안군', '함평군', '영광군', '장성군', '완도군', '진도군', '신안군'],
+    '전남',
+    ['전남', '전라남'],
+  ),
+  GYEONGBUK: cities(
+    ['포항시', '경주시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시', '문경시', '경산시', '의성군', '청송군', '영양군', '영덕군', '청도군', '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군'],
+    '경북',
+    ['경북', '경상북'],
+  ),
+  GYEONGNAM: cities(
+    ['창원시', '진주시', '통영시', '사천시', '김해시', '밀양시', '거제시', '양산시', '의령군', '함안군', '창녕군', '고성군', '남해군', '하동군', '산청군', '함양군', '거창군', '합천군'],
+    '경남',
+    ['경남', '경상남'],
+  ),
   JEJU: cities(['제주시', '서귀포시']),
 };
 
@@ -157,7 +194,8 @@ export const GYEONGGI_CITY_COORDS: Record<string, { lat: number; lng: number }> 
 export const COMING_SOON_MESSAGE = '해당 지역 서비스 준비 중입니다';
 
 export function getLocalities(metroId: string): Locality[] {
-  return [...(METRO_LOCALITIES[metroId] ?? [])].sort((a, b) => a.label.localeCompare(b.label, 'ko'));
+  const key = normalizeMetroId(metroId);
+  return [...(METRO_LOCALITIES[key] ?? [])].sort((a, b) => a.label.localeCompare(b.label, 'ko'));
 }
 
 export function localityMatches(haystack: string, locality: Locality | null): boolean {

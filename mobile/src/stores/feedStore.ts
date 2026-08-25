@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { festivalImageFor } from '../constants/regionMedia';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
+import { normalizeMetroId } from '../constants/regions';
 import { readJson, writeJson } from '../utils/storage';
 
 export interface FeedPost {
@@ -84,16 +85,29 @@ const GYEONGGI_SEEDED: FeedPost[] = [
 const REGION_CAPTIONS: Record<string, string[]> = {
   SEOUL: ['광화문 광장에서 거리예술 한바탕', '청계천 초롱이 강을 다 덮었다', '장미정원에서 인생샷 찍고 쿠폰 씀', '한강 불꽃 보고 포차에서 한 잔'],
   INCHEON: ['펜타포트 메인 스테이지 소름', '고인돌 공원 일몰이 예술', '개항장 야행 조명 골목'],
+  BUSAN: ['광안대교 아래 불꽃 폭죽', '자갈치 골목에서 회 한 접시'],
+  DAEGU: ['치맥 페스티벌에서 맥주 잔이 빛남'],
+  GWANGJU: ['김치축제 골목에서 한 그릇'],
+  DAEJEON: ['0시 축제 야시장이 열렸다'],
+  ULSAN: ['고래축제 해변에서 파도를 봄'],
+  SEJONG: ['세종축제 호수공원 야경'],
   GANGWON: ['마임 광장에서 웃음 참기 실패', '안목 커피 한 잔이 바다를 담음', '봉평 메밀꽃이 하얗게 피었다', '속초 해변 파도 소리 ASMR'],
+  CHUNGBUK: ['직지 활자가 빛으로 살아났다'],
+  CHUNGNAM: ['머드 한바탕 하고 조개 굽는 중', '궁남지 연꽃이 분홍으로 물듦'],
+  JEONBUK: ['한옥골목에서 한지등 들고 걸음'],
+  JEONNAM: ['여수 밤바다 불꽃이 바다를 가르다', '순천만 갈대밭이 금빛으로 출렁'],
+  GYEONGBUK: ['대릉원 벚꽃이 노을에 흩날림'],
+  GYEONGNAM: ['남강 유등이 강을 따라 흘러간다'],
+  JEJU: ['새별오름 들불이 밤을 열었다', '칠십리 해안도로 바람이 소금 맛', '협재 유채꽃이 노랗게 번짐'],
   CHUNGCHEONG: ['직지 활자가 빛으로 살아났다', '머드 한바탕 하고 조개 굽는 중', '궁남지 연꽃이 분홍으로 물듦'],
   JEOLLA: ['한옥골목에서 한지등 들고 걸음', '여수 밤바다 불꽃이 바다를 가르다', '순천만 갈대밭이 금빛으로 출렁'],
   GYEONGSANG: ['남강 유등이 강을 따라 흘러간다', '대릉원 벚꽃이 노을에 흩날림', '광안대교 아래 불꽃 폭죽'],
-  JEJU: ['새별오름 들불이 밤을 열었다', '칠십리 해안도로 바람이 소금 맛', '협재 유채꽃이 노랗게 번짐'],
 };
 
 function regionSeeded(metro: string): FeedPost[] {
-  const festivals = REGION_FESTIVAL_FALLBACKS[metro] ?? [];
-  const captions = REGION_CAPTIONS[metro] ?? [];
+  const zone = normalizeMetroId(metro);
+  const festivals = REGION_FESTIVAL_FALLBACKS[zone] ?? REGION_FESTIVAL_FALLBACKS[metro] ?? [];
+  const captions = REGION_CAPTIONS[zone] ?? REGION_CAPTIONS[metro] ?? [];
   return festivals.map((item, index) => ({
     id: `feed-${metro}-${item.id}`,
     author: `${item.municipality_name ?? '온앤온'}탐험가`,
@@ -139,8 +153,9 @@ export function getFeedPost(id: string): FeedPost | undefined {
 }
 
 export function feedsForRegion(metro?: string): FeedPost[] {
-  const mine = myPosts.filter((item) => !metro || !item.metro || item.metro === metro);
-  const seeded = posts.filter((item) => (item.metro ?? 'GYEONGGI') === (metro ?? 'GYEONGGI') && !item.mine);
+  const zone = normalizeMetroId(metro);
+  const mine = myPosts.filter((item) => !metro || !item.metro || normalizeMetroId(item.metro) === zone);
+  const seeded = posts.filter((item) => normalizeMetroId(item.metro ?? 'GYEONGGI') === zone && !item.mine);
   const merged = [...mine, ...seeded];
   const seen = new Set<string>();
   return merged.filter((item) => {

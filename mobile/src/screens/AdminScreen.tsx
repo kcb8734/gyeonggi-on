@@ -9,24 +9,15 @@ import {
   StatusBadge,
   WeightSlider,
 } from '../components/admin/AdminWidgets';
-import { METRO_LOCALITIES, METRO_REGIONS } from '../constants/regions';
+import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
+import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
 
 const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
 const ADMIN_PASSWORD = 'admin1234';
 const REGION_LABEL: Record<string, string> = Object.fromEntries(
   METRO_REGIONS.map((region) => [region.id, region.label]),
 );
-const REGION_PHONE: Record<string, string> = {
-  GYEONGGI: '031',
-  SEOUL: '02',
-  INCHEON: '032',
-  GANGWON: '033',
-  CHUNGCHEONG: '041',
-  JEOLLA: '063',
-  GYEONGSANG: '055',
-  JEJU: '064',
-};
 
 function officerDisplayName(label: string) {
   const text = String(label || '');
@@ -44,6 +35,7 @@ function buildFallbackMatching() {
       id: `${region.id}:${loc.id}`,
       region: region.id,
       regionLabel: region.label,
+      regionalZone: region.id,
       couponType: region.id === 'GYEONGGI' ? 'OFFICIAL' : 'SELF',
       city: loc.label,
       officerName: index % 7 === 0 ? '' : officerDisplayName(loc.label),
@@ -59,14 +51,46 @@ function buildFallbackMatching() {
 const FALLBACK_MATCHING = buildFallbackMatching();
 const FALLBACK_ASSIGNED = FALLBACK_MATCHING.filter((row) => row.officerName).length;
 
+function buildFallbackFeedRewards(): FeedRewardRow[] {
+  const samples: Array<Omit<FeedRewardRow, 'id' | 'regionLabel' | 'points'>> = [
+    { userName: '수원나들이', festival: '수원화성문화제', city: '수원시', regionalZone: 'GYEONGGI', amountWon: 1000, postedAt: '2026-08-22', status: 'PAID' },
+    { userName: '재즈키드', festival: '가평 자라섬 재즈페스티벌', city: '가평군', regionalZone: 'GYEONGGI', amountWon: 1000, postedAt: '2026-08-22', status: 'PENDING' },
+    { userName: '광장탐험가', festival: '서울거리예술축제', city: '종로구', regionalZone: 'SEOUL', amountWon: 1000, postedAt: '2026-08-21', status: 'PAID' },
+    { userName: '송도락커', festival: '인천펜타포트락페스티벌', city: '연수구', regionalZone: 'INCHEON', amountWon: 1000, postedAt: '2026-08-21', status: 'PENDING' },
+    { userName: '광안리야행', festival: '부산불꽃축제', city: '수영구', regionalZone: 'BUSAN', amountWon: 1000, postedAt: '2026-08-20', status: 'PAID' },
+    { userName: '치맥러버', festival: '대구치맥페스티벌', city: '수성구', regionalZone: 'DAEGU', amountWon: 1000, postedAt: '2026-08-20', status: 'PENDING' },
+    { userName: '김치여행', festival: '광주김치축제', city: '서구', regionalZone: 'GWANGJU', amountWon: 1000, postedAt: '2026-08-19', status: 'PAID' },
+    { userName: '대전야행', festival: '대전 0시 축제', city: '중구', regionalZone: 'DAEJEON', amountWon: 1000, postedAt: '2026-08-19', status: 'PENDING' },
+    { userName: '고래마을', festival: '울산고래축제', city: '남구', regionalZone: 'ULSAN', amountWon: 1000, postedAt: '2026-08-18', status: 'PAID' },
+    { userName: '세종탐험가', festival: '세종축제', city: '세종시', regionalZone: 'SEJONG', amountWon: 1000, postedAt: '2026-08-18', status: 'PENDING' },
+    { userName: '마임광장', festival: '춘천마임축제', city: '춘천시', regionalZone: 'GANGWON', amountWon: 1000, postedAt: '2026-08-17', status: 'PAID' },
+    { userName: '직지기록가', festival: '청주직지축제', city: '청주시', regionalZone: 'CHUNGBUK', amountWon: 1000, postedAt: '2026-08-17', status: 'PENDING' },
+    { userName: '머드여행', festival: '보령머드축제', city: '보령시', regionalZone: 'CHUNGNAM', amountWon: 1000, postedAt: '2026-08-16', status: 'PAID' },
+    { userName: '한옥골목', festival: '전주한지문화축제', city: '전주시', regionalZone: 'JEONBUK', amountWon: 1000, postedAt: '2026-08-16', status: 'PENDING' },
+    { userName: '밤바다러버', festival: '여수밤바다불꽃축제', city: '여수시', regionalZone: 'JEONNAM', amountWon: 1000, postedAt: '2026-08-15', status: 'PAID' },
+    { userName: '대릉원벚꽃', festival: '경주벚꽃축제', city: '경주시', regionalZone: 'GYEONGBUK', amountWon: 1000, postedAt: '2026-08-15', status: 'PENDING' },
+    { userName: '유등산책', festival: '진주남강유등축제', city: '진주시', regionalZone: 'GYEONGNAM', amountWon: 1000, postedAt: '2026-08-14', status: 'PAID' },
+    { userName: '오름들불', festival: '제주들불축제', city: '제주시', regionalZone: 'JEJU', amountWon: 1000, postedAt: '2026-08-14', status: 'PENDING' },
+  ];
+  return samples.map((row, index) => ({
+    ...row,
+    id: `FR-${String(index + 1).padStart(4, '0')}`,
+    regionLabel: REGION_LABEL[row.regionalZone] || row.regionalZone,
+    points: 1000,
+  }));
+}
+
+const FALLBACK_FEED_REWARDS = buildFallbackFeedRewards();
+
 function mergeMatching(apiRows: any[] | undefined) {
   const fallback = FALLBACK_MATCHING;
   if (!apiRows?.length) return fallback;
   const normalized = apiRows.map((row) => ({
     ...row,
     id: matchingRowId(row),
-    region: row.region || 'GYEONGGI',
-    regionLabel: row.regionLabel || REGION_LABEL[row.region || 'GYEONGGI'] || '경기온',
+    region: normalizeMetroId(row.region || 'GYEONGGI'),
+    regionalZone: normalizeMetroId(row.regionalZone || row.region || 'GYEONGGI'),
+    regionLabel: row.regionLabel || REGION_LABEL[normalizeMetroId(row.region || 'GYEONGGI')] || '경기온',
   }));
   const regions = new Set(normalized.map((row) => row.region));
   if (regions.size > 1 || normalized.length >= fallback.length * 0.8) return normalized;
@@ -126,12 +150,13 @@ const FALLBACK_DASHBOARD = {
   coupons: [
     { id: 'CP-1001', festival: '장단콩 축제', store: '문산시장 콩국수', issued: 12, used: 4, recovery: 33, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
     { id: 'CP-1002', festival: '수원화성문화제', store: '화성행궁 한정식', issued: 12, used: 5, recovery: 42, period: '2026-08', region: 'GYEONGGI', couponType: 'OFFICIAL' },
-    { id: 'CP-2008', festival: '보령머드축제', store: '대천항활어회센터', issued: 8, used: 3, recovery: 38, period: '2026-08', region: 'CHUNGCHEONG', couponType: 'SELF' },
-    { id: 'CP-3011', festival: '진주남강유등축제', store: '진주중앙시장', issued: 10, used: 4, recovery: 40, period: '2026-08', region: 'GYEONGSANG', couponType: 'SELF' },
+    { id: 'CP-2008', festival: '보령머드축제', store: '대천항활어회센터', issued: 8, used: 3, recovery: 38, period: '2026-08', region: 'CHUNGNAM', couponType: 'SELF' },
+    { id: 'CP-3011', festival: '진주남강유등축제', store: '진주중앙시장', issued: 10, used: 4, recovery: 40, period: '2026-08', region: 'GYEONGNAM', couponType: 'SELF' },
     { id: 'CP-4015', festival: '화천산천어축제', store: '화천재래시장', issued: 6, used: 2, recovery: 33, period: '2026-08', region: 'GANGWON', couponType: 'SELF' },
-    { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEOLLA', couponType: 'SELF' },
+    { id: 'CP-5022', festival: '보성차밭빛축제', store: '보성녹차거리', issued: 7, used: 3, recovery: 43, period: '2026-08', region: 'JEONNAM', couponType: 'SELF' },
   ],
-  matching: FALLBACK_MATCHING,
+    matching: FALLBACK_MATCHING,
+    feedRewards: FALLBACK_FEED_REWARDS,
   engine: { festivalWeight: 40, campingDistanceWeight: 25, marketRatioWeight: 20, historyWeight: 15 },
   courses: [{ id: 'course-1', festival: '장단콩 축제', recommendCount: 12, saveCount: 4 }],
   weekly: [
@@ -173,12 +198,13 @@ function mergeDashboard(next: any) {
     },
     coupons: next?.coupons?.length ? next.coupons : FALLBACK_DASHBOARD.coupons,
     matching: mergeMatching(next?.matching),
+    feedRewards: next?.feedRewards?.length ? next.feedRewards : FALLBACK_DASHBOARD.feedRewards,
     weekly: next?.weekly?.length ? next.weekly : FALLBACK_DASHBOARD.weekly,
     courses: next?.courses?.length ? next.courses : FALLBACK_DASHBOARD.courses,
   };
 }
 
-type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'ai' | 'stats';
+type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats';
 
 function formatWhen(value?: string) {
   if (!value) return '-';
@@ -206,6 +232,7 @@ export default function AdminScreen() {
   const [couponType, setCouponType] = useState('ALL');
   const [couponFestival, setCouponFestival] = useState('ALL');
   const [matchRegion, setMatchRegion] = useState('GYEONGGI');
+  const [feedRegion, setFeedRegion] = useState('GYEONGGI');
   const [weightMessage, setWeightMessage] = useState('');
 
   const loadFestivals = async () => {
@@ -296,6 +323,26 @@ export default function AdminScreen() {
     });
   };
 
+  const approveFeedReward = (rowId: string) => {
+    setDashboard((current: any) => ({
+      ...(current ?? {}),
+      feedRewards: (current?.feedRewards ?? []).map((row: FeedRewardRow) => (
+        row.id === rowId ? { ...row, status: 'PAID' } : row
+      )),
+    }));
+  };
+
+  const reportFeedPdf = (rows: FeedRewardRow[], city?: string) => {
+    if (!rows.length) {
+      if (typeof window !== 'undefined') window.alert('보고할 피드 지급 내역이 없습니다.');
+      return;
+    }
+    const ok = downloadFeedRewardPdf(rows, city);
+    if (!ok && typeof window !== 'undefined') {
+      window.alert('웹 관리자 화면에서 공문 PDF를 내려받을 수 있습니다.');
+    }
+  };
+
   const handleDownloadExcel = async () => {
     const filename = settlementFilename();
     const rows = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
@@ -355,10 +402,16 @@ export default function AdminScreen() {
   };
   const coupons = dashboard?.coupons?.length ? dashboard.coupons : FALLBACK_DASHBOARD.coupons;
   const matching = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
+  const feedRewards: FeedRewardRow[] = dashboard?.feedRewards?.length ? dashboard.feedRewards : FALLBACK_FEED_REWARDS;
+  const regionFeedRewards = feedRewards.filter((row) => (row.regionalZone || 'GYEONGGI') === feedRegion);
+  const feedCities = Array.from(new Set(regionFeedRewards.map((row) => row.city)));
+  const feedPending = regionFeedRewards.filter((row) => row.status !== 'PAID').length;
+  const feedPaidSum = regionFeedRewards.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
   const unassigned = matching.filter((row: any) => !row.officerName);
   const regionMatching = matching.filter((row: any) => (row.region || 'GYEONGGI') === matchRegion);
   const regionUnassigned = regionMatching.filter((row: any) => !row.officerName);
   const regionMeta = METRO_REGIONS.find((region) => region.id === matchRegion) ?? METRO_REGIONS[0];
+  const feedRegionMeta = METRO_REGIONS.find((region) => region.id === feedRegion) ?? METRO_REGIONS[0];
   const courses = dashboard?.courses ?? [];
   const weekly = dashboard?.weekly ?? FALLBACK_DASHBOARD.weekly;
   const festivals = kpi.festivals ?? festivalCount ?? 12;
@@ -397,6 +450,7 @@ export default function AdminScreen() {
           ['tour', 'TourAPI'],
           ['coupon', '상가·쿠폰'],
           ['match', '지자체'],
+          ['feeds', '피드정산'],
           ['ai', 'AI 코스'],
           ['stats', '통계'],
         ] as const).map(([key, label]) => (
@@ -604,6 +658,76 @@ export default function AdminScreen() {
               );
             })}
           </View>
+        </>
+      ) : null}
+
+      {menu === 'feeds' ? (
+        <>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>축제 참여 피드 지역화폐 정산</Text>
+            <Text style={styles.hint}>
+              축제 현장 참여 피드를 게시한 이용자에게 지역화폐를 지급하고, 해당 지자체에 공문 PDF로 내역·정산을 보고합니다.
+            </Text>
+            <View style={styles.filterRow}>
+              {METRO_REGIONS.map((region) => {
+                const count = feedRewards.filter((row) => row.regionalZone === region.id).length;
+                const on = feedRegion === region.id;
+                return (
+                  <TouchableOpacity key={region.id} style={[styles.chip, on && styles.chipOn]} onPress={() => setFeedRegion(region.id)}>
+                    <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                      {region.label}{count ? ` · ${count}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.hint}>
+              {feedRegionMeta.label} · {regionFeedRewards.length}건 · 대기 {feedPending}건 · 합계 {feedPaidSum.toLocaleString('ko-KR')}원
+            </Text>
+            <View style={{ marginTop: 10 }}>
+              <ActionButton
+                label={`${feedRegionMeta.label} 권역 공문 PDF 보고`}
+                onPress={() => reportFeedPdf(regionFeedRewards)}
+              />
+            </View>
+          </View>
+          {feedCities.map((city) => {
+            const cityRows = regionFeedRewards.filter((row) => row.city === city);
+            const citySum = cityRows.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
+            return (
+              <View key={city} style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.cardTitle}>{city} · {cityRows.length}건</Text>
+                  <TouchableOpacity style={styles.excelBtn} onPress={() => reportFeedPdf(cityRows, city)}>
+                    <Text style={styles.excelText}>공문 PDF 보고</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.tdMuted}>정산 {citySum.toLocaleString('ko-KR')}원 · 수신 {city.includes('구') ? `${city}청장` : city.includes('군') ? `${city.replace(/군$/, '군수')}` : `${city.replace(/시$/, '시장')}`}</Text>
+                {cityRows.map((row) => (
+                  <View key={row.id} style={styles.matchRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.tdStrong}>{row.userName}</Text>
+                      <Text style={styles.tdMuted}>{row.festival} · {row.postedAt}</Text>
+                      <View style={{ marginTop: 6 }}>
+                        <StatusBadge
+                          label={row.status === 'PAID' ? '지급 완료' : '지급 대기'}
+                          tone={row.status === 'PAID' ? 'ok' : 'warn'}
+                        />
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      <Text style={styles.officer}>{Number(row.amountWon).toLocaleString('ko-KR')}원</Text>
+                      {row.status !== 'PAID' ? (
+                        <TouchableOpacity style={styles.assignBtn} onPress={() => approveFeedReward(row.id)}>
+                          <Text style={styles.assignText}>지급 승인</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
+          })}
         </>
       ) : null}
 
