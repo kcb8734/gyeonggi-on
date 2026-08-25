@@ -77,7 +77,6 @@ export function resolveFestivalQuery(input = {}) {
     MobileOS: 'ETC',
     MobileApp: 'kdanji',
     _type: 'json',
-    contentTypeId: CONTENT_FESTIVAL,
     numOfRows: String(input.numOfRows || 80),
     pageNo: '1',
     arrange: 'C',

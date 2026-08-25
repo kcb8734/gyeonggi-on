@@ -10,6 +10,7 @@ test('GYEONGGI uses KorService2 searchFestival2 with lDongRegnCd 41, not KorServ
   assert.equal(query.params.areaCode, undefined);
   assert.ok(!JSON.stringify(query).includes('KorService1'));
   assert.ok(!JSON.stringify(query).includes('searchFestival1'));
+  assert.equal(query.params.contentTypeId, undefined);
 });
 
 test('BUSAN uses lDongRegnCd 26 instead of legacy areaCode 6', () => {
@@ -25,5 +26,5 @@ test('nationwide all omits region filters', () => {
   assert.equal(query.nationwide, true);
   assert.equal(query.params.lDongRegnCd, undefined);
   assert.equal(query.params.areaCode, undefined);
-  assert.equal(query.params.contentTypeId, '15');
+  assert.equal(query.params.contentTypeId, undefined);
 });
