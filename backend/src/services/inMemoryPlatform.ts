@@ -42,7 +42,7 @@ export const memoryCoupons: CouponScanRecord[] = [
   {
     id: 'coupon-used-3',
     code: 'GYON-USED-0003',
-    title: '온앤온 현장 결제 할인',
+    title: '온앤온+ 현장 결제 할인',
     discountAmount: 4500,
     municipalityId: YONGIN_MUNI_ID,
     merchantId: DEV_MERCHANT_ID,
@@ -55,7 +55,7 @@ export const memoryCoupons: CouponScanRecord[] = [
   {
     id: 'coupon-scan-1',
     code: 'GYON-SCAN-0001',
-    title: '온앤온 현장 할인',
+    title: '온앤온+ 현장 할인',
     discountAmount: 1500,
     municipalityId: YONGIN_MUNI_ID,
     merchantId: DEV_MERCHANT_ID,
@@ -86,7 +86,7 @@ export function enrollMemoryCoupon(code: string, title?: string, discountAmount?
   const row: CouponScanRecord = {
     id: `auto-${code}`,
     code,
-    title: title || '온앤온 모바일 쿠폰',
+    title: title || '온앤온+ 모바일 쿠폰',
     discountAmount: discountAmount ?? 3000,
     municipalityId: YONGIN_MUNI_ID,
     merchantId: DEV_MERCHANT_ID,

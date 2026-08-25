@@ -85,7 +85,7 @@ export default function ProfileEditModal({
             <input
               value={nickname}
               onChange={(event) => setNickname(event.target.value)}
-              placeholder="예: 온앤온 수원"
+              placeholder="예: 온앤온+ 수원"
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -100,7 +100,7 @@ export default function ProfileEditModal({
             <TextInput
               value={nickname}
               onChangeText={setNickname}
-              placeholder="예: 온앤온 수원"
+              placeholder="예: 온앤온+ 수원"
               style={styles.input}
             />
           )}

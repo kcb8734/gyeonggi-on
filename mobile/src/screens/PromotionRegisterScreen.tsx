@@ -207,7 +207,7 @@ export default function PromotionRegisterScreen({ merchantId }: { merchantId?: s
 
   const makeLocalPromo = (promoId: string, scans = qrScans, count = qrCount): HomePromotion => {
     const festival = festivals.find((f) => f.id === selectedFestivalId);
-    const businessName = businessNameRef.current || session?.businessName || '온앤온 가맹점';
+    const businessName = businessNameRef.current || session?.businessName || '온앤온+ 가맹점';
     return {
       id: promoId,
       title: `${festival?.title ?? businessName} 제휴 할인`,

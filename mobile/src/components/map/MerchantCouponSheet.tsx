@@ -36,7 +36,7 @@ export default function MerchantCouponSheet({
 
               <View style={styles.tag}>
                 <Text style={styles.tagText}>
-                  [온앤온 특가] {merchant.total_discount_rate}% 상생 할인쿠폰
+                  [온앤온+ 특가] {merchant.total_discount_rate}% 상생 할인쿠폰
                 </Text>
               </View>
 

@@ -105,22 +105,22 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
   <div class="doc">
     <div class="head">
       <div>
-        <div class="brand">on&amp;on</div>
-        <div class="org">온앤온 지역축제 상생쿠폰</div>
+        <div class="brand">on&amp;on+</div>
+        <div class="org">온앤온+ 지역축제 상생쿠폰</div>
         <div>정산 공문 (시행)</div>
       </div>
-      <div class="seal">온앤온<br/>직인</div>
+      <div class="seal">온앤온+<br/>직인</div>
     </div>
     <h1>지역축제 연계 상생쿠폰 정산 요청</h1>
     <table class="meta">
       <tr><th>문서번호</th><td>${escapeHtml(documentNo)}</td></tr>
       <tr><th>시행일자</th><td>${escapeHtml(formatKoDate(issuedAt))}</td></tr>
-      <tr><th>발신</th><td>온앤온(on&amp;on) 쿠폰 정산 담당</td></tr>
+      <tr><th>발신</th><td>온앤온+(on&amp;on+) 쿠폰 정산 담당</td></tr>
       <tr><th>수신</th><td>${escapeHtml(promo.managerEmail ?? '지자체 축제 담당자')}</td></tr>
       <tr><th>제목</th><td>${escapeHtml(promo.festival_title ?? '연계 축제')} 종료에 따른 매칭 쿠폰 일괄 정산 요청</td></tr>
     </table>
     <p>
-      1. 관련: 온앤온 지자체 1:1 매칭 쿠폰 운영 기준<br/>
+      1. 관련: 온앤온+ 지자체 1:1 매칭 쿠폰 운영 기준<br/>
       2. 아래 상가의 행사 기간이 종료되어, 현장에서 확인한 쿠폰 QR 촬영 일시와 정산금액을 붙임과 같이 통보하고 일괄 정산을 요청합니다.
     </p>
     <table class="meta">
@@ -148,8 +148,8 @@ export function buildOfficialDocumentHtml(input: SettlementDocumentInput): strin
       </tbody>
     </table>
     <p>위와 같이 행사 종료 후 일괄 정산을 요청하오니 업무에 참고하여 주시기 바랍니다. 끝.</p>
-    <div class="end">${escapeHtml(formatKoDate(issuedAt))}<br/>온앤온 쿠폰 정산 담당</div>
-    <div class="foot">본 공문은 온앤온 앱에서 생성된 정산 문서입니다. 인쇄 대화상자에서 PDF로 저장할 수 있습니다.</div>
+    <div class="end">${escapeHtml(formatKoDate(issuedAt))}<br/>온앤온+ 쿠폰 정산 담당</div>
+    <div class="foot">본 공문은 온앤온+ 앱에서 생성된 정산 문서입니다. 인쇄 대화상자에서 PDF로 저장할 수 있습니다.</div>
   </div>
 </body>
 </html>`;
@@ -175,7 +175,7 @@ function escapePdf(text: string) {
 
 export function buildSettlementPdfBytes(input: SettlementDocumentInput): Uint8Array {
   const lines = [
-    'On&On Official Settlement Form',
+    'On&On+ Official Settlement Form',
     `Doc: ${input.documentNo}`,
     `Merchant: ${input.promo.business_name ?? input.promo.title}`,
     `Festival: ${input.promo.festival_title ?? '-'}`,
@@ -290,14 +290,14 @@ function drawKoreanFormPages(input: SettlementDocumentInput): Array<{ width: num
     };
     const box = (x: number, y: number, w: number, h: number) => ctx.strokeRect(x, y, w, h);
 
-    text('on&on 온앤온', 56, 70, 20);
+    text('on&on+ 온앤온+', 56, 70, 20);
     text('지역축제 상생쿠폰 정산 공문', 56, 112, 36);
     ctx.beginPath();
     ctx.arc(1080, 90, 52, 0, Math.PI * 2);
     ctx.strokeStyle = '#b91c1c';
     ctx.stroke();
     ctx.fillStyle = '#b91c1c';
-    text('온앤온 직인', 1080, 96, 16, 'center');
+    text('온앤온+ 직인', 1080, 96, 16, 'center');
     ctx.fillStyle = '#111111';
     ctx.strokeStyle = '#111111';
     text('지역축제 연계 상생쿠폰 정산 요청', W / 2, 190, 30, 'center', '900');
@@ -305,7 +305,7 @@ function drawKoreanFormPages(input: SettlementDocumentInput): Array<{ width: num
     const meta = [
       ['문서번호', input.documentNo],
       ['시행일자', formatKoDate(input.issuedAt)],
-      ['발신', '온앤온(on&on) 쿠폰 정산 담당'],
+      ['발신', '온앤온+(on&on+) 쿠폰 정산 담당'],
       ['수신', input.promo.managerEmail ?? '지자체 축제 담당자'],
       ['상가명', input.promo.business_name ?? input.promo.title],
       ['사업자등록번호', input.promo.businessNumber || '-'],
@@ -362,7 +362,7 @@ function drawKoreanFormPages(input: SettlementDocumentInput): Array<{ width: num
       y += 70;
       text('위와 같이 행사 종료 후 일괄 정산을 요청합니다. 끝.', 56, y, 18, 'left', '600');
       text(formatKoDate(input.issuedAt), 1134, y + 40, 18, 'right');
-      text('온앤온 쿠폰 정산 담당', 1134, y + 70, 18, 'right');
+      text('온앤온+ 쿠폰 정산 담당', 1134, y + 70, 18, 'right');
     }
     pages.push({
       width: W,
@@ -424,7 +424,7 @@ export async function openSettlementMailto(promo: HomePromotion): Promise<void> 
   const input = buildSettlementInput(promo);
   const to = resolveSettlementEmail(promo);
   if (!to) throw new Error('담당자 메일이 없습니다.');
-  const subject = encodeURIComponent(`[온앤온 정산공문] ${promo.business_name ?? promo.title} ${input.documentNo}`);
+  const subject = encodeURIComponent(`[온앤온+ 정산공문] ${promo.business_name ?? promo.title} ${input.documentNo}`);
   const body = encodeURIComponent(
     [
       '지자체 축제 담당자님께',
@@ -450,7 +450,7 @@ export async function openSettlementMailto(promo: HomePromotion): Promise<void> 
         : ['내역 없음']),
       '',
       '공문서 PDF가 함께 내려받아졌습니다. 메일에 첨부해 주시기 바랍니다.',
-      '온앤온(on&on)',
+      '온앤온+(on&on+)',
     ].join('\n'),
   );
   await Linking.openURL(`mailto:${to}?subject=${subject}&body=${body}`);

@@ -55,7 +55,7 @@ export function clearAuthSession() {
 }
 
 export function updateAuthProfile(input: { nickname?: string; avatarUrl?: string }) {
-  const nickname = (input.nickname ?? session?.user.nickname ?? '온앤온').trim() || '온앤온';
+  const nickname = (input.nickname ?? session?.user.nickname ?? '온앤온+').trim() || '온앤온+';
   const avatarUrl = input.avatarUrl ?? session?.user.avatarUrl;
   if (session) {
     emit({

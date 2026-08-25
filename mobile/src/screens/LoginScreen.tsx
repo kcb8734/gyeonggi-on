@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { loginWithGoogleToken, loginWithKakaoToken } from '../api/auth';
 import { GOOGLE_CLIENT_ID, KAKAO_CLIENT_ID } from '../config';
 import { makeRedirect, startOAuth } from '../utils/oauth';
+
+const LOGO = require('../../assets/onandon-logo.png');
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -15,7 +17,7 @@ export default function LoginScreen() {
       const user = provider === 'kakao'
         ? await loginWithKakaoToken(token)
         : await loginWithGoogleToken(token);
-      Alert.alert('로그인 완료', `${user.nickname}님, 온앤온에 오신 것을 환영합니다.`);
+      Alert.alert('로그인 완료', `${user.nickname}님, 온앤온+에 오신 것을 환영합니다.`);
       navigation.goBack();
     } catch (err: any) {
       Alert.alert('로그인 실패', err?.message ?? '다시 시도해주세요.');
@@ -62,8 +64,8 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.word}>on&on</Text>
-      <Text style={styles.name}>온앤온</Text>
+      <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="on&on+" />
+      <Text style={styles.name}>온앤온+</Text>
       <Text style={styles.lead}>카카오 또는 구글로 3초 만에 가입하고 축제를 기록하세요.</Text>
 
       <TouchableOpacity style={styles.kakao} onPress={kakao} disabled={!!busy}>
@@ -79,7 +81,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F7F8FA', padding: 24, justifyContent: 'center' },
-  word: { fontSize: 36, fontWeight: '900', color: '#111827' },
+  logo: { width: 220, height: 54, marginBottom: 4 },
   name: { fontSize: 16, fontWeight: '800', color: '#374151', marginTop: 4 },
   lead: { fontSize: 14, color: '#6B7280', marginTop: 12, marginBottom: 28, lineHeight: 21 },
   kakao: {

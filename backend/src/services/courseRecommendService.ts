@@ -67,7 +67,7 @@ export function buildFestivalCourse(input: {
         step: 3,
         category: '메인 축제',
         place_name: festival,
-        description: `${festival} 핵심 프로그램과 체험 부스를 즐기고, 현장 가맹점에서 On&On 쿠폰을 사용합니다.`,
+        description: `${festival} 핵심 프로그램과 체험 부스를 즐기고, 현장 가맹점에서 On&On+ 쿠폰을 사용합니다.`,
         estimated_time: '3시간',
         latitude: hasFestGps ? festLat : (history.lat + market.lat) / 2,
         longitude: hasFestGps ? festLng : (history.lng + market.lng) / 2,
@@ -83,8 +83,8 @@ export function buildFestivalCourse(input: {
       },
     ],
     local_benefit_tip: official
-      ? 'On&On 공식 매칭 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다. 사용 후 가맹점 정산 공문으로 자동 청구됩니다.'
-      : '이 권역은 소상공인 자율 할인 쿠폰입니다. 지자체 매칭 없이 점주 할인이 적용되며, 전통시장·축제 인근 점포에서 On&On 모바일 쿠폰으로 결제할 수 있습니다.',
+      ? 'On&On+ 공식 매칭 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다. 사용 후 가맹점 정산 공문으로 자동 청구됩니다.'
+      : '이 권역은 소상공인 자율 할인 쿠폰입니다. 지자체 매칭 없이 점주 할인이 적용되며, 전통시장·축제 인근 점포에서 On&On+ 모바일 쿠폰으로 결제할 수 있습니다.',
   };
 }
 

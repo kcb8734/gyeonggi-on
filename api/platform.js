@@ -14,8 +14,8 @@ function daysFromNow(days) {
 const coupons = [
   { id: 'coupon-used-1', code: 'GYON-USED-0001', title: '장단콩 축제 10% 할인', discountAmount: 3000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(6), expiresAt: daysFromNow(20), settlementId: null },
   { id: 'coupon-used-2', code: 'GYON-USED-0002', title: '전통시장 먹거리 쿠폰', discountAmount: 2000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(30), expiresAt: daysFromNow(20), settlementId: null },
-  { id: 'coupon-used-3', code: 'GYON-USED-0003', title: '온앤온 현장 결제 할인', discountAmount: 4500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(80), expiresAt: daysFromNow(20), settlementId: null },
-  { id: 'coupon-scan-1', code: 'GYON-SCAN-0001', title: '온앤온 현장 할인', discountAmount: 1500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: false, usedAt: null, expiresAt: daysFromNow(40), settlementId: null },
+  { id: 'coupon-used-3', code: 'GYON-USED-0003', title: '온앤온+ 현장 결제 할인', discountAmount: 4500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: true, usedAt: hoursAgo(80), expiresAt: daysFromNow(20), settlementId: null },
+  { id: 'coupon-scan-1', code: 'GYON-SCAN-0001', title: '온앤온+ 현장 할인', discountAmount: 1500, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: false, usedAt: null, expiresAt: daysFromNow(40), settlementId: null },
   { id: 'coupon-wallet-1', code: 'GGON-SW-1042', title: '수원화성문화제 제휴 한정식 할인', discountAmount: 3000, municipalityId: 'yongin', merchantId: DEV_MERCHANT_ID, isUsed: false, usedAt: null, expiresAt: daysFromNow(40), settlementId: null },
 ];
 
@@ -52,7 +52,7 @@ function enrollCoupon(code, title, discountAmount) {
   const row = {
     id: 'auto-' + code,
     code: code,
-    title: title || '온앤온 모바일 쿠폰',
+    title: title || '온앤온+ 모바일 쿠폰',
     discountAmount: discountAmount || 3000,
     municipalityId: 'yongin',
     merchantId: DEV_MERCHANT_ID,
@@ -203,7 +203,7 @@ async function sendOfficial(merchantId, toEmail) {
   if (!data.items.length) return { status: 400, body: { success: false, message: '정산할 스캔 쿠폰이 없습니다.' } };
   const to = toEmail || data.municipality.settlementEmail;
   const subject = '[공문] 경기온 모바일 쿠폰 정산 청구의 건 - ' + data.merchant.name + ' (' + data.docNumber + ')';
-  const pdf = simplePdf('On&On settlement ' + data.docNumber + ' count=' + data.pending.count + ' amount=' + data.pending.amount);
+  const pdf = simplePdf('On&On+ settlement ' + data.docNumber + ' count=' + data.pending.count + ' amount=' + data.pending.amount);
   const sent = await sendResend(to, subject, '<p>첨부된 공문서로 정산을 청구합니다.</p>' + data.html, [
     { filename: data.docNumber + '.html', content: Buffer.from(data.html, 'utf8').toString('base64') },
     { filename: data.docNumber + '.pdf', content: pdf.toString('base64') },

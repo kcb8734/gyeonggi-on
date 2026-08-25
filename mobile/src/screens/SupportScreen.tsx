@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const NOTICES = [
-  { id: '1', title: '2026년 8월 온앤온(on&on) 축제 쿠폰 오픈', body: '수원·용인·가평 축제와 제휴 상가 할인이 앱에서 바로 발급됩니다.' },
+  { id: '1', title: '2026년 8월 온앤온+(on&on+) 축제 쿠폰 오픈', body: '수원·용인·가평 축제와 제휴 상가 할인이 앱에서 바로 발급됩니다.' },
   { id: '2', title: '한국관광공사 TourAPI 연동', body: '경기도 축제 일정과 주변 관광 정보가 실시간으로 갱신됩니다.' },
   { id: '3', title: '국세청 인증 가맹만 매칭', body: '계속사업자만 지자체 1:1 매칭 할인을 등록할 수 있습니다.' },
 ];
@@ -16,7 +16,7 @@ export default function SupportScreen({ topic }: { topic?: 'notice' | 'help' | '
       {isPrivacy ? (
         <View>
           <Text style={styles.body}>
-            온앤온(on&on)은 축제 현장 인증, 쿠폰 발급, 가맹점 국세청 확인에 필요한 최소한의 개인정보만 처리합니다.
+            온앤온+(on&on+)은 축제 현장 인증, 쿠폰 발급, 가맹점 국세청 확인에 필요한 최소한의 개인정보만 처리합니다.
           </Text>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>수집 항목</Text>

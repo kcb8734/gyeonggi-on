@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "온앤온 · 한글입력수정",
+    "name": "온앤온+",
     "slug": "gyeonggi-on",
     "scheme": "onandon",
     "version": "1.0.0",
@@ -43,8 +43,8 @@
     ],
     "web": {
       "bundler": "metro",
-      "name": "온앤온 · 한글입력수정",
-      "shortName": "on&on"
+      "name": "온앤온+",
+      "shortName": "on&on+"
     }
   }
 }

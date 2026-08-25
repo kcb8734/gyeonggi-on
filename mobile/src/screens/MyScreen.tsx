@@ -38,7 +38,7 @@ export default function MyScreen() {
             <Text style={styles.hello}>
               {user
                 ? (user.provider === 'kakao' ? '카카오 로그인' : user.provider === 'google' ? '구글 로그인' : '로컬 프로필')
-                : '온앤온(on&on)'}
+                : '온앤온+(on&on+)'}
             </Text>
             <Text style={styles.grade}>{user ? user.nickname : '로그인하고 축제를 기록하세요'}</Text>
           </View>
@@ -63,7 +63,7 @@ export default function MyScreen() {
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{app.points.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>온앤온 포인트</Text>
+              <Text style={styles.statLabel}>온앤온+ 포인트</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{app.localCoupons.length}</Text>
@@ -215,7 +215,7 @@ export default function MyScreen() {
       <View style={styles.listGroup}>
         <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Support', { topic: 'notice' })}>
           <Text style={styles.menuTitle}>공지사항</Text>
-          <Text style={styles.menuMeta}>8월 축제 쿠폰 오픈 · 온앤온(on&on)</Text>
+          <Text style={styles.menuMeta}>8월 축제 쿠폰 오픈 · 온앤온+(on&on+)</Text>
         </TouchableOpacity>
         <View style={styles.menuDivider} />
         <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Support', { topic: 'help' })}>

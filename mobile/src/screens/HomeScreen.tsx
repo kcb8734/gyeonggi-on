@@ -230,7 +230,7 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <ScrollView style={styles.topPane} contentContainerStyle={{ paddingBottom: 16 }}>
         <View style={styles.brandBar}>
-          <Text style={styles.brandLead}>지자체 축제와 소상공인 상생을 잇는 온앤온</Text>
+          <Text style={styles.brandLead}>지자체 축제와 소상공인 상생을 잇는 온앤온+</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
           {METRO_REGIONS.map((region) => {

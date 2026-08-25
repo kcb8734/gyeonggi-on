@@ -374,7 +374,7 @@ export default function AdminScreen() {
   if (!authed) {
     return (
       <ScrollView style={styles.root} contentContainerStyle={styles.body}>
-        <Text style={styles.kicker}>온앤온 관리자</Text>
+        <Text style={styles.kicker}>온앤온+ 관리자</Text>
         <Text style={styles.title}>관리자 페이지 접속</Text>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>접속 방법</Text>
@@ -442,7 +442,7 @@ export default function AdminScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.body}>
-      <Text style={styles.kicker}>온앤온 관리자</Text>
+      <Text style={styles.kicker}>온앤온+ 관리자</Text>
       <Text style={styles.title}>통합 관리자 백오피스</Text>
       <View style={styles.menuRow}>
         {([

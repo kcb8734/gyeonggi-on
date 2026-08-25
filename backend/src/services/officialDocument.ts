@@ -89,11 +89,11 @@ export function buildOfficialDocumentHtml(input: OfficialDocumentInput): string 
   <div class="doc">
     <div class="head">
       <div>
-        <div>on&amp;on 온앤온</div>
+        <div>on&amp;on+ 온앤온+</div>
         <div class="org">경기온 모바일 쿠폰 정산 공문</div>
         <div>시행 · 지자체 제출용</div>
       </div>
-      <div class="seal">온앤온<br/>직인</div>
+      <div class="seal">온앤온+<br/>직인</div>
     </div>
     <h1>경기온 모바일 쿠폰 정산 청구의 건</h1>
     <table>
@@ -101,9 +101,9 @@ export function buildOfficialDocumentHtml(input: OfficialDocumentInput): string 
       <tr><th>시행일자</th><td>${escapeHtml(formatKoDateTime(input.issuedAt))}</td></tr>
       <tr><th>수신</th><td>${escapeHtml(input.receiver || (input.municipalityName + '장'))}</td></tr>
       <tr><th>참조</th><td>${escapeHtml(input.referDept || '관광과 · 소상공인 담당부서')}</td></tr>
-      <tr><th>발신</th><td>온앤온(on&amp;on) 쿠폰 정산 담당</td></tr>
+      <tr><th>발신</th><td>온앤온+(on&amp;on+) 쿠폰 정산 담당</td></tr>
     </table>
-    <p>1. 관련: 온앤온 지자체 1:1 매칭 쿠폰 운영 기준<br/>
+    <p>1. 관련: 온앤온+ 지자체 1:1 매칭 쿠폰 운영 기준<br/>
     2. 아래 가맹점에서 사용한 모바일 쿠폰 QR 스캔 내역을 붙임과 같이 통보하고 정산금을 청구합니다.</p>
     <table>
       <tr><th>가맹점</th><td>${escapeHtml(input.merchantName)}</td></tr>
@@ -126,7 +126,7 @@ export function buildOfficialDocumentHtml(input: OfficialDocumentInput): string 
       </tbody>
     </table>
     <p>위와 같이 정산을 청구하오니 업무에 참고하여 주시기 바랍니다. 끝.</p>
-    <div class="end">${escapeHtml(formatKoDateTime(input.issuedAt))}<br/>온앤온 쿠폰 정산 담당</div>
+    <div class="end">${escapeHtml(formatKoDateTime(input.issuedAt))}<br/>온앤온+ 쿠폰 정산 담당</div>
     <div class="sign">
       <div class="seal" style="width:90px;height:90px">직인란</div>
     </div>
@@ -137,7 +137,7 @@ export function buildOfficialDocumentHtml(input: OfficialDocumentInput): string 
 
 export function buildOfficialPdfText(input: OfficialDocumentInput): string {
   const lines = [
-    'On&On / Gyeonggi-On Official Settlement Request',
+    'On&On+ / Gyeonggi-On Official Settlement Request',
     `Doc: ${input.docNumber}`,
     `To: ${input.receiver || input.municipalityName}`,
     `Merchant: ${input.merchantName}`,

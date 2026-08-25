@@ -55,10 +55,10 @@ export async function sendManagerEmailCode(email: string) {
   const code = generateEmailCode();
   saveEmailCode(trimmed, code);
   const issued = issueEmailChallenge(trimmed, code);
-  const subject = '[온앤온] 지자체 담당자 인증번호';
+  const subject = '[온앤온+] 지자체 담당자 인증번호';
   const html = `
     <div style="font-family:sans-serif;line-height:1.6">
-      <h2>온앤온 지자체 담당자 인증</h2>
+      <h2>온앤온+ 지자체 담당자 인증</h2>
       <p>인증번호는 <strong style="font-size:22px;letter-spacing:4px">${code}</strong> 입니다.</p>
       <p>3분 안에 앱의 인증번호 확인에 입력해 주세요.</p>
     </div>
@@ -74,7 +74,7 @@ export async function sendManagerEmailCode(email: string) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.RESEND_FROM || '온앤온 <beth.t@example.com>',
+          from: process.env.RESEND_FROM || '온앤온+ <beth.t@example.com>',
           to: [trimmed],
           subject,
           html,

@@ -27,7 +27,7 @@ function promoFromOfficial(official: OfficialPreview | null, extra?: HomePromoti
   return {
     id: extra?.id ?? SETTLE_PROMO_ID,
     title: extra?.title ?? '스캔 쿠폰 일괄 정산',
-    business_name: extra?.business_name ?? official?.merchant.name ?? '온앤온 가맹점',
+    business_name: extra?.business_name ?? official?.merchant.name ?? '온앤온+ 가맹점',
     merchant_discount_rate: extra?.merchant_discount_rate ?? 10,
     gov_matching_rate: extra?.gov_matching_rate ?? 10,
     total_discount_rate: extra?.total_discount_rate ?? 20,
@@ -104,7 +104,7 @@ export default function MerchantSettlementScreen() {
     addLocalPromotion({
       id: SETTLE_PROMO_ID,
       title: existing?.title ?? '스캔 쿠폰 일괄 정산',
-      business_name: existing?.business_name ?? official.merchant.name ?? '온앤온 가맹점',
+      business_name: existing?.business_name ?? official.merchant.name ?? '온앤온+ 가맹점',
       merchant_discount_rate: existing?.merchant_discount_rate ?? 10,
       gov_matching_rate: existing?.gov_matching_rate ?? 10,
       total_discount_rate: existing?.total_discount_rate ?? 20,
@@ -192,7 +192,7 @@ export default function MerchantSettlementScreen() {
           addLocalPromotion({
             id: SETTLE_PROMO_ID,
             title: '스캔 쿠폰 일괄 정산',
-            business_name: official?.merchant.name ?? '온앤온 가맹점',
+            business_name: official?.merchant.name ?? '온앤온+ 가맹점',
             merchant_discount_rate: 10,
             gov_matching_rate: 10,
             total_discount_rate: 20,

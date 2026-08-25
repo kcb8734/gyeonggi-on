@@ -229,7 +229,7 @@ function resendConfigured() {
 }
 
 function resendFrom() {
-  return String(process.env.RESEND_FROM || '').trim() || '온앤온 <beth.t@example.com>';
+  return String(process.env.RESEND_FROM || '').trim() || '온앤온+ <beth.t@example.com>';
 }
 
 function todayYmd() {
@@ -372,8 +372,8 @@ async function sendEmailCode(req, res) {
         body: JSON.stringify({
           from: resendFrom(),
           to: [email],
-          subject: '[온앤온] 지자체 담당자 인증번호',
-          html: '<p>온앤온 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
+          subject: '[온앤온+] 지자체 담당자 인증번호',
+          html: '<p>온앤온+ 지자체 담당자 인증번호는 <strong>' + code + '</strong> 입니다. 3분 안에 입력해 주세요.</p>',
         }),
       });
       if (!response.ok) {

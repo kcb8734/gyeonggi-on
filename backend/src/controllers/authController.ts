@@ -86,7 +86,7 @@ async function profileFromKakao(accessToken: string): Promise<SocialProfile> {
     return {
       provider: 'kakao',
       providerUserId: 'demo-kakao',
-      nickname: '카카오 온앤온',
+      nickname: '카카오 온앤온+',
       avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&q=80',
     };
   }
@@ -112,7 +112,7 @@ async function profileFromGoogle(accessToken: string): Promise<SocialProfile> {
     return {
       provider: 'google',
       providerUserId: 'demo-google',
-      nickname: '구글 온앤온',
+      nickname: '구글 온앤온+',
       avatarUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&q=80',
       email: 'demo@onandon.app',
     };

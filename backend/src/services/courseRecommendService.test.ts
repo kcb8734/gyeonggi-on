@@ -10,7 +10,7 @@ test('jangdan bean festival uses specified course title', () => {
   assert.notEqual(course.itinerary[0].place_name, '파주 대표 역사 명소');
   assert.equal(course.itinerary[2].category, '메인 축제');
   assert.ok(course.itinerary[0].latitude);
-  assert.match(course.local_benefit_tip, /On&On/);
+  assert.match(course.local_benefit_tip, /On&On+/);
 });
 
 test('generic festival detail title still resolves boryeong landmarks', () => {
