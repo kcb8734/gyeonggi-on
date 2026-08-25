@@ -113,7 +113,7 @@ function toDocumentInput(
     bankAccount: merchant.accountNumber,
     bankHolder: merchant.accountHolder,
     municipalityName: municipality.name,
-    festivalTitle: '온앤온 모바일 쿠폰',
+    festivalTitle: '온앤온+ 모바일 쿠폰',
     receiver: municipality.mayorName,
     referDept: municipality.department,
     scans: items.map((item) => ({

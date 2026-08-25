@@ -119,7 +119,7 @@ export default function App() {
     return (
       <div className="login-page">
         <form className="login-card" onSubmit={handleLogin}>
-          <p className="eyebrow">온앤온(on&on) Admin</p>
+          <p className="eyebrow">온앤온+(on&on+) Admin</p>
           <h1>관리자 로그인</h1>
           <p className="muted">운영 주소 https://www.kdanji.com/admin · 기본 계정 admin@gyeonggi-on.kr / admin1234</p>
           <label>이메일</label>
@@ -137,7 +137,7 @@ export default function App() {
     <div className="dash">
       <header>
         <div>
-          <p className="eyebrow">온앤온(on&on)</p>
+          <p className="eyebrow">온앤온+(on&on+)</p>
           <h1>관리자 대시보드</h1>
         </div>
         <button

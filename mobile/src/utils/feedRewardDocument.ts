@@ -107,11 +107,11 @@ export function buildFeedRewardHtml(input: FeedRewardDocumentInput): string {
   <div class="doc">
     <div class="head">
       <div>
-        <div>on&amp;on 온앤온</div>
+        <div>on&amp;on+ 온앤온+</div>
         <div class="org">${escapeHtml(input.regionLabel)} 피드 지역화폐 정산 공문</div>
         <div>시행 · 지자체 제출용</div>
       </div>
-      <div class="seal">온앤온<br/>직인</div>
+      <div class="seal">온앤온+<br/>직인</div>
     </div>
     <h1>축제 현장 참여 피드 지역화폐 지급 정산의 건</h1>
     <table>
@@ -119,13 +119,13 @@ export function buildFeedRewardHtml(input: FeedRewardDocumentInput): string {
       <tr><th>시행일자</th><td>${escapeHtml(formatKoDate(input.issuedAt))}</td></tr>
       <tr><th>수신</th><td>${escapeHtml(input.receiver)}</td></tr>
       <tr><th>참조</th><td>관광과 · 지역화폐 담당부서</td></tr>
-      <tr><th>발신</th><td>온앤온(on&amp;on) 피드 정산 담당</td></tr>
+      <tr><th>발신</th><td>온앤온+(on&amp;on+) 피드 정산 담당</td></tr>
       <tr><th>권역</th><td>${escapeHtml(input.regionLabel)} (${escapeHtml(input.regionalZone)})</td></tr>
       <tr><th>대상 지자체</th><td>${escapeHtml(input.city)}</td></tr>
       <tr><th>지급 건수</th><td>${input.rows.length.toLocaleString('ko-KR')}건 (지급 ${paid} / 대기 ${input.rows.length - paid})</td></tr>
       <tr><th>정산 금액</th><td class="sum">${total.toLocaleString('ko-KR')}원</td></tr>
     </table>
-    <p>1. 관련: 온앤온 축제 현장 참여 피드 지역화폐 지급 운영 기준<br/>
+    <p>1. 관련: 온앤온+ 축제 현장 참여 피드 지역화폐 지급 운영 기준<br/>
     2. 해당 지자체 축제에 참여 피드를 게시한 이용자에게 지역화폐를 지급한 내역을 붙임과 같이 통보하고 정산을 보고합니다.</p>
     <p><strong>붙임. 피드 지역화폐 지급 내역</strong></p>
     <table class="data">
@@ -135,7 +135,7 @@ export function buildFeedRewardHtml(input: FeedRewardDocumentInput): string {
       </tbody>
     </table>
     <p>위와 같이 내역과 정산을 보고하오니 업무에 참고하여 주시기 바랍니다. 끝.</p>
-    <div class="end">${escapeHtml(formatKoDate(input.issuedAt))}<br/>온앤온 피드 정산 담당</div>
+    <div class="end">${escapeHtml(formatKoDate(input.issuedAt))}<br/>온앤온+ 피드 정산 담당</div>
   </div>
 </body>
 </html>`;
@@ -162,7 +162,7 @@ function escapePdf(text: string) {
 function buildSimplePdf(input: FeedRewardDocumentInput): Uint8Array {
   const total = input.rows.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
   const lines = [
-    'On&On Festival Feed Local-Currency Settlement',
+    'On&On+ Festival Feed Local-Currency Settlement',
     `Doc: ${input.documentNo}`,
     `To: ${input.receiver}`,
     `Zone: ${input.regionLabel} ${input.regionalZone}`,

@@ -196,7 +196,7 @@ export default function FestivalDetailScreen({
 
         {course ? (
           <View style={styles.card}>
-            <Text style={styles.label}>On&On 추천 코스</Text>
+            <Text style={styles.label}>On&On+ 추천 코스</Text>
             <Text style={styles.value}>{course.course_title}</Text>
             <Text style={styles.overview}>대상 {course.target_audience} · {course.total_distance}</Text>
             {course.itinerary.map((step) => (
@@ -205,7 +205,7 @@ export default function FestivalDetailScreen({
               </Text>
             ))}
             <TouchableOpacity style={styles.courseBtn} onPress={() => setGuideFocus('all')}>
-              <Text style={styles.courseBtnText}>ON&ON 추천코스 살펴보기</Text>
+              <Text style={styles.courseBtnText}>ON&ON+ 추천코스 살펴보기</Text>
             </TouchableOpacity>
             <View style={styles.courseRow}>
               <TouchableOpacity style={styles.courseGhost} onPress={() => setGuideFocus('전통시장 먹거리')}>

@@ -70,7 +70,7 @@ export default function CourseGuideModal({
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <ModalExitButton onPress={onClose} />
-          <Text style={styles.kicker}>ON&ON 추천코스 살펴보기</Text>
+          <Text style={styles.kicker}>ON&ON+ 추천코스 살펴보기</Text>
           <Text style={styles.title}>{FOCUS_LABEL[focus]}</Text>
           <Text style={styles.lead}>{course?.course_title}</Text>
           <View style={styles.mapCard}>

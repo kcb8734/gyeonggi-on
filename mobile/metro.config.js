@@ -62,7 +62,7 @@ config.server.enhanceMiddleware = (metroMiddleware, server) => {
       const stamp = String(Date.now());
       if (html.includes('id="root"') && !html.includes('onandon-live-banner') && !html.includes('onandon-html-banner')) {
         html = html
-          .replace(/<title>[^<]*<\/title>/, '<title>온앤온 · 한글입력수정</title>')
+          .replace(/<title>[^<]*<\/title>/, '<title>온앤온+</title>')
           .replace(
             /<div id="root"[^>]*><\/div>/,
             `<div id="onandon-live-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#B91C1C;color:#fff;font:700 13px/1.45 sans-serif;text-align:center;padding:10px 12px;">${LIVE_BANNER}</div><div id="root" style="padding-top:44px"></div>`,

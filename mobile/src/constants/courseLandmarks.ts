@@ -9,7 +9,7 @@ export interface Landmark {
 
 const DEFAULTS: Record<LandmarkKind, Landmark> = {
   history: { name: '수원화성행궁', lat: 37.2819, lng: 127.0139, hint: '조선 후기 성곽과 행궁을 둘러보며 축제 배경을 이해합니다.' },
-  market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 On&On 쿠폰으로 먹거리를 결제합니다.' },
+  market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 On&On+ 쿠폰으로 먹거리를 결제합니다.' },
   camp: { name: '광교호수공원 캠핑장', lat: 37.2830, lng: 127.0650, hint: '호수 옆 캠핑장에서 하루를 머물며 다음 일정을 잇습니다.' },
 };
 
@@ -21,7 +21,7 @@ const BY_CITY: Record<string, Partial<Record<LandmarkKind, Landmark>>> = {
   },
   용인: {
     history: { name: '한국민속촌', lat: 37.2590, lng: 127.1190, hint: '전통 가옥과 체험 마당에서 축제 이야기를 먼저 만납니다.' },
-    market: { name: '용인중앙시장', lat: 37.2344, lng: 127.2014, hint: '중앙시장 먹거리 골목에서 On&On 쿠폰을 사용합니다.' },
+    market: { name: '용인중앙시장', lat: 37.2344, lng: 127.2014, hint: '중앙시장 먹거리 골목에서 On&On+ 쿠폰을 사용합니다.' },
     camp: { name: '용인자연휴양림 캠핑장', lat: 37.1560, lng: 127.1960, hint: '숲속 캠핑장에서 축제 피로를 풀고 다음날 일정을 잇습니다.' },
   },
   파주: {

@@ -79,7 +79,7 @@ function fest(
     image_url: festivalImageFor(title, city, metro),
     is_trending: true,
     source: 'gov',
-    description: description ?? `${title} 현장 프로그램과 인근 전통시장·캠핑을 On&On 추천코스로 이을 수 있습니다.`,
+    description: description ?? `${title} 현장 프로그램과 인근 전통시장·캠핑을 On&On+ 추천코스로 이을 수 있습니다.`,
     regionalZone: metro,
     metro,
   };

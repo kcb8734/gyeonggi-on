@@ -14,7 +14,7 @@ export function openSettlementMail(input: {
 }) {
   const to = input.to.trim();
   if (!to) return Promise.reject(new Error('메일 주소가 없습니다.'));
-  const subject = encodeURIComponent(`[온앤온] ${input.businessName} 지자체 매칭 정산 요청`);
+  const subject = encodeURIComponent(`[온앤온+] ${input.businessName} 지자체 매칭 정산 요청`);
   const body = encodeURIComponent(
     [
       '지자체 담당자님께',
@@ -30,7 +30,7 @@ export function openSettlementMail(input: {
       `예금주: ${input.bankHolder}`,
       '',
       '카운터에서 QR 촬영으로 확인한 건수를 기준으로 매칭 금액을 입금해 주세요.',
-      '온앤온(on&on)',
+      '온앤온+(on&on+)',
     ].join('\n'),
   );
   return Linking.openURL(`mailto:${to}?subject=${subject}&body=${body}`);

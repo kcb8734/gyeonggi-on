@@ -1,7 +1,7 @@
 /** Vercel /api 코스 추천. 권역·도시별 실제 명소 좌표를 쓴다. */
 const DEFAULTS = {
   history: { name: '수원화성행궁', lat: 37.2819, lng: 127.0139, hint: '조선 후기 성곽과 행궁을 둘러보며 축제 배경을 이해합니다.' },
-  market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 On&On 쿠폰으로 먹거리를 결제합니다.' },
+  market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 On&On+ 쿠폰으로 먹거리를 결제합니다.' },
   camp: { name: '광교호수공원 캠핑장', lat: 37.2830, lng: 127.0650, hint: '호수 옆 캠핑장에서 하루를 머물며 다음 일정을 잇습니다.' },
 };
 
@@ -13,7 +13,7 @@ const BY_CITY = {
   },
   용인: {
     history: { name: '한국민속촌', lat: 37.2590, lng: 127.1190, hint: '전통 가옥과 체험 마당에서 축제 이야기를 먼저 만납니다.' },
-    market: { name: '용인중앙시장', lat: 37.2344, lng: 127.2014, hint: '중앙시장 먹거리 골목에서 On&On 쿠폰을 사용합니다.' },
+    market: { name: '용인중앙시장', lat: 37.2344, lng: 127.2014, hint: '중앙시장 먹거리 골목에서 On&On+ 쿠폰을 사용합니다.' },
     camp: { name: '용인자연휴양림 캠핑장', lat: 37.1560, lng: 127.1960, hint: '숲속 캠핑장에서 축제 피로를 풀고 다음날 일정을 잇습니다.' },
   },
   파주: {
@@ -267,11 +267,11 @@ export function recommendCourse(title, city, extra) {
     itinerary: [
       { step: 1, category: '역사체험', place_name: history.name, description: history.hint, estimated_time: '1시간 30분', latitude: history.lat, longitude: history.lng },
       { step: 2, category: '전통시장 먹거리', place_name: market.name, description: market.hint, estimated_time: '1시간', latitude: market.lat, longitude: market.lng },
-      { step: 3, category: '메인 축제', place_name: festival, description: festival + ' 핵심 프로그램과 체험 부스를 즐기고, 현장 가맹점에서 On&On 쿠폰을 사용합니다.', estimated_time: '3시간', latitude: hasFestGps ? festLat : (history.lat + market.lat) / 2, longitude: hasFestGps ? festLng : (history.lng + market.lng) / 2 },
+      { step: 3, category: '메인 축제', place_name: festival, description: festival + ' 핵심 프로그램과 체험 부스를 즐기고, 현장 가맹점에서 On&On+ 쿠폰을 사용합니다.', estimated_time: '3시간', latitude: hasFestGps ? festLat : (history.lat + market.lat) / 2, longitude: hasFestGps ? festLng : (history.lng + market.lng) / 2 },
       { step: 4, category: '캠핑장/숙박', place_name: camp.name, description: camp.hint, estimated_time: '숙박', latitude: camp.lat, longitude: camp.lng },
     ],
     local_benefit_tip: official
-      ? 'On&On 공식 매칭 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다. 사용 후 가맹점 정산 공문으로 자동 청구됩니다.'
-      : '이 권역은 소상공인 자율 할인 쿠폰입니다. 지자체 매칭 없이 점주 할인이 적용되며, 전통시장·축제 인근 점포에서 On&On 모바일 쿠폰으로 결제할 수 있습니다.',
+      ? 'On&On+ 공식 매칭 쿠폰으로 전통시장·축제 인근 점포 결제 시 점주 할인에 지자체 매칭 포인트가 더해집니다. 사용 후 가맹점 정산 공문으로 자동 청구됩니다.'
+      : '이 권역은 소상공인 자율 할인 쿠폰입니다. 지자체 매칭 없이 점주 할인이 적용되며, 전통시장·축제 인근 점포에서 On&On+ 모바일 쿠폰으로 결제할 수 있습니다.',
   };
 }

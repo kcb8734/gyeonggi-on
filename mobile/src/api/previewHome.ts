@@ -75,7 +75,7 @@ export const PREVIEW_HOME: HomeFeed = {
       image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80',
       tel: '031-241-1101',
       fee: '메뉴별 상이 · 쿠폰 적용가',
-      description: '영동시장 골목 상인과 함께하는 먹거리 축제. 온앤온 상생 쿠폰으로 꼬치·분식을 할인받을 수 있습니다.',
+      description: '영동시장 골목 상인과 함께하는 먹거리 축제. 온앤온+ 상생 쿠폰으로 꼬치·분식을 할인받을 수 있습니다.',
     },
     {
       id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',

@@ -180,7 +180,7 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
         contentId,
         contentTypeId: contentTypeId ?? '15',
         title: known.title,
-        overview: known.description ?? `${known.title} 현장 프로그램과 인근 전통시장·캠핑 일정을 On&On 추천코스로 이을 수 있습니다.`,
+        overview: known.description ?? `${known.title} 현장 프로그램과 인근 전통시장·캠핑 일정을 On&On+ 추천코스로 이을 수 있습니다.`,
         address: known.location_name ?? '',
         tel: known.tel,
         firstImage: image ?? undefined,

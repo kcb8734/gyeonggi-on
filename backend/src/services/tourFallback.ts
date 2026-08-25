@@ -92,7 +92,7 @@ export const FALLBACK_FESTIVALS: FallbackFestival[] = [
     mapY: 37.2762,
     tel: '031-241-1101',
     category: '먹거리',
-    overview: '영동시장 골목 상인과 함께하는 먹거리 축제. 온앤온 상생 쿠폰으로 꼬치·분식을 할인받을 수 있습니다.',
+    overview: '영동시장 골목 상인과 함께하는 먹거리 축제. 온앤온+ 상생 쿠폰으로 꼬치·분식을 할인받을 수 있습니다.',
     fee: '메뉴별 상이 · 쿠폰 적용가',
     eventPlace: '수원 영동시장',
   },

@@ -6,9 +6,9 @@ import { useAppState } from '../../stores/appStore';
 import { useAuthUser } from '../../stores/authStore';
 
 const LOGO = require('../../../assets/onandon-logo.png');
-/** 크롭된 로고 1365×357. 포인트 버튼 높이(36)에 세로를 맞추고 가로는 배율 유지. */
+/** 크롭된 로고 on&on+ 1482×365. 포인트 버튼 높이(36)에 세로를 맞추고 가로는 배율 유지. */
 const LOGO_HEIGHT = 36;
-const LOGO_WIDTH = Math.round(LOGO_HEIGHT * (1365 / 357));
+const LOGO_WIDTH = Math.round(LOGO_HEIGHT * (1482 / 365));
 
 function CoinGlyph() {
   return (
@@ -37,7 +37,7 @@ export default function HomeHeaderBar() {
   return (
     <View style={styles.wrap}>
       <View style={styles.left}>
-        <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="on&on" />
+        <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="on&on+" />
       </View>
       <TouchableOpacity
         style={styles.pointsBox}

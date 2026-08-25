@@ -60,7 +60,7 @@ export async function verifyCouponCode(code: string): Promise<{ success: boolean
       data: {
         id: `local-${token}`,
         code: token,
-        title: '온앤온 모바일 쿠폰',
+        title: '온앤온+ 모바일 쿠폰',
         discountAmount: 3000,
         isUsed: false,
         usedAt: null,
@@ -98,7 +98,7 @@ export async function useCouponCode(code: string, merchantId?: string): Promise<
       data: {
         id: `local-${token}`,
         code: token,
-        title: '온앤온 모바일 쿠폰',
+        title: '온앤온+ 모바일 쿠폰',
         discountAmount: 3000,
         isUsed: true,
         usedAt: new Date().toISOString(),

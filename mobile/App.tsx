@@ -102,7 +102,7 @@ function Tabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'on&on',
+          title: 'on&on+',
           ...homeHeaderOptions,
           tabBarIcon: ({ focused }) => <TabGlyph name="home" label="홈" focused={focused} />,
         }}

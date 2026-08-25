@@ -110,7 +110,7 @@ function regionSeeded(metro: string): FeedPost[] {
   const captions = REGION_CAPTIONS[zone] ?? REGION_CAPTIONS[metro] ?? [];
   return festivals.map((item, index) => ({
     id: `feed-${metro}-${item.id}`,
-    author: `${item.municipality_name ?? '온앤온'}탐험가`,
+    author: `${item.municipality_name ?? '온앤온+'}탐험가`,
     caption: captions[index] ?? `${item.title} 현장에서 쿠폰 찍고 왔어요`,
     festival: item.title,
     festivalId: item.id,
@@ -193,7 +193,7 @@ export function useMyFeedPosts(): FeedPost[] {
 export function addFeedPost(input: Omit<FeedPost, 'id' | 'likes' | 'createdAt' | 'author'> & { author?: string }) {
   const post: FeedPost = {
     id: `feed-${Date.now()}`,
-    author: input.author ?? '온앤온 탐험가',
+    author: input.author ?? '온앤온+ 탐험가',
     caption: input.caption,
     festival: input.festival,
     festivalId: input.festivalId,

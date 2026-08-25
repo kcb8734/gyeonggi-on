@@ -31,7 +31,7 @@ test('verify demo unused coupon then use it', async () => {
     demo.settlementId = null;
   }
   const verified = await verifyCouponCode('GYON-SCAN-0001');
-  assert.equal(verified.title, '온앤온 현장 할인');
+  assert.equal(verified.title, '온앤온+ 현장 할인');
   assert.equal(verified.isUsed, false);
   const used = await useCouponCode('GYON-SCAN-0001');
   assert.equal(used.isUsed, true);
