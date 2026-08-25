@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import { REGION_LABEL } from '../constants/regions';
+import { dataUrlToBytes, jpegPagesToPdf } from './pdfJpeg';
 
 export type FeedRewardStatus = 'PENDING' | 'PAID';
 
@@ -89,7 +89,7 @@ export function buildFeedRewardHtml(input: FeedRewardDocumentInput): string {
   <title>${escapeHtml(input.documentNo)} 피드 지역화폐 정산 공문</title>
   <style>
     @page { size: A4; margin: 16mm; }
-    body { font-family: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#111; margin:0; }
+    body { font-family: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR","WenQuanYi Micro Hei",sans-serif; color:#111; margin:0; }
     .doc { max-width: 720px; margin: 0 auto; }
     .head { display:flex; justify-content:space-between; border-bottom:3px solid #111; padding-bottom:10px; }
     .org { font-size:22px; font-weight:900; }
@@ -155,45 +155,166 @@ function downloadBlob(filename: string, data: BlobPart, mime: string) {
   return true;
 }
 
-function escapePdf(text: string) {
-  return String(text || '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+function drawKoreanFeedPages(input: FeedRewardDocumentInput): Array<{ width: number; height: number; jpeg: Uint8Array }> {
+  if (typeof document === 'undefined') return [];
+  const W = 1190;
+  const H = 1684;
+  const rowsPerPage = 16;
+  const pageCount = Math.max(1, Math.ceil((input.rows.length || 1) / rowsPerPage));
+  const total = input.rows.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
+  const paid = input.rows.filter((row) => row.status === 'PAID').length;
+  const pages: Array<{ width: number; height: number; jpeg: Uint8Array }> = [];
+
+  for (let page = 0; page < pageCount; page += 1) {
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#111111';
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth = 2;
+
+    const text = (value: string, x: number, y: number, size = 22, align: CanvasTextAlign = 'left', weight = '700') => {
+      ctx.font = `${weight} ${size}px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR","WenQuanYi Micro Hei",sans-serif`;
+      ctx.textAlign = align;
+      ctx.fillText(value, x, y);
+    };
+    const box = (x: number, y: number, w: number, h: number) => ctx.strokeRect(x, y, w, h);
+
+    text('on&on+ 온앤온+', 56, 70, 20);
+    text(`${input.regionLabel} 피드 지역화폐 정산 공문`, 56, 112, 32);
+    ctx.beginPath();
+    ctx.arc(1080, 90, 52, 0, Math.PI * 2);
+    ctx.strokeStyle = '#b91c1c';
+    ctx.stroke();
+    ctx.fillStyle = '#b91c1c';
+    text('온앤온+ 직인', 1080, 96, 16, 'center');
+    ctx.fillStyle = '#111111';
+    ctx.strokeStyle = '#111111';
+    text('축제 현장 참여 피드 지역화폐 지급 정산의 건', W / 2, 190, 28, 'center', '900');
+
+    if (page === 0) {
+      const meta = [
+        ['문서번호', input.documentNo],
+        ['시행일자', formatKoDate(input.issuedAt)],
+        ['수신', input.receiver],
+        ['참조', '관광과 · 지역화폐 담당부서'],
+        ['발신', '온앤온+(on&on+) 피드 정산 담당'],
+        ['권역', `${input.regionLabel} (${input.regionalZone})`],
+        ['대상 지자체', input.city],
+        ['지급 건수', `${input.rows.length.toLocaleString('ko-KR')}건 (지급 ${paid} / 대기 ${input.rows.length - paid})`],
+        ['정산 금액', `${total.toLocaleString('ko-KR')}원`],
+      ];
+      let y = 220;
+      meta.forEach(([label, value]) => {
+        box(56, y, 220, 36);
+        box(276, y, 858, 36);
+        text(label, 68, y + 25, 18);
+        text(value, 290, y + 25, 18, 'left', '600');
+        y += 36;
+      });
+      y += 22;
+      text('1. 관련: 온앤온+ 축제 현장 참여 피드 지역화폐 지급 운영 기준', 56, y, 18, 'left', '600');
+      y += 28;
+      text('2. 해당 지자체 축제 참여 피드 지급 내역을 붙임과 같이 통보하고 정산을 보고합니다.', 56, y, 18, 'left', '600');
+      y += 36;
+      text('붙임. 피드 지역화폐 지급 내역', 56, y, 20);
+      y += 16;
+
+      const headers = ['연번', '이용자', '축제', '게시일', '지급액', '상태'];
+      const cols = [80, 160, 390, 160, 180, 108];
+      let x = 56;
+      headers.forEach((header, i) => {
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(x, y, cols[i], 36);
+        ctx.fillStyle = '#ffffff';
+        text(header, x + cols[i] / 2, y + 25, 16, 'center');
+        x += cols[i];
+      });
+      ctx.fillStyle = '#111111';
+      y += 36;
+      const slice = input.rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+      slice.forEach((row, index) => {
+        const values = [
+          String(page * rowsPerPage + index + 1),
+          row.userName,
+          row.festival,
+          row.postedAt,
+          `${Number(row.amountWon).toLocaleString('ko-KR')}원`,
+          row.status === 'PAID' ? '지급' : '대기',
+        ];
+        x = 56;
+        values.forEach((value, i) => {
+          box(x, y, cols[i], 34);
+          text(value, i === 4 ? x + cols[i] - 12 : x + cols[i] / 2, y + 24, 15, i === 4 ? 'right' : 'center', '600');
+          x += cols[i];
+        });
+        y += 34;
+      });
+      box(56, y, 790, 36);
+      box(846, y, 288, 36);
+      text('합계', 451, y + 25, 18, 'center');
+      text(`${total.toLocaleString('ko-KR')}원`, 1118, y + 25, 18, 'right');
+      y += 70;
+      text('위와 같이 내역과 정산을 보고하오니 업무에 참고하여 주시기 바랍니다. 끝.', 56, y, 18, 'left', '600');
+      text(formatKoDate(input.issuedAt), 1134, y + 40, 18, 'right');
+      text('온앤온+ 피드 정산 담당', 1134, y + 70, 18, 'right');
+    } else {
+      let y = 220;
+      text('붙임. 피드 지역화폐 지급 내역 (계속)', 56, y, 20);
+      y += 16;
+      const headers = ['연번', '이용자', '축제', '게시일', '지급액', '상태'];
+      const cols = [80, 160, 390, 160, 180, 108];
+      let x = 56;
+      headers.forEach((header, i) => {
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(x, y, cols[i], 36);
+        ctx.fillStyle = '#ffffff';
+        text(header, x + cols[i] / 2, y + 25, 16, 'center');
+        x += cols[i];
+      });
+      ctx.fillStyle = '#111111';
+      y += 36;
+      const slice = input.rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+      slice.forEach((row, index) => {
+        const values = [
+          String(page * rowsPerPage + index + 1),
+          row.userName,
+          row.festival,
+          row.postedAt,
+          `${Number(row.amountWon).toLocaleString('ko-KR')}원`,
+          row.status === 'PAID' ? '지급' : '대기',
+        ];
+        x = 56;
+        values.forEach((value, i) => {
+          box(x, y, cols[i], 34);
+          text(value, i === 4 ? x + cols[i] - 12 : x + cols[i] / 2, y + 24, 15, i === 4 ? 'right' : 'center', '600');
+          x += cols[i];
+        });
+        y += 34;
+      });
+    }
+
+    pages.push({
+      width: W,
+      height: H,
+      jpeg: dataUrlToBytes(canvas.toDataURL('image/jpeg', 0.92)),
+    });
+  }
+  return pages;
 }
 
-function buildSimplePdf(input: FeedRewardDocumentInput): Uint8Array {
-  const total = input.rows.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
-  const lines = [
-    'On&On+ Festival Feed Local-Currency Settlement',
-    `Doc: ${input.documentNo}`,
-    `To: ${input.receiver}`,
-    `Zone: ${input.regionLabel} ${input.regionalZone}`,
-    `City: ${input.city}`,
-    `Count: ${input.rows.length}`,
-    `Total: ${total} KRW`,
-    '',
-    'Feed reward rows',
-    ...input.rows.map((row, index) => `${index + 1}. ${row.userName} ${row.festival} ${row.amountWon} ${row.status}`),
-  ];
-  const content = lines
-    .map((line, index) => `BT /F1 11 Tf 40 ${800 - index * 16} Td (${escapePdf(line)}) Tj ET`)
-    .join('\n');
-  const objects = [
-    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
-    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
-    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj',
-    `4 0 obj << /Length ${new TextEncoder().encode(content).length} >> stream\n${content}\nendstream endobj`,
-    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
-  ];
-  let offset = 9;
-  const offsets = [0];
-  const body = objects.map((obj) => {
-    offsets.push(offset);
-    const chunk = `${obj}\n`;
-    offset += new TextEncoder().encode(chunk).length;
-    return chunk;
-  }).join('');
-  const xref = `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map((n) => `${String(n).padStart(10, '0')} 00000 n `).join('\n')}\n`;
-  const pdf = `%PDF-1.4\n${body}${xref}trailer << /Size 6 /Root 1 0 R >>\nstartxref\n${offset}\n%%EOF`;
-  return new TextEncoder().encode(pdf);
+export function buildKoreanFeedPdf(input: FeedRewardDocumentInput): Uint8Array | null {
+  try {
+    const pages = drawKoreanFeedPages(input);
+    if (!pages.length) return null;
+    return jpegPagesToPdf(pages);
+  } catch {
+    return null;
+  }
 }
 
 function printOfficialForm(html: string) {
@@ -223,9 +344,12 @@ export function downloadFeedRewardPdf(rows: FeedRewardRow[], city?: string): boo
   const input = buildFeedRewardInput(rows, city);
   const html = buildFeedRewardHtml(input);
   const stem = input.documentNo.replace(/\s+/g, '_');
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    downloadBlob(`${stem}.html`, html, 'text/html;charset=utf-8');
-    downloadBlob(`${stem}.pdf`, buildSimplePdf(input) as BlobPart, 'application/pdf');
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const koreanPdf = buildKoreanFeedPdf(input);
+    downloadBlob(`${stem}.html`, `\uFEFF${html}`, 'text/html;charset=utf-8');
+    if (koreanPdf) {
+      downloadBlob(`${stem}.pdf`, koreanPdf as BlobPart, 'application/pdf');
+    }
     printOfficialForm(html);
     return true;
   }
