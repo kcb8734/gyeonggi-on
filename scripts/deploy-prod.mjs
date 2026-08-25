@@ -11,6 +11,11 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const startedIn = resolve(process.cwd());
 const projectFile = join(root, '.vercel', 'project.json');
+const backendDir = join(root, 'backend');
+
+if (startedIn === backendDir || startedIn.startsWith(backendDir + '/') || /[/\\]backend[/\\]?$/.test(startedIn)) {
+  console.log('현재 경로가 backend/ 입니다. 저장소 최상위로 이동합니다:', root);
+}
 
 if (!existsSync(projectFile)) {
   console.error('프로젝트 최상위에 .vercel/project.json 이 없습니다. 저장소 루트에서 연결하세요.');
@@ -30,22 +35,19 @@ if (project.projectName !== 'kdanji') {
   process.exit(1);
 }
 
-const startedIsBackend = /[/\\]backend[/\\]?$/.test(startedIn) || startedIn === join(root, 'backend');
-if (startedIsBackend) {
-  console.error('');
-  console.error('backend/ 에서 vercel 을 실행하면 www.kdanji.com 이 갱신되지 않습니다.');
-  console.error('이 스크립트는 저장소 최상위에서 kdanji 프로젝트로 배포합니다.');
-  console.error('');
-}
-
 process.chdir(root);
 
-console.log('배포 디렉토리:', root);
+if (resolve(process.cwd()) !== root) {
+  console.error('최상위 디렉토리로 이동하지 못했습니다. cwd=', process.cwd(), 'root=', root);
+  process.exit(1);
+}
+
+console.log('배포 디렉토리:', process.cwd());
 console.log('Vercel 프로젝트:', project.projectName, '(' + project.projectId + ')');
-console.log('명령: npx vercel --prod --yes');
+console.log('명령: npx vercel --prod --yes --cwd ' + root);
 console.log('');
 
-const child = spawn('npx', ['vercel', '--prod', '--yes'], {
+const child = spawn('npx', ['vercel', '--prod', '--yes', '--cwd', root], {
   cwd: root,
   stdio: 'inherit',
   env: process.env,

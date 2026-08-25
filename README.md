@@ -59,13 +59,16 @@ webapp/
 
 GitHub에 머지해도 **Vercel 프로덕션은 자동으로 올라가지 않습니다.** `www.kdanji.com`은 저장소 **최상위(root)** 의 `kdanji` 프로젝트입니다.
 
-**반드시 프로젝트 최상위 디렉토리에서** 아래 중 하나를 실행하세요.
+**반드시 프로젝트 최상위 디렉토리로 이동한 뒤** 실행하세요. `backend/` 안에 있다면 먼저 `cd ..` 합니다.
 
 ```bash
-# 저장소 루트에서
-npm run deploy:prod
+cd /path/to/gyeonggi-on
+pwd   # .../gyeonggi-on  이어야 함. .../gyeonggi-on/backend 이면 안 됨
 
+npm run deploy:prod
 # 또는
+./deploy.sh
+# 또는 루트에서만
 npx vercel --prod --yes
 ```
 
