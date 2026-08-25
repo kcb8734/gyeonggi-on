@@ -50,3 +50,12 @@ test('jpeg pages become a binary PDF with an image content stream', () => {
   assert.equal(text.includes('/Im0 Do'), true);
   assert.equal(text.includes('/Contents 5 0 R'), true);
 });
+
+test('feed pdf download sends the Korean PDF first and does not auto-print', () => {
+  const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'feedRewardDocument.ts'), 'utf8');
+  assert.match(source, /downloadBlob\(`\$\{stem\}\.pdf`/);
+  assert.doesNotMatch(source, /printOfficialForm/);
+  const pdfAt = source.indexOf('`${stem}.pdf`');
+  const htmlAt = source.indexOf('`${stem}.html`');
+  assert.ok(pdfAt > 0 && htmlAt > pdfAt);
+});
