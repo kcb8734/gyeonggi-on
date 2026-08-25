@@ -228,7 +228,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView style={styles.topPane} contentContainerStyle={{ paddingBottom: 16 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
         <View style={styles.brandBar}>
           <Text style={styles.brandLead}>지자체 축제와 소상공인 상생을 잇는 온앤온+</Text>
         </View>
@@ -298,10 +298,8 @@ export default function HomeScreen() {
 
         <Text style={styles.section}>축제 현장 피드 올리고 지역화폐 받기</Text>
         <FeedRail metro={metro} onPress={(postId) => navigation.navigate('FeedView', { postId })} />
-      </ScrollView>
 
-      <View style={styles.festivalPanel}>
-        <Text style={styles.festivalTitle}>지역별 축제 리스트</Text>
+        <Text style={styles.section}>지역별 축제 리스트</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -321,29 +319,27 @@ export default function HomeScreen() {
           })}
         </ScrollView>
 
-        <ScrollView style={styles.festivalList} contentContainerStyle={{ paddingBottom: 20 + insets.bottom }}>
-          {popular.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.empty}>
-                {locatedFestivals.length === 0
-                  ? '선택하신 권역에 등록된 축제가 없습니다. 다른 권역을 선택해보세요'
-                  : '이 달의 해당 카테고리 축제가 없습니다'}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.grid}>
-              {popular.map((festival) => (
-                <FestivalGridCard
-                  key={festival.id}
-                  festival={festival}
-                  discountRate={cardDiscount(festival)}
-                  onPress={() => openFestival(festival)}
-                />
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      </View>
+        {popular.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.empty}>
+              {locatedFestivals.length === 0
+                ? '선택하신 권역에 등록된 축제가 없습니다. 다른 권역을 선택해보세요'
+                : '이 달의 해당 카테고리 축제가 없습니다'}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {popular.map((festival) => (
+              <FestivalGridCard
+                key={festival.id}
+                festival={festival}
+                discountRate={cardDiscount(festival)}
+                onPress={() => openFestival(festival)}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
 
       <FestivalDetailPopup
         festival={selected}
@@ -394,16 +390,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
-  topPane: { flexGrow: 0, maxHeight: '46%' },
-  festivalPanel: {
-    flex: 1,
-    minHeight: 280,
-    backgroundColor: '#F3F4F6',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  festivalTitle: { fontSize: 17, fontWeight: '800', marginTop: 10, marginHorizontal: 16, color: '#111827' },
-  festivalList: { flex: 1 },
   brandBar: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 },
   brandLead: { fontSize: 13, color: '#374151', fontWeight: '600' },
   regionRow: { paddingHorizontal: 12, paddingTop: 8, gap: 8 },
