@@ -2,6 +2,21 @@ import { checkEmailChallenge, issueEmailChallenge } from './emailChallenge';
 import { generateEmailCode, saveEmailCode, verifyEmailCode } from './emailCodeStore';
 
 const RESEND_URL = 'https://api.resend.com/emails';
+const RESEND_ACCOUNT_EMAIL = 'pizon8113@gmail.com';
+
+function resendFromCandidates(): string[] {
+  const values: string[] = [];
+  const add = (value?: string) => {
+    const next = String(value || '').trim();
+    if (next && !values.includes(next)) values.push(next);
+  };
+  add(process.env.RESEND_FROM);
+  add('Onandon <noreply@kdanji.com>');
+  add('noreply@kdanji.com');
+  add('Onandon <pizon8113@gmail.com>');
+  add(RESEND_ACCOUNT_EMAIL);
+  return values;
+}
 
 export type ResendAttachment = {
   filename: string;
@@ -66,36 +81,47 @@ export async function sendManagerEmailCode(email: string) {
 
   const resendKey = String(process.env.RESEND_API_KEY || '').trim();
   if (resendKey) {
-    try {
-      const response = await fetch(RESEND_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM || '온앤온+ <beth.t@example.com>',
-          to: [trimmed],
-          subject,
-          html,
-        }),
-      });
-      if (!response.ok) {
+    let lastConnect = false;
+    for (const from of resendFromCandidates()) {
+      try {
+        const response = await fetch(RESEND_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from,
+            to: [trimmed],
+            reply_to: RESEND_ACCOUNT_EMAIL,
+            subject,
+            html,
+          }),
+        });
+        if (response.ok) {
+          return {
+            success: true,
+            status: 200,
+            message: `${trimmed}으로 인증번호를 보냈습니다. 메일함을 확인한 뒤 3분 안에 입력해주세요.`,
+            challenge: issued.challenge,
+          };
+        }
         const text = await response.text();
-        console.error('[email-auth] Resend 실패', response.status, text);
-        return { success: false, status: 502, message: '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+        console.error('[email-auth] Resend 실패', response.status, text, 'from=' + from);
+      } catch (err) {
+        lastConnect = true;
+        console.error('[email-auth] Resend 연결 실패', from, err);
       }
-    } catch (err) {
-      console.error('[email-auth] Resend 연결 실패', err);
-      return { success: false, status: 502, message: '인증 메일 서버에 연결하지 못했습니다.' };
     }
     return {
-      success: true,
-      status: 200,
-      message: `${trimmed}으로 인증번호를 보냈습니다. 메일함을 확인한 뒤 3분 안에 입력해주세요.`,
-      challenge: issued.challenge,
+      success: false,
+      status: 502,
+      message: lastConnect
+        ? '인증 메일 서버에 연결하지 못했습니다.'
+        : '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
     };
   }
+
 
   console.log(`[email-auth] RESEND_API_KEY 없음. ${trimmed} 인증번호 ${code}`);
   return {
