@@ -89,7 +89,7 @@ export function buildFeedRewardHtml(input: FeedRewardDocumentInput): string {
   <title>${escapeHtml(input.documentNo)} 피드 지역화폐 정산 공문</title>
   <style>
     @page { size: A4; margin: 16mm; }
-    body { font-family: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#111; margin:0; }
+    body { font-family: "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR","WenQuanYi Micro Hei",sans-serif; color:#111; margin:0; }
     .doc { max-width: 720px; margin: 0 auto; }
     .head { display:flex; justify-content:space-between; border-bottom:3px solid #111; padding-bottom:10px; }
     .org { font-size:22px; font-weight:900; }
@@ -178,7 +178,7 @@ function drawKoreanFeedPages(input: FeedRewardDocumentInput): Array<{ width: num
     ctx.lineWidth = 2;
 
     const text = (value: string, x: number, y: number, size = 22, align: CanvasTextAlign = 'left', weight = '700') => {
-      ctx.font = `${weight} ${size}px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
+      ctx.font = `${weight} ${size}px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR","WenQuanYi Micro Hei",sans-serif`;
       ctx.textAlign = align;
       ctx.fillText(value, x, y);
     };
