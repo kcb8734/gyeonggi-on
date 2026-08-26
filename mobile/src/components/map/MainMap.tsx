@@ -77,6 +77,7 @@ function toSheetFromPlace(place: TourPlace): SheetPlace {
     longitude: place.mapX,
     contentId: place.contentId,
     contentTypeId: place.contentTypeId,
+    placeKind: place.kind,
     canOpenDetail: true,
   };
 }
@@ -263,6 +264,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
       navigation.navigate('TourDetail', {
         contentId: place.contentId ?? place.id,
         contentTypeId: place.contentTypeId,
+        kind: place.placeKind,
         title: place.title,
         address: place.address,
         latitude: place.latitude,

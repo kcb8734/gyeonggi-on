@@ -17,6 +17,7 @@ export interface SheetPlace {
   canOpenDetail?: boolean;
   contentId?: string;
   contentTypeId?: string;
+  placeKind?: string;
 }
 
 interface Props {

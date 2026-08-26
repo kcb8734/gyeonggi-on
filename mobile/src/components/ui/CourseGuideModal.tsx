@@ -98,7 +98,7 @@ export default function CourseGuideModal({
                       description={step.category}
                       pinColor={categoryPinColor(step.category)}
                       badgeLabel={String(step.step || index + 1)}
-                      emphasized={String(step.category).includes('축제') || current?.step === step.step}
+                      emphasized={String(step.category).includes('축제') || String(step.category).includes('맛집') || current?.step === step.step}
                       onPress={() => focusStep(index)}
                     />
                   ) : null

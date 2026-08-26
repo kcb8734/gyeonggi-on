@@ -15,7 +15,10 @@ export function categoryPinColor(category?: string) {
   const text = String(category || '');
   if (text.includes('역사')) return 'orange';
   if (text.includes('시장')) return 'green';
+  if (text.includes('맛집') || text.includes('음식')) return 'orange';
   if (text.includes('축제')) return 'blue';
+  if (text.includes('관광')) return 'violet';
+  if (text.includes('문화')) return 'blue';
   if (text.includes('캠핑') || text.includes('숙박')) return 'violet';
   return 'teal';
 }

@@ -36,6 +36,7 @@ function directionsUrl(lat: number, lng: number, title: string) {
 export default function FestivalDetailScreen({
   contentId,
   contentTypeId,
+  fallbackKind,
   fallbackTel,
   fallbackTitle,
   fallbackCity,
@@ -47,6 +48,7 @@ export default function FestivalDetailScreen({
 }: {
   contentId: string;
   contentTypeId?: string;
+  fallbackKind?: string;
   fallbackTel?: string;
   fallbackTitle?: string;
   fallbackCity?: string;
@@ -71,6 +73,8 @@ export default function FestivalDetailScreen({
       metro: fallbackMetro,
       latitude: fallbackLatitude ?? known?.latitude,
       longitude: fallbackLongitude ?? known?.longitude,
+      contentTypeId,
+      kind: fallbackKind,
     };
     fetchRecommendedCourse(seed).then((data) => {
       if (!cancelled && data) setCourse(data);
@@ -105,24 +109,26 @@ export default function FestivalDetailScreen({
           const image = fallbackImageUrl || known?.image_url || festivalImageFor(fallbackTitle, fallbackAddress, fallbackMetro);
           setDetail({
             contentId,
-            contentTypeId: contentTypeId ?? '15',
+            contentTypeId: contentTypeId ?? (fallbackKind === 'food' ? '39' : '15'),
             tel: fallbackTel,
-            title: fallbackTitle || known?.title || '축제 상세',
-            overview: known?.description || EMPTY_COPY.overview,
+            title: fallbackTitle || known?.title || (fallbackKind === 'food' ? '맛집 상세' : '축제 상세'),
+            overview: known?.description || (fallbackKind === 'food' || contentTypeId === '39'
+              ? '한국관광공사 TourAPI에서 수집한 맛집 정보입니다. 상세 소개가 확인되는 대로 자동 반영됩니다.'
+              : EMPTY_COPY.overview),
             address: fallbackAddress || known?.location_name || EMPTY_COPY.address,
             fee: EMPTY_COPY.fee,
             mapX: fallbackLongitude || known?.longitude || 0,
             mapY: fallbackLatitude || known?.latitude || 0,
             images: image ? [{ originUrl: image }] : [],
             firstImage: image,
-            category: (known?.category as TourDetail['category']) || '문화/예술',
+            category: (known?.category as TourDetail['category']) || (fallbackKind === 'food' || contentTypeId === '39' ? '먹거리' : '문화/예술'),
           });
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [contentId, contentTypeId, fallbackTel, fallbackTitle, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, fallbackImageUrl, known]);
+  }, [contentId, contentTypeId, fallbackKind, fallbackTel, fallbackTitle, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, fallbackImageUrl, known]);
 
   useEffect(() => {
     if (!detail?.title) return;
@@ -134,11 +140,13 @@ export default function FestivalDetailScreen({
       metro: fallbackMetro,
       latitude: detail.mapY || fallbackLatitude,
       longitude: detail.mapX || fallbackLongitude,
+      contentTypeId: detail.contentTypeId || contentTypeId,
+      kind: fallbackKind,
     }).then((data) => {
       if (!cancelled && data) setCourse(data);
     });
     return () => { cancelled = true; };
-  }, [detail?.title, detail?.address, detail?.mapX, detail?.mapY, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, known]);
+  }, [detail?.title, detail?.address, detail?.mapX, detail?.mapY, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, fallbackKind, known, contentTypeId]);
 
   if (!detail) {
     return (
@@ -148,13 +156,18 @@ export default function FestivalDetailScreen({
     );
   }
 
+  const isRestaurant = detail.contentTypeId === '39' || contentTypeId === '39' || fallbackKind === 'food' || detail.category === '먹거리';
   const favorited = isFavorite(`tour-${detail.contentId}`);
   const hero = detail.images[0]?.originUrl ?? detail.firstImage;
   const hasMap = detail.mapX !== 0 && detail.mapY !== 0;
   const resolvedTel = detail.tel || fallbackTel;
   const callUrl = telHref(resolvedTel);
   const telLabel = formatTel(resolvedTel) || resolvedTel || EMPTY_COPY.tel;
-  const overview = detail.overview?.trim() || EMPTY_COPY.overview;
+  const overview = detail.overview?.trim() || (
+    contentTypeId === '39' || fallbackKind === 'food' || detail.contentTypeId === '39'
+      ? '한국관광공사 TourAPI에서 수집한 맛집 정보입니다. 상세 소개가 확인되는 대로 자동 반영됩니다.'
+      : EMPTY_COPY.overview
+  );
   const fee = detail.fee?.trim() || EMPTY_COPY.fee;
   const address = detail.address?.trim() || EMPTY_COPY.address;
   const slides = detail.images.length ? detail.images : hero ? [{ originUrl: hero }] : [];
@@ -176,10 +189,12 @@ export default function FestivalDetailScreen({
       <View style={styles.body}>
         <Text style={styles.source}>한국관광공사 TourAPI 4.0</Text>
         {detail.category ? <Text style={styles.tag}>{detail.category}</Text> : null}
-        <Text style={styles.title}>{detail.title || '축제 상세'}</Text>
-        <Text style={styles.meta}>
-          {(detail.eventStartDate || '일정 확인 중')} ~ {(detail.eventEndDate || detail.eventStartDate || '')}
-        </Text>
+        <Text style={styles.title}>{detail.title || '상세 정보'}</Text>
+        {isRestaurant ? null : (
+          <Text style={styles.meta}>
+            {(detail.eventStartDate || '일정 확인 중')} ~ {(detail.eventEndDate || detail.eventStartDate || '')}
+          </Text>
+        )}
         <TouchableOpacity
           style={[styles.favBtn, favorited && styles.favBtnOn]}
           onPress={() => toggleFavorite(homeFestivalFromDetail(detail))}
@@ -220,7 +235,7 @@ export default function FestivalDetailScreen({
         ) : null}
 
         <View style={styles.card}>
-          <Text style={styles.label}>행사 장소 / 주소</Text>
+          <Text style={styles.label}>{isRestaurant ? '주소' : '행사 장소 / 주소'}</Text>
           <Text style={styles.value}>{address}</Text>
           {detail.eventPlace ? <Text style={styles.value}>장소 {detail.eventPlace}</Text> : null}
         </View>

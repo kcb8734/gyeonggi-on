@@ -44,6 +44,7 @@ export type RootStackParamList = {
   TourDetail: {
     contentId: string;
     contentTypeId?: string;
+    kind?: string;
     tel?: string;
     title?: string;
     city?: string;
@@ -183,11 +184,23 @@ export default function App() {
             >
               {() => <PromotionRegisterScreen merchantId={DEV_MERCHANT_ID} />}
             </Stack.Screen>
-            <Stack.Screen name="TourDetail" options={{ title: '행사 상세' }}>
+            <Stack.Screen
+              name="TourDetail"
+              options={({ route }) => ({
+                title: route.params?.contentTypeId === '39' || route.params?.kind === 'food'
+                  ? '맛집 상세'
+                  : route.params?.contentTypeId === '12' || route.params?.kind === 'attraction'
+                    ? '관광지 상세'
+                    : route.params?.contentTypeId === '14' || route.params?.kind === 'culture'
+                      ? '문화시설 상세'
+                      : '행사 상세',
+              })}
+            >
               {({ route }) => (
                 <FestivalDetailScreen
                   contentId={route.params.contentId}
                   contentTypeId={route.params.contentTypeId}
+                  fallbackKind={route.params.kind}
                   fallbackTel={route.params.tel}
                   fallbackTitle={route.params.title}
                   fallbackCity={route.params.city}

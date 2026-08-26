@@ -551,6 +551,9 @@ async function handler(req, res) {
           metro: body.metro || query.metro || '',
           latitude: Number(body.latitude || query.lat || query.latitude),
           longitude: Number(body.longitude || query.lng || query.longitude),
+          contentTypeId: body.contentTypeId || query.contentTypeId || '',
+          kind: body.kind || query.kind || '',
+          category: body.category || query.category || '',
         }),
       }, corsHeaders(req));
       return;
