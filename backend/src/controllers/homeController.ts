@@ -3,6 +3,7 @@ import { pool } from '../db/pool';
 import { metroMatchIds } from '../constants/metroLocalities';
 import { REGION_PRESETS, normalizeMetroId, regionById, regionalZoneFor } from '../constants/regionTour';
 import { searchFestivals, toHomeFestival } from '../services/tourApiService';
+import { festivalHasCoupon } from '../utils/festivalCoupon';
 import { toNumber } from '../utils/geo';
 
 export const METRO_REGIONS = REGION_PRESETS.map((item) => ({
@@ -96,9 +97,23 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       }
     }
 
-    const popular = category
+    const promotions = promotionResult.rows.map((row) => ({
+      ...row,
+      merchant_discount_rate: toNumber(row.merchant_discount_rate),
+      gov_matching_rate: toNumber(row.gov_matching_rate),
+      total_discount_rate: toNumber(row.total_discount_rate),
+      remaining_quantity: toNumber(row.remaining_quantity),
+      total_quantity: toNumber(row.total_quantity),
+    }));
+
+    const withCoupon = (item: (typeof festivals)[number]) => ({
+      ...item,
+      hasCoupon: festivalHasCoupon(item, promotions),
+    });
+    festivals = festivals.map(withCoupon);
+    const popular = (category
       ? festivals.filter((item) => item.category === category)
-      : festivals;
+      : festivals);
 
     return res.json({
       success: true,
@@ -107,14 +122,7 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       regionalZone: metro,
       regions: METRO_REGIONS,
       festivals,
-      promotions: promotionResult.rows.map((row) => ({
-        ...row,
-        merchant_discount_rate: toNumber(row.merchant_discount_rate),
-        gov_matching_rate: toNumber(row.gov_matching_rate),
-        total_discount_rate: toNumber(row.total_discount_rate),
-        remaining_quantity: toNumber(row.remaining_quantity),
-        total_quantity: toNumber(row.total_quantity),
-      })),
+      promotions,
       popular,
     });
   } catch (err) {

@@ -14,6 +14,7 @@ import authRouter from './routes/auth';
 import feedsRouter from './routes/feeds';
 import settlementsRouter from './routes/settlements';
 import coursesRouter from './routes/courses';
+import centersRouter from './routes/centers';
 import { startFestivalCron } from './jobs/festivalCron';
 import { runFestivalSync } from './controllers/festivalListController';
 import { pool, connectionString } from './db/pool';
@@ -91,6 +92,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/feeds', feedsRouter);
 app.use('/api/settlements', settlementsRouter);
 app.use('/api/courses', coursesRouter);
+app.use('/api/centers', centersRouter);
 app.get('/api/cron/festivals', runFestivalSync);
 app.post('/api/cron/festivals', runFestivalSync);
 

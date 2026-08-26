@@ -30,6 +30,7 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
     tel: item.tel,
     description: item.overview,
     fee: item.fee,
+    hasCoupon: false,
   };
 }
 

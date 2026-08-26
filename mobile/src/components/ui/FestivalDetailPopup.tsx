@@ -20,6 +20,7 @@ interface Props {
   festival: HomeFestival | null;
   promotions: HomePromotion[];
   issuingId?: string | null;
+  initialFocus?: 'info' | 'coupon';
   onClose: () => void;
   onOpenDetail: () => void;
   onFavorite: () => void;
@@ -31,16 +32,25 @@ export default function FestivalDetailPopup({
   festival,
   promotions,
   issuingId,
+  initialFocus = 'info',
   onClose,
   onOpenDetail,
   onFavorite,
   onSchedule,
   onIssue,
 }: Props) {
+  const scrollRef = React.useRef<ScrollView>(null);
   React.useEffect(() => {
     setImeModalLock(Boolean(festival));
     return () => setImeModalLock(false);
   }, [festival]);
+  React.useEffect(() => {
+    if (!festival || initialFocus !== 'coupon') return;
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 240);
+    return () => clearTimeout(timer);
+  }, [festival, initialFocus]);
   if (!festival) return null;
   const liked = isFavorite(festival.id);
   const saved = isScheduled(festival.id);
@@ -55,7 +65,7 @@ export default function FestivalDetailPopup({
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <ModalExitButton onPress={onClose} />
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
             {festival.image_url ? (
               <Image source={{ uri: festival.image_url }} style={styles.hero} />
             ) : (
@@ -102,7 +112,22 @@ export default function FestivalDetailPopup({
                 </TouchableOpacity>
               ) : null}
 
-              <Text style={styles.section}>이 축제 쿠폰 받기</Text>
+              <View style={styles.tabRow}>
+                <TouchableOpacity
+                  style={[styles.tab, initialFocus !== 'coupon' && styles.tabOn]}
+                  onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+                >
+                  <Text style={[styles.tabText, initialFocus !== 'coupon' && styles.tabTextOn]}>소개</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tab, initialFocus === 'coupon' && styles.tabOn]}
+                  onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
+                >
+                  <Text style={[styles.tabText, initialFocus === 'coupon' && styles.tabTextOn]}>쿠폰/할인 혜택</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text nativeID="festival-coupon" style={styles.section}>이 축제 쿠폰 받기</Text>
               {promotions.length === 0 ? (
                 <Text style={styles.empty}>연결된 상생 쿠폰이 아직 없습니다</Text>
               ) : (
@@ -182,6 +207,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: '#111827' },
   meta: { fontSize: 13, color: '#6B7280', marginTop: 4 },
   overview: { fontSize: 14, lineHeight: 21, color: '#374151', marginTop: 12 },
+  tabRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  tab: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  tabOn: { backgroundColor: '#EA580C', borderColor: '#EA580C' },
+  tabText: { fontSize: 12, fontWeight: '800', color: '#374151' },
+  tabTextOn: { color: '#fff' },
   actions: { flexDirection: 'row', gap: 8, marginTop: 16 },
   ghost: {
     flex: 1,

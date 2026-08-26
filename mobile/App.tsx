@@ -19,6 +19,7 @@ import FeedUploadScreen from './src/screens/FeedUploadScreen';
 import FeedViewScreen from './src/screens/FeedViewScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import AdminScreen from './src/screens/AdminScreen';
+import CenterDirectorsScreen from './src/screens/CenterDirectorsScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
@@ -60,6 +61,7 @@ export type RootStackParamList = {
   FeedView: { postId: string };
   Login: undefined;
   Admin: undefined;
+  CenterDirectors: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -170,13 +172,18 @@ function startsOnSettlement() {
   return window.location.pathname.replace(/\/+$/, '') === '/merchant/settlement';
 }
 
+function startsOnCenters() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return window.location.pathname.replace(/\/+$/, '') === '/centers';
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AppShell>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName={startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : 'Tabs'}>
+          <Stack.Navigator initialRouteName={startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : startsOnCenters() ? 'CenterDirectors' : 'Tabs'}>
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="PromotionRegister"
@@ -232,6 +239,11 @@ export default function App() {
             </Stack.Screen>
             <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인', headerBackVisible: false, headerLeft: () => <StackBack /> }} />
             <Stack.Screen name="Admin" component={AdminScreen} options={{ title: '관리자', headerBackVisible: false, headerLeft: () => <StackBack /> }} />
+            <Stack.Screen
+              name="CenterDirectors"
+              component={CenterDirectorsScreen}
+              options={{ title: '센터장 선정 현황', headerBackVisible: false, headerLeft: () => <StackBack /> }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </AppShell>

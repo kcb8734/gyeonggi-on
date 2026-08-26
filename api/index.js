@@ -19,6 +19,7 @@ import {
   verifyCoupon,
 } from './platform.js';
 import { METRO_AREA, MOI_CODE_BY_METRO, REGION_LABEL, normalizeMetroId } from './metroLocalities.js';
+import { applyCenterDirector, listCenterLocalities, summarizeCenterRegions } from './centerDirectors.js';
 import { sendResendEmail } from './resendFrom.js';
 import {
   getTourDetail2,
@@ -412,9 +413,9 @@ async function getHomeFeed(req, res) {
       metro: metro,
       regionalZone: metro,
       regions: metroRegions(),
-      festivals: festivals,
+      festivals: festivals.map((item) => Object.assign({}, item, { hasCoupon: Boolean(item && item.hasCoupon) })),
       promotions: [],
-      popular: festivals,
+      popular: festivals.map((item) => Object.assign({}, item, { hasCoupon: Boolean(item && item.hasCoupon) })),
       source: result.source,
     }, headers);
   } catch (err) {
@@ -556,6 +557,27 @@ async function handler(req, res) {
           category: body.category || query.category || '',
         }),
       }, corsHeaders(req));
+      return;
+    }
+    if (/centers\/apply/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = applyCenterDirector(body);
+      send(res, result.ok ? 200 : 400, {
+        success: result.ok,
+        data: result.data,
+        message: result.ok ? '지원이 접수되었습니다. 선정 심사를 진행합니다.' : result.message,
+      }, corsHeaders(req));
+      return;
+    }
+    const centerRegion = path.match(/\/api\/centers\/([^/?\s]+)/i);
+    if (centerRegion) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      send(res, 200, { success: true, data: listCenterLocalities(decodeURIComponent(centerRegion[1])) }, corsHeaders(req));
+      return;
+    }
+    if (/\/api\/centers/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      send(res, 200, { success: true, data: summarizeCenterRegions() }, corsHeaders(req));
       return;
     }
     if (/admin\/dashboard/i.test(path)) {

@@ -41,3 +41,22 @@ test('GET /api/home is not a 404', async () => {
   const result = await invoke({ method: 'GET', url: '/api/home?metro=GYEONGGI' });
   assert.notEqual(result.status, 404);
 });
+
+test('GET /api/centers returns 17 region summaries', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/centers' });
+  assert.equal(result.status, 200);
+  const rows = (result.body as { data: Array<{ id: string; total: number; selected: number }> }).data;
+  assert.equal(rows.length, 17);
+  const gyeonggi = rows.find((row) => row.id === 'GYEONGGI');
+  assert.equal(gyeonggi?.total, 31);
+  assert.equal(gyeonggi?.selected, 3);
+});
+
+test('GET /api/centers/GYEONGGI lists suwon as selected', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/centers/GYEONGGI' });
+  assert.equal(result.status, 200);
+  const rows = (result.body as { data: Array<{ label: string; status: string }> }).data;
+  assert.equal(rows.length, 31);
+  assert.equal(rows.find((row) => row.label === '수원시')?.status, 'selected');
+});
+

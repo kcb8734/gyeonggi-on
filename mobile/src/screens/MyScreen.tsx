@@ -147,6 +147,9 @@ export default function MyScreen() {
         <TouchableOpacity style={styles.govBtn} onPress={() => setFestivalModal(true)}>
           <Text style={styles.govBtnText}>지자체 축제 등록하기</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.merchantGhost} onPress={() => navigation.navigate('CenterDirectors')}>
+          <Text style={styles.merchantGhostText}>지역 센터장 선정 현황 · 지원하기</Text>
+        </TouchableOpacity>
         {manager.sessionEmail ? (
           <TouchableOpacity style={styles.merchantGhost} onPress={logoutFestivalManager}>
             <Text style={styles.merchantGhostText}>{manager.sessionEmail} 담당자 로그아웃</Text>

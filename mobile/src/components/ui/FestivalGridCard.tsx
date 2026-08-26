@@ -7,12 +7,15 @@ import { ddayLabel } from '../../utils/date';
 interface Props {
   festival: HomeFestival;
   discountRate?: number;
+  hasCoupon?: boolean;
   onPress: () => void;
+  onCouponPress?: () => void;
 }
 
-export default function FestivalGridCard({ festival, discountRate, onPress }: Props) {
+export default function FestivalGridCard({ festival, discountRate, hasCoupon, onPress, onCouponPress }: Props) {
   const dday = ddayLabel(festival.start_date, festival.end_date);
   const imageUrl = festival.image_url || festivalImageFor(festival.title, festival.location_name);
+  const showCoupon = Boolean(hasCoupon || festival.hasCoupon || discountRate);
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <View>
@@ -31,8 +34,22 @@ export default function FestivalGridCard({ festival, discountRate, onPress }: Pr
             <Text style={styles.dealText}>최대 {discountRate}%</Text>
           </View>
         ) : null}
-        <View style={styles.tour}>
-          <Text style={styles.tourText}>TourAPI 4.0</Text>
+        <View style={styles.badgeCol} pointerEvents="box-none">
+          <View style={styles.tour}>
+            <Text style={styles.tourText}>TourAPI 4.0</Text>
+          </View>
+          {showCoupon ? (
+            <TouchableOpacity
+              style={styles.couponBadge}
+              activeOpacity={0.85}
+              onPress={(event) => {
+                event.stopPropagation();
+                (onCouponPress ?? onPress)();
+              }}
+            >
+              <Text style={styles.couponText}>🎁 쿠폰 있음</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
       <View style={styles.body}>
@@ -66,6 +83,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 3,
+    zIndex: 2,
   },
   ddayLive: { backgroundColor: '#059669' },
   ddayDone: { backgroundColor: '#6B7280' },
@@ -80,16 +98,28 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   dealText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  tour: {
+  badgeCol: {
     position: 'absolute',
     top: 8,
     right: 8,
+    alignItems: 'flex-end',
+    gap: 4,
+    zIndex: 2,
+  },
+  tour: {
     backgroundColor: '#1D4ED8',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
   tourText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  couponBadge: {
+    backgroundColor: '#EA580C',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  couponText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   body: { padding: 10 },
   title: { fontSize: 13, fontWeight: '800', color: '#111827', minHeight: 34 },
   place: { fontSize: 11, color: '#6B7280', marginTop: 4 },
