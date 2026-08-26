@@ -22,6 +22,8 @@ export interface HomeFestival {
   moiCode?: string;
   summary?: string;
   rewardEnabled?: boolean;
+  /** 지역 상가 쿠폰 연계 여부 */
+  hasCoupon?: boolean;
   tel?: string;
   inquiryTel?: string;
   managerEmail?: string;

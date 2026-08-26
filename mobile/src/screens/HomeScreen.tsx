@@ -24,6 +24,7 @@ import {
 import { regionById, withFestivalImage } from '../constants/regionTour';
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
+import { festivalHasCoupon } from '../utils/festivalCoupon';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -62,11 +63,13 @@ export default function HomeScreen() {
   const [promotions, setPromotions] = useState<HomePromotion[]>([]);
   const [issuingId, setIssuingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<HomeFestival | null>(null);
+  const [popupFocus, setPopupFocus] = useState<'info' | 'coupon'>('info');
   const [merchant, setMerchant] = useState<HomePromotion | null>(null);
   const app = useAppState();
 
-  const openFestival = (festival: HomeFestival) => {
+  const openFestival = (festival: HomeFestival, focus: 'info' | 'coupon' = 'info') => {
     rememberFestival(festival);
+    setPopupFocus(focus);
     setSelected(festival);
   };
 
@@ -231,6 +234,9 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
         <View style={styles.brandBar}>
           <Text style={styles.brandLead}>지자체 축제와 소상공인 상생을 잇는 온앤온+</Text>
+          <TouchableOpacity style={styles.centerCta} onPress={() => navigation.navigate('CenterDirectors')}>
+            <Text style={styles.centerCtaText}>지역 센터장 선정 현황 · 지원하기</Text>
+          </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
           {METRO_REGIONS.map((region) => {
@@ -334,7 +340,9 @@ export default function HomeScreen() {
                 key={festival.id}
                 festival={festival}
                 discountRate={cardDiscount(festival)}
+                hasCoupon={festivalHasCoupon(festival, promotions) || Boolean(cardDiscount(festival))}
                 onPress={() => openFestival(festival)}
+                onCouponPress={() => openFestival(festival, 'coupon')}
               />
             ))}
           </View>
@@ -345,6 +353,7 @@ export default function HomeScreen() {
         festival={selected}
         promotions={relatedPromos.length ? relatedPromos : promotions.slice(0, 2)}
         issuingId={issuingId}
+        initialFocus={popupFocus}
         onClose={() => setSelected(null)}
         onFavorite={() => { if (selected) toggleFavorite(selected); setToast('즐겨찾기를 업데이트했습니다'); }}
         onSchedule={() => { if (selected) addSchedule(selected); setToast('시작일 하루 전 알림을 받도록 일정을 담았습니다'); }}
@@ -392,6 +401,15 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
   brandBar: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 },
   brandLead: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  centerCta: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    backgroundColor: '#0F766E',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  centerCtaText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   regionRow: { paddingHorizontal: 12, paddingTop: 8, gap: 8 },
   regionTab: {
     backgroundColor: '#F3F4F6',

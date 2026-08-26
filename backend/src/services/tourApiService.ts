@@ -864,6 +864,7 @@ export function toHomeFestival(festival: TourFestival, regionalZone?: string) {
     source: 'tour' as const,
     tel: festival.tel,
     fee: festival.fee,
+    hasCoupon: false,
     regionalZone: zone,
     metro: zone,
     areaCode: festival.areaCode ?? preset.code,
