@@ -6,7 +6,6 @@ import {
   withCouponComingSoon,
   type CoursePlaceKind,
 } from '../constants/courseLandmarks';
-import { regionById } from '../constants/regionTour';
 import type { FestivalCourse } from '../api/courses';
 
 function hubCopy(kind: CoursePlaceKind, name: string) {
@@ -70,7 +69,6 @@ export function buildFestivalCourse(input: {
   const history = landmarkFor('history', city, input.address, title, input);
   const market = landmarkFor('market', city, input.address, title, input);
   const camp = landmarkFor('camp', city, input.address, title, input);
-  const official = regionById(input.metro).officialMatching;
   const festLat = Number(input.latitude);
   const festLng = Number(input.longitude);
   const hasFestGps = Number.isFinite(festLat) && Number.isFinite(festLng) && festLat !== 0 && festLng !== 0;
@@ -119,11 +117,7 @@ export function buildFestivalCourse(input: {
         longitude: camp.lng,
       },
     ],
-    local_benefit_tip: withCouponComingSoon(
-      official
-        ? `지자체 매칭 쿠폰은 ${COUPON_COMING_SOON}`
-        : `현장 가맹점 쿠폰 결제는 ${COUPON_COMING_SOON}`,
-    ),
+    local_benefit_tip: COUPON_COMING_SOON,
   };
 }
 

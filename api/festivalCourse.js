@@ -408,7 +408,6 @@ export function recommendCourse(title, city, extra) {
   const history = landmarkFor('history', place, input.address, festivalTitle, input);
   const market = landmarkFor('market', place, input.address, festivalTitle, input);
   const camp = landmarkFor('camp', place, input.address, festivalTitle, input);
-  const official = String(input.metro || '').toUpperCase() === 'GYEONGGI';
   const festLat = Number(input.latitude);
   const festLng = Number(input.longitude);
   const hasFestGps = Number.isFinite(festLat) && Number.isFinite(festLng) && festLat !== 0 && festLng !== 0;
@@ -424,8 +423,6 @@ export function recommendCourse(title, city, extra) {
       { step: 3, category: hub.category, place_name: hubName, description: hub.description, estimated_time: hub.estimated_time, latitude: hasFestGps ? festLat : (history.lat + market.lat) / 2, longitude: hasFestGps ? festLng : (history.lng + market.lng) / 2 },
       { step: 4, category: '캠핑장/숙박', place_name: camp.name, description: withCouponComingSoon(camp.hint), estimated_time: '숙박', latitude: camp.lat, longitude: camp.lng },
     ],
-    local_benefit_tip: withCouponComingSoon(
-      official ? `지자체 매칭 쿠폰은 ${COUPON_COMING_SOON}` : `현장 가맹점 쿠폰 결제는 ${COUPON_COMING_SOON}`,
-    ),
+    local_benefit_tip: COUPON_COMING_SOON,
   };
 }
