@@ -17,6 +17,7 @@ export type MapViewHandle = {
     coordinates: { latitude: number; longitude: number }[],
     options?: object,
   ) => void;
+  invalidateSize?: () => void;
 };
 
 type MarkerProps = Omit<MapMarkerProps, 'pinColor'> & {

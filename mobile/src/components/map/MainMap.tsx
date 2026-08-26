@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { issueCoupon } from '../../api/coupons';
 import { FESTIVAL_FOCUS_DELTA, GYEONGGI_DEFAULT_REGION } from '../../constants/map';
 import { useSelectedRegionPreset } from '../../stores/regionStore';
@@ -91,7 +91,7 @@ type OverlayPin =
 export default function MainMap({ festivalId, userId }: MainMapProps) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const mapRef = useRef<React.ElementRef<typeof MapView>>(null);
+  const mapRef = useRef<(React.ElementRef<typeof MapView> & { invalidateSize?: () => void }) | null>(null);
   const fitOnce = useRef(true);
   const regionPreset = useSelectedRegionPreset();
   const {
@@ -180,6 +180,14 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     fitOnce.current = false;
     mapRef.current.animateToRegion(initialRegion);
   }, [loading, initialRegion]);
+
+  useFocusEffect(useCallback(() => {
+    const timer = setTimeout(() => {
+      mapRef.current?.invalidateSize?.();
+      mapRef.current?.animateToRegion(initialRegion);
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [initialRegion]));
 
   const handleSelectFestival = (festival: FestivalPin) => {
     setSelectedMerchant(null);
@@ -446,7 +454,7 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
-  map: { flex: 1 },
+  map: { flex: 1, minHeight: 320 },
   topOverlay: {
     position: 'absolute',
     top: 0,

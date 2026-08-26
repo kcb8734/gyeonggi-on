@@ -21,6 +21,7 @@ export interface MapViewHandle {
     coordinates: { latitude: number; longitude: number }[],
     options?: { padding?: number | [number, number]; edgePadding?: { top?: number; right?: number; bottom?: number; left?: number } },
   ) => void;
+  invalidateSize?: () => void;
 }
 
 interface MarkerProps {
@@ -222,15 +223,17 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     });
   };
 
-  const fly = (next: MapRegion, animate = true) => {
+  const fly = (next: MapRegion) => {
     const map = mapRef.current;
     if (!map) {
       pendingFly.current = next;
       return;
     }
-    const zoom = regionToZoom(next);
-    if (animate) map.flyTo([next.latitude, next.longitude], zoom, { duration: 0.45 });
-    else map.setView([next.latitude, next.longitude], zoom);
+    map.setView([next.latitude, next.longitude], regionToZoom(next), { animate: false });
+    window.requestAnimationFrame(() => {
+      map.invalidateSize();
+      paintOverlays();
+    });
   };
 
   const fit = (coordinates: { latitude: number; longitude: number }[], padding: [number, number] = [40, 40]) => {
@@ -250,10 +253,14 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
 
   useImperativeHandle(ref, () => ({
     animateToRegion(next) {
-      fly(next, true);
+      fly(next);
     },
     fitToCoordinates(coordinates, options) {
       fit(coordinates, fitPadding(options));
+    },
+    invalidateSize() {
+      mapRef.current?.invalidateSize();
+      paintOverlays();
     },
   }));
 
@@ -261,53 +268,66 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     ensureLeafletCss();
     const el = containerRef.current;
     if (!el) return;
+    let cancelled = false;
+    let resizeTimer = 0;
     const start = region ?? fallback;
-    const map = L.map(el, { zoomControl: true }).setView(
-      [start.latitude, start.longitude],
-      regionToZoom(start),
-    );
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-    }).addTo(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    appliedKey.current = `${start.latitude.toFixed(4)},${start.longitude.toFixed(4)}`;
-    map.on('moveend', () => {
-      const center = map.getCenter();
-      const zoom = map.getZoom();
-      const delta = zoom >= 14 ? 0.02 : zoom >= 12 ? 0.06 : zoom >= 10 ? 0.2 : 0.8;
-      regionCb.current?.({
-        latitude: center.lat,
-        longitude: center.lng,
-        latitudeDelta: delta,
-        longitudeDelta: delta,
+
+    const mountMap = () => {
+      if (cancelled || mapRef.current || el.clientWidth < 80 || el.clientHeight < 80) return;
+      const map = L.map(el, {
+        zoomControl: true,
+        fadeAnimation: false,
+        zoomAnimation: false,
+      }).setView(
+        [start.latitude, start.longitude],
+        regionToZoom(start),
+      );
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(map);
+      layerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+      appliedKey.current = `${start.latitude.toFixed(4)},${start.longitude.toFixed(4)}`;
+      map.on('moveend', () => {
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        const delta = zoom >= 14 ? 0.02 : zoom >= 12 ? 0.06 : zoom >= 10 ? 0.2 : 0.8;
+        regionCb.current?.({
+          latitude: center.lat,
+          longitude: center.lng,
+          latitudeDelta: delta,
+          longitudeDelta: delta,
+        });
       });
-    });
-    paintOverlays();
-    if (pendingFit.current) {
-      fit(pendingFit.current);
-      pendingFit.current = null;
-    } else if (pendingFly.current) {
-      fly(pendingFly.current, false);
-      pendingFly.current = null;
-    }
-    const invalidate = () => {
       map.invalidateSize();
       paintOverlays();
+      if (pendingFit.current) {
+        fit(pendingFit.current);
+        pendingFit.current = null;
+      } else if (pendingFly.current) {
+        fly(pendingFly.current);
+        pendingFly.current = null;
+      }
     };
-    const timer = window.setTimeout(invalidate, 120);
-    const late = window.setTimeout(invalidate, 600);
+
+    mountMap();
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => {
-          map.invalidateSize();
+          mountMap();
+          window.clearTimeout(resizeTimer);
+          resizeTimer = window.setTimeout(() => {
+            mapRef.current?.invalidateSize();
+            paintOverlays();
+          }, 100);
         })
       : null;
     observer?.observe(el);
     return () => {
-      window.clearTimeout(timer);
-      window.clearTimeout(late);
+      cancelled = true;
+      window.clearTimeout(resizeTimer);
       observer?.disconnect();
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
     };
@@ -324,7 +344,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     const key = `${next.latitude.toFixed(4)},${next.longitude.toFixed(4)},${Number(next.latitudeDelta).toFixed(3)}`;
     if (appliedKey.current === key) return;
     appliedKey.current = key;
-    fly(next, true);
+    fly(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [region?.latitude, region?.longitude, region?.latitudeDelta]);
 
