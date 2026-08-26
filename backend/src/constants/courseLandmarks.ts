@@ -9,7 +9,7 @@ export interface Landmark {
 
 const DEFAULTS: Record<LandmarkKind, Landmark> = {
   history: { name: '수원화성행궁', lat: 37.2819, lng: 127.0139, hint: '조선 후기 성곽과 행궁을 둘러보며 축제 배경을 이해합니다.' },
-  market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 On&On+ 쿠폰으로 먹거리를 결제합니다.' },
+  market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
   camp: { name: '광교호수공원 캠핑장', lat: 37.2830, lng: 127.0650, hint: '호수 옆 캠핑장에서 하루를 머물며 다음 일정을 잇습니다.' },
 };
 
@@ -159,10 +159,35 @@ const BY_CITY: Record<string, Partial<Record<LandmarkKind, Landmark>>> = {
     market: { name: '서문시장', lat: 35.8690, lng: 128.5800, hint: '납작만두·막창을 쿠폰으로 즐깁니다.' },
     camp: { name: '팔공산 캠핑장', lat: 35.9920, lng: 128.6950, hint: '팔공산 자락에서 하룻밤 머뭅니다.' },
   },
-  광주: {
+  광주광역시: {
     history: { name: '국립아시아문화전당 · 양림역사문화마을', lat: 35.1470, lng: 126.9200, hint: 'ACC와 양림동 근대 가옥을 먼저 보고 축제로 갑니다.' },
-    market: { name: '대인시장 예술야시장', lat: 35.1530, lng: 126.9110, hint: '떡갈비·주먹밥을 쿠폰으로 결제합니다.' },
+    market: { name: '대인시장 예술야시장', lat: 35.1530, lng: 126.9110, hint: '떡갈비·주먹밥을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
     camp: { name: '무등산 국립공원 캠핑장', lat: 35.1340, lng: 126.9880, hint: '무등산 자락에서 숙박합니다.' },
+  },
+  광주시: {
+    history: { name: '남한산성 · 경기도자박물관', lat: 37.4786, lng: 127.1814, hint: '남한산성과 경기 광주 도자 유적을 먼저 둘러봅니다.' },
+    market: { name: '경안시장', lat: 37.4092, lng: 127.2608, hint: '보리밥·순댓국 등 경기 광주 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '화담숲 · 곤지암 캠핑장', lat: 37.3410, lng: 127.3140, hint: '곤지암 화담숲 인근에서 숙박합니다.' },
+  },
+  남양주: {
+    history: { name: '수종사 · 정약용 유적지', lat: 37.5840, lng: 127.3070, hint: '북한강 수종사와 다산 정약용 유적을 먼저 둘러봅니다.' },
+    market: { name: '덕소시장', lat: 37.5850, lng: 127.2070, hint: '덕소 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '운길산 캠핑장', lat: 37.5760, lng: 127.2800, hint: '운길산·북한강 자락에서 숙박합니다.' },
+  },
+  양주: {
+    history: { name: '장흥관광지 · 양주관아지', lat: 37.7490, lng: 126.9560, hint: '장흥 계곡과 양주 관아지를 먼저 둘러봅니다.' },
+    market: { name: '양주골시장', lat: 37.7850, lng: 127.0460, hint: '양주 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '장흥캠핑장', lat: 37.7300, lng: 126.9500, hint: '장흥 계곡 옆에서 숙박합니다.' },
+  },
+  고성강원: {
+    history: { name: '화진포 · 건봉사', lat: 38.4800, lng: 128.4400, hint: '화진포 호수와 건봉사를 먼저 둘러봅니다.' },
+    market: { name: '거진시장', lat: 38.4500, lng: 128.4600, hint: '거진 시장 해산물을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '화진포 캠핑장', lat: 38.4750, lng: 128.4420, hint: '화진포 해변에서 숙박합니다.' },
+  },
+  고성경남: {
+    history: { name: '상족암 · 고성공룡박물관', lat: 34.9100, lng: 128.1500, hint: '상족암 공룡 발자국과 박물관을 먼저 둘러봅니다.' },
+    market: { name: '고성전통시장', lat: 34.9720, lng: 128.3220, hint: '고성 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '상족암 캠핑장', lat: 34.9080, lng: 128.1480, hint: '상족암 해안가에서 숙박합니다.' },
   },
 };
 
@@ -202,6 +227,9 @@ const CITY_ALIASES: Array<{ token: string; city: string }> = [
   { token: '야행', city: '수원' },
   { token: '자라섬', city: '가평' },
   { token: '민속촌', city: '용인' },
+  { token: '김치축제', city: '광주광역시' },
+  { token: '무등산', city: '광주광역시' },
+  { token: '양림', city: '광주광역시' },
 ];
 
 const REGION_DEFAULT_CITY: Record<string, string> = {
@@ -210,7 +238,7 @@ const REGION_DEFAULT_CITY: Record<string, string> = {
   INCHEON: '인천',
   BUSAN: '부산',
   DAEGU: '대구',
-  GWANGJU: '광주',
+  GWANGJU: '광주광역시',
   DAEJEON: '대전',
   ULSAN: '울산',
   SEJONG: '세종',
@@ -227,9 +255,104 @@ const REGION_DEFAULT_CITY: Record<string, string> = {
   GYEONGSANG: '경주',
 };
 
-export function resolveCourseCity(input: { title?: string; city?: string; address?: string; metro?: string }) {
+export const COUPON_COMING_SOON = 'On&On+ 쿠폰은 추후 준비 중입니다.';
+
+export function withCouponComingSoon(text: string) {
+  const raw = String(text || '').trim();
+  const replaced = raw
+    .replace(/현장 가맹점에서 On&On\+\s*쿠폰을 사용합니다\.?/g, COUPON_COMING_SOON)
+    .replace(/에서 On&On\+\s*쿠폰으로 먹거리를 결제합니다\.?/g, `에서 먹거리를 즐깁니다. ${COUPON_COMING_SOON}`)
+    .replace(/On&On\+\s*쿠폰으로 결제합니다\.?/g, COUPON_COMING_SOON)
+    .replace(/On&On\+\s*모바일 쿠폰으로 결제할 수 있습니다\.?/g, COUPON_COMING_SOON)
+    .replace(/을 쿠폰으로 결제합니다\.?/g, `을 즐깁니다. ${COUPON_COMING_SOON}`)
+    .replace(/를 쿠폰으로 결제합니다\.?/g, `를 즐깁니다. ${COUPON_COMING_SOON}`)
+    .replace(/쿠폰으로 결제합니다\.?/g, COUPON_COMING_SOON)
+    .replace(/에서 쿠폰을 사용합니다\.?/g, `를 둘러봅니다. ${COUPON_COMING_SOON}`)
+    .replace(/에서 On&On\+\s*쿠폰을 사용합니다\.?/g, `를 둘러봅니다. ${COUPON_COMING_SOON}`)
+    .replace(/쿠폰을 사용합니다\.?/g, COUPON_COMING_SOON)
+    .replace(/에서 쿠폰 할인을 받습니다\.?/g, `를 둘러봅니다. ${COUPON_COMING_SOON}`)
+    .replace(/쿠폰 할인을 받습니다\.?/g, COUPON_COMING_SOON)
+    .replace(/을 쿠폰으로 즐깁니다\.?/g, `을 즐깁니다. ${COUPON_COMING_SOON}`)
+    .replace(/를 쿠폰으로 즐깁니다\.?/g, `를 즐깁니다. ${COUPON_COMING_SOON}`)
+    .replace(/쿠폰으로 즐깁니다\.?/g, COUPON_COMING_SOON)
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (replaced.includes('추후 준비')) return replaced;
+  if (/쿠폰|가맹점 정산|매칭 포인트/.test(replaced)) {
+    return `${replaced} ${COUPON_COMING_SOON}`;
+  }
+  return replaced;
+}
+
+export type CoursePlaceKind = 'festival' | 'food' | 'attraction' | 'culture' | 'other';
+
+export function inferCoursePlaceKind(input: {
+  contentTypeId?: string;
+  kind?: string;
+  title?: string;
+  category?: string;
+}): CoursePlaceKind {
+  const typeId = String(input.contentTypeId || '');
+  const kind = String(input.kind || '');
+  const hay = `${input.title || ''} ${input.category || ''} ${kind}`;
+  if (typeId === '39' || kind === 'food' || /맛집|보리밥|식당|한정식|음식점|레스토랑/.test(hay)) return 'food';
+  if (typeId === '12' || kind === 'attraction') return 'attraction';
+  if (typeId === '14' || kind === 'culture') return 'culture';
+  if (/축제|페스티벌|문화제/.test(hay) || typeId === '15' || kind === 'festival') return 'festival';
+  return 'festival';
+}
+
+type CityContext = {
+  title?: string;
+  city?: string;
+  address?: string;
+  metro?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+function resolveHomonymCity(text: string, ctx: CityContext = {}) {
+  const metro = String(ctx.metro || '');
+  const lat = Number(ctx.latitude);
+  const lng = Number(ctx.longitude);
+  const hasGps = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+
+  if (/남양주/.test(text)) return '남양주';
+
+  const mentionsGwangju = /광주/.test(text);
+  if (mentionsGwangju || metro === 'GWANGJU' || metro === 'GYEONGGI') {
+    if (/광주광역시|광산구|무등산|양림|아시아문화전당|대인시장/.test(text) || metro === 'GWANGJU') {
+      if (/경기도.{0,10}광주|경기광주/.test(text) && !/광주광역시/.test(text)) return '광주시';
+      if (metro === 'GWANGJU' || /광주광역시|광산구|무등산|양림|아시아문화전당|대인시장/.test(text)) {
+        return '광주광역시';
+      }
+    }
+    if (/경기도.{0,10}광주|경기광주|광주시/.test(text) && !/광주광역시/.test(text)) return '광주시';
+    if (metro === 'GYEONGGI' && mentionsGwangju) return '광주시';
+    if (mentionsGwangju && hasGps) {
+      if (lat >= 36.8 && lat <= 37.7 && lng >= 126.95 && lng <= 127.55) return '광주시';
+      if (lat >= 34.9 && lat <= 35.4 && lng >= 126.5 && lng <= 127.25) return '광주광역시';
+    }
+    if (mentionsGwangju && !/광주시|광주광역시/.test(text)) {
+      if (metro === 'GYEONGGI' || (hasGps && lat >= 36.8)) return '광주시';
+      return '광주광역시';
+    }
+  }
+
+  if (/고성/.test(text)) {
+    if (/강원|간성|토성면/.test(text) || metro === 'GANGWON') return '고성강원';
+    if (/경남|통영|거제/.test(text) || metro === 'GYEONGNAM') return '고성경남';
+    if (hasGps && lat >= 37.8) return '고성강원';
+    if (hasGps && lat <= 35.5) return '고성경남';
+  }
+  return '';
+}
+
+export function resolveCourseCity(input: CityContext) {
   const hay = `${input.city || ''} ${input.address || ''} ${input.title || ''}`;
-  const fromLandmarks = cityKey(hay);
+  const homonym = resolveHomonymCity(hay, input);
+  if (homonym && BY_CITY[homonym]) return homonym;
+  const fromLandmarks = cityKey(hay, input);
   if (fromLandmarks) return fromLandmarks;
   const alias = CITY_ALIASES.find((item) => hay.includes(item.token));
   if (alias) return alias.city;
@@ -237,13 +360,29 @@ export function resolveCourseCity(input: { title?: string; city?: string; addres
   return '수원';
 }
 
-function cityKey(raw?: string) {
+function cityKey(raw?: string, ctx: CityContext = {}) {
   const text = String(raw || '');
-  const hit = Object.keys(BY_CITY).find((key) => text.includes(key));
+  const homonym = resolveHomonymCity(text, ctx);
+  if (homonym && BY_CITY[homonym]) return homonym;
+  const keys = Object.keys(BY_CITY).sort((a, b) => b.length - a.length);
+  const hit = keys.find((key) => {
+    if (!text.includes(key)) return false;
+    const longerHit = keys.some((other) => other !== key && other.includes(key) && text.includes(other));
+    if (longerHit) return false;
+    if (key === '양주' && text.includes('남양주') && !text.replace(/남양주/g, '').includes('양주')) return false;
+    return true;
+  });
   return hit ?? '';
 }
 
-export function landmarkFor(kind: LandmarkKind, city?: string, address?: string, title?: string): Landmark {
-  const key = cityKey(`${city || ''} ${address || ''} ${title || ''}`);
+export function landmarkFor(
+  kind: LandmarkKind,
+  city?: string,
+  address?: string,
+  title?: string,
+  extra?: CityContext,
+): Landmark {
+  if (city && BY_CITY[city]?.[kind]) return BY_CITY[city][kind] as Landmark;
+  const key = cityKey(`${city || ''} ${address || ''} ${title || ''}`, extra);
   return BY_CITY[key]?.[kind] ?? DEFAULTS[kind];
 }

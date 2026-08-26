@@ -11,6 +11,11 @@ export async function recommendCourse(req: Request, res: Response) {
     const latitude = Number(req.query.lat ?? req.body?.latitude);
     const longitude = Number(req.query.lng ?? req.body?.longitude);
     const festivalId = typeof req.query.festival_id === 'string' ? req.query.festival_id : undefined;
+    const contentTypeId = typeof req.query.contentTypeId === 'string'
+      ? req.query.contentTypeId
+      : String(req.body?.contentTypeId ?? '');
+    const kind = typeof req.query.kind === 'string' ? req.query.kind : String(req.body?.kind ?? '');
+    const category = typeof req.query.category === 'string' ? req.query.category : String(req.body?.category ?? '');
     const data = await recommendFestivalCourse({
       title,
       city,
@@ -19,6 +24,9 @@ export async function recommendCourse(req: Request, res: Response) {
       latitude: Number.isFinite(latitude) ? latitude : undefined,
       longitude: Number.isFinite(longitude) ? longitude : undefined,
       festivalId,
+      contentTypeId,
+      kind,
+      category,
     });
     return res.json({ success: true, data });
   } catch (err) {

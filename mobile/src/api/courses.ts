@@ -1,5 +1,5 @@
 import { api } from './client';
-import { buildFestivalCourse } from '../utils/festivalCourse';
+import { buildFestivalCourse, shouldRejectRemoteCourse } from '../utils/festivalCourse';
 
 export type CourseItinerary = {
   step: number;
@@ -26,14 +26,13 @@ export type CourseQuery = {
   metro?: string;
   latitude?: number;
   longitude?: number;
+  contentTypeId?: string;
+  kind?: string;
+  category?: string;
 };
 
 function looksLikeDefaultSuwon(course: FestivalCourse, input: CourseQuery) {
-  const city = `${input.city || ''} ${input.address || ''} ${input.title || ''} ${input.metro || ''}`;
-  const localContext = /수원|용인|GYEONGGI/.test(city)
-    && !/보령|여수|제주|서울|인천|춘천|강릉|부산|진주|경주|청주|전주|강원|GANGWON|속초|평창/.test(city);
-  const history = course.itinerary?.[0]?.place_name || '';
-  return !localContext && /수원화성|화성행궁|한국민속촌|광교호수/.test(history);
+  return shouldRejectRemoteCourse(course, input);
 }
 
 export async function fetchRecommendedCourse(query: CourseQuery | string = {}): Promise<FestivalCourse | null> {
@@ -48,6 +47,9 @@ export async function fetchRecommendedCourse(query: CourseQuery | string = {}): 
         metro: input.metro,
         lat: input.latitude,
         lng: input.longitude,
+        contentTypeId: input.contentTypeId,
+        kind: input.kind,
+        category: input.category,
       },
     });
     const remote = res.data?.data;
