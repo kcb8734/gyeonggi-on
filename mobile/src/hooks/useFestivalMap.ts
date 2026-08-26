@@ -1,12 +1,44 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import * as Location from 'expo-location';
 import { fetchFestivalMap, fetchNearbyFestivals } from '../api/festivals';
+import { fetchHomeFeed } from '../api/home';
 import { fetchTourNearby } from '../api/tour';
 import { ALL_CATEGORIES, GYEONGGI_DEFAULT_REGION } from '../constants/map';
 import { regionById } from '../constants/regionTour';
 import { useSelectedRegionPreset } from '../stores/regionStore';
 import type { FestivalPin, MerchantPin } from '../types/map';
 import type { TourPlace } from '../types/tour';
+import { validLatLng } from '../utils/mapCamera';
+import { withinKm } from '../utils/mapPins';
+import { requestUserLocation, type UserLocationResult } from '../utils/userLocation';
+
+const TOUR_RADIUS_M = 4000;
+const NEARBY_KM = 12;
+
+function toMerchantPin(promo: {
+  id: string;
+  business_name?: string;
+  title: string;
+  address?: string | null;
+  latitude?: number;
+  longitude?: number;
+  total_discount_rate: number;
+  remaining_quantity?: number;
+  max_discount_amount?: number | null;
+}): MerchantPin | null {
+  if (!validLatLng(promo.latitude, promo.longitude)) return null;
+  return {
+    id: promo.id,
+    business_name: promo.business_name || promo.title,
+    category: '제휴업소',
+    address: promo.address,
+    latitude: promo.latitude as number,
+    longitude: promo.longitude as number,
+    total_discount_rate: promo.total_discount_rate,
+    promotion_id: promo.id,
+    remaining_quantity: promo.remaining_quantity,
+    max_discount_amount: promo.max_discount_amount,
+  };
+}
 
 export function useFestivalMap(initialFestivalId?: string) {
   const region = useSelectedRegionPreset();
@@ -14,69 +46,73 @@ export function useFestivalMap(initialFestivalId?: string) {
   const [selectedFestivalId, setSelectedFestivalId] = useState<string | null>(initialFestivalId ?? null);
   const [selectedFestival, setSelectedFestival] = useState<FestivalPin | null>(null);
   const [merchants, setMerchants] = useState<MerchantPin[]>([]);
+  const [regionMerchants, setRegionMerchants] = useState<MerchantPin[]>([]);
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
   const [loadingFestivals, setLoadingFestivals] = useState(true);
   const [loadingMerchants, setLoadingMerchants] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tourPlaces, setTourPlaces] = useState<TourPlace[]>([]);
   const [loadingTour, setLoadingTour] = useState(false);
 
-  const loadFestivals = useCallback(async () => {
+  const loadAround = useCallback(async (coords: { latitude: number; longitude: number } | null) => {
+    const preset = regionById(region.id);
+    const center = coords ?? {
+      latitude: preset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
+      longitude: preset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
+    };
     setLoadingFestivals(true);
+    setLoadingTour(true);
     setError(null);
     try {
-      let coords: { latitude: number; longitude: number } | null = null;
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status === 'granted') {
-          const current = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          coords = {
-            latitude: current.coords.latitude,
-            longitude: current.coords.longitude,
-          };
-          setUserLocation(coords);
-        }
-      } catch {
-        // 위치 권한/수신 실패 시 전체 축제 목록으로 폴백
-      }
-
-      const list = await fetchNearbyFestivals(
-        coords
-          ? { latitude: coords.latitude, longitude: coords.longitude, radiusKm: 80 }
-          : undefined,
+      const [list, feed, places] = await Promise.all([
+        fetchNearbyFestivals({ latitude: center.latitude, longitude: center.longitude, radiusKm: NEARBY_KM }),
+        fetchHomeFeed(region.id).catch(() => null),
+        fetchTourNearby({ mapX: center.longitude, mapY: center.latitude, radius: TOUR_RADIUS_M }).catch(() => [] as TourPlace[]),
+      ]);
+      const nearbyFestivals = list.filter((item) =>
+        validLatLng(item.latitude, item.longitude) && withinKm(item, center, NEARBY_KM),
       );
-      setFestivals(list);
-
-      const preset = regionById(region.id);
-      const center = coords ?? {
-        latitude: preset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
-        longitude: preset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
-      };
-      setLoadingTour(true);
-      fetchTourNearby({ mapX: center.longitude, mapY: center.latitude, radius: 3000 })
-        .then(setTourPlaces)
-        .catch(() => setTourPlaces([]))
-        .finally(() => setLoadingTour(false));
-
-      if (initialFestivalId && list.some((f) => f.id === initialFestivalId)) {
-        setSelectedFestivalId(initialFestivalId);
-      } else if (initialFestivalId && !list.some((f) => f.id === initialFestivalId)) {
-        // 주변 목록에 없어도 지정된 축제는 지도 API로 로드
+      setFestivals(nearbyFestivals);
+      const promoPins = (feed?.promotions ?? [])
+        .map(toMerchantPin)
+        .filter((item): item is MerchantPin => Boolean(item))
+        .filter((item) => withinKm(item, center, NEARBY_KM));
+      setRegionMerchants(promoPins);
+      setTourPlaces(
+        (places ?? []).filter((item) => validLatLng(item.mapY, item.mapX)),
+      );
+      if (initialFestivalId && list.some((item) => item.id === initialFestivalId)) {
         setSelectedFestivalId(initialFestivalId);
       }
     } catch {
-      setError('주변 축제 목록을 불러오지 못했습니다.');
+      setError('주변 축제·장소를 불러오지 못했습니다.');
     } finally {
       setLoadingFestivals(false);
+      setLoadingTour(false);
     }
   }, [initialFestivalId, region.id]);
 
+  const loadFestivals = useCallback(async (forcePrompt = false) => {
+    let coords: { latitude: number; longitude: number } | null = userLocation;
+    if (forcePrompt || !coords) {
+      const result: UserLocationResult = await requestUserLocation();
+      if (result.ok) {
+        coords = { latitude: result.latitude, longitude: result.longitude };
+        setUserLocation(coords);
+        setLocationNote(null);
+      } else {
+        setLocationNote(result.message);
+        coords = coords ?? null;
+      }
+    }
+    await loadAround(coords);
+  }, [loadAround, userLocation]);
+
   useEffect(() => {
-    loadFestivals();
-  }, [loadFestivals]);
+    void loadFestivals(false);
+  }, [region.id]);
 
   useEffect(() => {
     if (!selectedFestivalId) {
@@ -93,27 +129,14 @@ export function useFestivalMap(initialFestivalId?: string) {
       .then((data) => {
         if (cancelled) return;
         setSelectedFestival(data.festival);
-        setMerchants(data.merchants ?? []);
+        setMerchants((data.merchants ?? []).filter((item) => validLatLng(item.latitude, item.longitude)));
         setCategory(ALL_CATEGORIES);
         setFestivals((prev) => {
-          if (prev.some((f) => f.id === data.festival.id)) return prev;
-          return [data.festival, ...prev];
+          if (prev.some((item) => item.id === data.festival.id)) return prev;
+          return validLatLng(data.festival.latitude, data.festival.longitude)
+            ? [data.festival, ...prev]
+            : prev;
         });
-        setLoadingTour(true);
-        fetchTourNearby({
-          mapX: data.festival.longitude,
-          mapY: data.festival.latitude,
-          radius: 3000,
-        })
-          .then((places) => {
-            if (!cancelled) setTourPlaces(places);
-          })
-          .catch(() => {
-            if (!cancelled) setTourPlaces([]);
-          })
-          .finally(() => {
-            if (!cancelled) setLoadingTour(false);
-          });
       })
       .catch(() => {
         if (!cancelled) setError('제휴업소 지도 데이터를 불러오지 못했습니다.');
@@ -128,14 +151,18 @@ export function useFestivalMap(initialFestivalId?: string) {
   }, [selectedFestivalId]);
 
   const categories = useMemo(() => {
-    const unique = Array.from(new Set(merchants.map((m) => m.category).filter(Boolean)));
+    const unique = Array.from(new Set(merchants.map((item) => item.category).filter(Boolean)));
     return [ALL_CATEGORIES, ...unique];
   }, [merchants]);
 
   const visibleMerchants = useMemo(() => {
-    if (category === ALL_CATEGORIES) return merchants;
-    return merchants.filter((m) => m.category === category);
-  }, [merchants, category]);
+    const extra = category === ALL_CATEGORIES
+      ? merchants
+      : merchants.filter((item) => item.category === category);
+    const byId = new Map(regionMerchants.map((item) => [item.id, item]));
+    extra.forEach((item) => byId.set(item.id, item));
+    return [...byId.values()];
+  }, [merchants, regionMerchants, category]);
 
   return {
     festivals,
@@ -143,16 +170,17 @@ export function useFestivalMap(initialFestivalId?: string) {
     setSelectedFestivalId,
     selectedFestival,
     merchants: visibleMerchants,
-    allMerchantCount: merchants.length,
+    allMerchantCount: visibleMerchants.length,
     category,
     setCategory,
     categories,
     userLocation,
+    locationNote,
     tourPlaces,
     loadingFestivals,
     loadingMerchants,
     loadingTour,
     error,
-    reload: loadFestivals,
+    reload: () => loadFestivals(true),
   };
 }

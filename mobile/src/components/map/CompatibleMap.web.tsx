@@ -21,6 +21,7 @@ export interface MapViewHandle {
     coordinates: { latitude: number; longitude: number }[],
     options?: { padding?: number | [number, number]; edgePadding?: { top?: number; right?: number; bottom?: number; left?: number } },
   ) => void;
+  invalidateSize?: () => void;
 }
 
 interface MarkerProps {
@@ -30,8 +31,10 @@ interface MarkerProps {
   pinColor?: string;
   badgeLabel?: string;
   emphasized?: boolean;
+  zIndex?: number;
   onPress?: () => void;
   tracksViewChanges?: boolean;
+  interactive?: boolean;
   children?: ReactNode;
 }
 
@@ -71,18 +74,76 @@ function regionToZoom(region: MapRegion): number {
   if (delta > 0.6) return 9;
   if (delta > 0.35) return 10;
   if (delta > 0.15) return 11;
-  if (delta > 0.05) return 13;
-  return 14;
+  if (delta > 0.06) return 13;
+  if (delta > 0.03) return 14;
+  return 15;
+}
+
+function unstackMarkers(map: L.Map | null, layer: L.LayerGroup | null) {
+  if (!map || !layer) return;
+  const size = map.getSize();
+  if (size.x < 40 || size.y < 40) return;
+  const groups = new Map<string, L.Marker[]>();
+  layer.eachLayer((item) => {
+    if (!(item instanceof L.Marker)) return;
+    if (item.options.interactive === false) return;
+    const pt = map.latLngToLayerPoint(item.getLatLng());
+    const key = `${Math.round(pt.x / 26)}_${Math.round(pt.y / 22)}`;
+    const list = groups.get(key) ?? [];
+    list.push(item);
+    groups.set(key, list);
+  });
+  groups.forEach((markers) => {
+    if (markers.length < 2) return;
+    const origin = map.latLngToLayerPoint(markers[0].getLatLng());
+    markers.forEach((marker, index) => {
+      const ring = Math.floor(index / 8);
+      const slot = index % 8;
+      const count = Math.min(8, markers.length - ring * 8);
+      const angle = (2 * Math.PI * slot) / count;
+      const radius = 26 * (1.15 + ring * 1.1);
+      const next = L.point(
+        origin.x + Math.cos(angle) * radius,
+        origin.y + Math.sin(angle) * radius,
+      );
+      marker.setLatLng(map.layerPointToLatLng(next));
+    });
+  });
 }
 
 function ensureLeafletCss() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById('leaflet-css')) return;
-  const link = document.createElement('link');
-  link.id = 'leaflet-css';
-  link.rel = 'stylesheet';
-  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-  document.head.appendChild(link);
+  if (!document.getElementById('leaflet-css')) {
+    const link = document.createElement('link');
+    link.id = 'leaflet-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+  }
+  if (document.getElementById('onandon-leaflet-fix')) return;
+  const style = document.createElement('style');
+  style.id = 'onandon-leaflet-fix';
+  style.textContent = `
+    .leaflet-container { position: relative !important; width: 100%; height: 100%; }
+    .leaflet-pane, .leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane,
+    .leaflet-shadow-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane {
+      position: absolute; left: 0; top: 0;
+    }
+    .leaflet-marker-icon, .leaflet-div-icon, .onandon-pin {
+      background: transparent !important;
+      border: none !important;
+      pointer-events: auto !important;
+      cursor: pointer;
+    }
+    .onandon-pin { display: flex; align-items: center; justify-content: center; }
+    .onandon-pin-hit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 const COLOR: Record<string, string> = {
@@ -118,7 +179,7 @@ function fitPadding(options?: {
 }
 
 export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
-  { style, initialRegion, region, children, onRegionChangeComplete },
+  { style, initialRegion, region, children, onRegionChangeComplete, pointerEvents },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -163,31 +224,50 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       const marker = child.props as MarkerProps;
       if (!validLatLng(marker.coordinate?.latitude, marker.coordinate?.longitude)) return;
       const color = COLOR[marker.pinColor ?? 'red'] ?? marker.pinColor ?? '#E0392A';
-      const size = marker.emphasized ? 28 : 22;
+      const emphasized = Boolean(marker.emphasized);
+      const width = marker.badgeLabel ? (emphasized ? 44 : 36) : 22;
+      const height = marker.badgeLabel ? (emphasized ? 28 : 24) : 22;
+      const fontSize = emphasized ? 12 : 11;
       const badge = marker.badgeLabel
-        ? `<div style="min-width:${size}px;height:${size}px;padding:0 6px;background:${color};color:#fff;border:2px solid #fff;border-radius:${size / 2}px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:800 ${marker.emphasized ? 12 : 10}px/${size - 4}px sans-serif;text-align:center">${marker.badgeLabel}</div>`
-        : `<div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`;
+        ? `<div class="onandon-pin-hit" style="width:${width}px;height:${height}px"><div style="min-width:${height}px;height:${height}px;padding:0 7px;background:${color};color:#fff;border:2px solid #fff;border-radius:${height / 2}px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:800 ${fontSize}px/${height - 4}px sans-serif;text-align:center;white-space:nowrap">${marker.badgeLabel}</div></div>`
+        : `<div class="onandon-pin-hit" style="width:${width}px;height:${height}px"><div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div></div>`;
       const icon = L.divIcon({
-        className: 'onandon-pin',
+        className: 'leaflet-div-icon onandon-pin',
         html: badge,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+        iconSize: [width, height],
+        iconAnchor: [width / 2, height / 2],
       });
-      const pin = L.marker([marker.coordinate.latitude, marker.coordinate.longitude], { icon, title: marker.title });
-      if (marker.onPress) pin.on('click', marker.onPress);
+      const pin = L.marker([marker.coordinate.latitude, marker.coordinate.longitude], {
+        icon,
+        title: marker.title,
+        keyboard: false,
+        interactive: marker.interactive !== false,
+        bubblingMouseEvents: false,
+        zIndexOffset: Number(marker.zIndex || 0) * 10,
+        riseOnHover: true,
+      });
+      if (marker.onPress) {
+        pin.on('click', (event) => {
+          L.DomEvent.stop(event);
+          marker.onPress?.();
+        });
+      }
       pin.addTo(layer);
     });
+    unstackMarkers(mapRef.current, layer);
   };
 
-  const fly = (next: MapRegion, animate = true) => {
+  const fly = (next: MapRegion) => {
     const map = mapRef.current;
     if (!map) {
       pendingFly.current = next;
       return;
     }
-    const zoom = regionToZoom(next);
-    if (animate) map.flyTo([next.latitude, next.longitude], zoom, { duration: 0.45 });
-    else map.setView([next.latitude, next.longitude], zoom);
+    map.setView([next.latitude, next.longitude], regionToZoom(next), { animate: false });
+    window.requestAnimationFrame(() => {
+      map.invalidateSize();
+      paintOverlays();
+    });
   };
 
   const fit = (coordinates: { latitude: number; longitude: number }[], padding: [number, number] = [40, 40]) => {
@@ -207,10 +287,14 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
 
   useImperativeHandle(ref, () => ({
     animateToRegion(next) {
-      fly(next, true);
+      fly(next);
     },
     fitToCoordinates(coordinates, options) {
       fit(coordinates, fitPadding(options));
+    },
+    invalidateSize() {
+      mapRef.current?.invalidateSize();
+      paintOverlays();
     },
   }));
 
@@ -218,44 +302,67 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     ensureLeafletCss();
     const el = containerRef.current;
     if (!el) return;
+    let cancelled = false;
+    let resizeTimer = 0;
     const start = region ?? fallback;
-    const map = L.map(el, { zoomControl: true }).setView(
-      [start.latitude, start.longitude],
-      regionToZoom(start),
-    );
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-    }).addTo(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    appliedKey.current = `${start.latitude.toFixed(4)},${start.longitude.toFixed(4)}`;
-    map.on('moveend', () => {
-      const center = map.getCenter();
-      const zoom = map.getZoom();
-      const delta = zoom >= 14 ? 0.02 : zoom >= 12 ? 0.06 : zoom >= 10 ? 0.2 : 0.8;
-      regionCb.current?.({
-        latitude: center.lat,
-        longitude: center.lng,
-        latitudeDelta: delta,
-        longitudeDelta: delta,
+
+    const mountMap = () => {
+      if (cancelled || mapRef.current || el.clientWidth < 80 || el.clientHeight < 80) return;
+      const map = L.map(el, {
+        zoomControl: true,
+        fadeAnimation: false,
+        zoomAnimation: false,
+      }).setView(
+        [start.latitude, start.longitude],
+        regionToZoom(start),
+      );
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(map);
+      layerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+      appliedKey.current = `${start.latitude.toFixed(4)},${start.longitude.toFixed(4)}`;
+      map.on('moveend', () => {
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        const delta = zoom >= 14 ? 0.02 : zoom >= 12 ? 0.06 : zoom >= 10 ? 0.2 : 0.8;
+        regionCb.current?.({
+          latitude: center.lat,
+          longitude: center.lng,
+          latitudeDelta: delta,
+          longitudeDelta: delta,
+        });
       });
-    });
-    paintOverlays();
-    if (pendingFit.current) {
-      fit(pendingFit.current);
-      pendingFit.current = null;
-    } else if (pendingFly.current) {
-      fly(pendingFly.current, false);
-      pendingFly.current = null;
-    }
-    const invalidate = () => {
+      map.on('zoomend', () => paintOverlays());
       map.invalidateSize();
       paintOverlays();
+      if (pendingFit.current) {
+        fit(pendingFit.current);
+        pendingFit.current = null;
+      } else if (pendingFly.current) {
+        fly(pendingFly.current);
+        pendingFly.current = null;
+      }
     };
-    const timer = window.setTimeout(invalidate, 120);
+
+    mountMap();
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          mountMap();
+          window.clearTimeout(resizeTimer);
+          resizeTimer = window.setTimeout(() => {
+            mapRef.current?.invalidateSize();
+            paintOverlays();
+          }, 100);
+        })
+      : null;
+    observer?.observe(el);
     return () => {
-      window.clearTimeout(timer);
-      map.remove();
+      cancelled = true;
+      window.clearTimeout(resizeTimer);
+      observer?.disconnect();
+      mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
     };
@@ -267,18 +374,21 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   }, [children]);
 
   useEffect(() => {
-    const next = region ?? initialRegion;
+    const next = region;
     if (!next || !mapRef.current) return;
     const key = `${next.latitude.toFixed(4)},${next.longitude.toFixed(4)},${Number(next.latitudeDelta).toFixed(3)}`;
     if (appliedKey.current === key) return;
     appliedKey.current = key;
-    fly(next, true);
+    fly(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [region?.latitude, region?.longitude, region?.latitudeDelta, initialRegion?.latitude, initialRegion?.longitude, initialRegion?.latitudeDelta]);
+  }, [region?.latitude, region?.longitude, region?.latitudeDelta]);
 
   return (
-    <View style={[styles.wrap, style]}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 180 }} />
+    <View style={[styles.wrap, style]} pointerEvents={pointerEvents ?? 'auto'}>
+      <div
+        ref={containerRef}
+        style={{ width: '100%', height: '100%', minHeight: 180, pointerEvents: 'auto' }}
+      />
     </View>
   );
 });
