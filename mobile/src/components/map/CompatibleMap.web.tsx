@@ -74,8 +74,41 @@ function regionToZoom(region: MapRegion): number {
   if (delta > 0.6) return 9;
   if (delta > 0.35) return 10;
   if (delta > 0.15) return 11;
-  if (delta > 0.05) return 13;
-  return 14;
+  if (delta > 0.06) return 13;
+  if (delta > 0.03) return 14;
+  return 15;
+}
+
+function unstackMarkers(map: L.Map | null, layer: L.LayerGroup | null) {
+  if (!map || !layer) return;
+  const size = map.getSize();
+  if (size.x < 40 || size.y < 40) return;
+  const groups = new Map<string, L.Marker[]>();
+  layer.eachLayer((item) => {
+    if (!(item instanceof L.Marker)) return;
+    if (item.options.interactive === false) return;
+    const pt = map.latLngToLayerPoint(item.getLatLng());
+    const key = `${Math.round(pt.x / 26)}_${Math.round(pt.y / 22)}`;
+    const list = groups.get(key) ?? [];
+    list.push(item);
+    groups.set(key, list);
+  });
+  groups.forEach((markers) => {
+    if (markers.length < 2) return;
+    const origin = map.latLngToLayerPoint(markers[0].getLatLng());
+    markers.forEach((marker, index) => {
+      const ring = Math.floor(index / 8);
+      const slot = index % 8;
+      const count = Math.min(8, markers.length - ring * 8);
+      const angle = (2 * Math.PI * slot) / count;
+      const radius = 26 * (1.15 + ring * 1.1);
+      const next = L.point(
+        origin.x + Math.cos(angle) * radius,
+        origin.y + Math.sin(angle) * radius,
+      );
+      marker.setLatLng(map.layerPointToLatLng(next));
+    });
+  });
 }
 
 function ensureLeafletCss() {
@@ -221,6 +254,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       }
       pin.addTo(layer);
     });
+    unstackMarkers(mapRef.current, layer);
   };
 
   const fly = (next: MapRegion) => {
@@ -300,6 +334,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
           longitudeDelta: delta,
         });
       });
+      map.on('zoomend', () => paintOverlays());
       map.invalidateSize();
       paintOverlays();
       if (pendingFit.current) {

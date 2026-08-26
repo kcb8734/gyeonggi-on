@@ -11,8 +11,8 @@ import { validLatLng } from '../utils/mapCamera';
 import { withinKm } from '../utils/mapPins';
 import { requestUserLocation, type UserLocationResult } from '../utils/userLocation';
 
-const TOUR_RADIUS_M = 8000;
-const NEARBY_KM = 20;
+const TOUR_RADIUS_M = 4000;
+const NEARBY_KM = 12;
 
 function toMerchantPin(promo: {
   id: string;

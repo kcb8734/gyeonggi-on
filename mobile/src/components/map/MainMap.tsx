@@ -81,7 +81,7 @@ function toSheetFromPlace(place: TourPlace): SheetPlace {
   };
 }
 
-const NEARBY_VIEW = { latitudeDelta: 0.045, longitudeDelta: 0.045 };
+const NEARBY_VIEW = { latitudeDelta: 0.022, longitudeDelta: 0.022 };
 
 type OverlayPin =
   | { layer: 'festival'; latitude: number; longitude: number; festival: FestivalPin }
