@@ -23,10 +23,11 @@ type MarkerProps = Omit<MapMarkerProps, 'pinColor'> & {
   badgeLabel?: string;
   emphasized?: boolean;
   pinColor?: string;
+  zIndex?: number;
 };
 
-export function Marker({ badgeLabel: _badgeLabel, emphasized: _emphasized, pinColor, ...props }: MarkerProps) {
-  return <RNMarker {...props} pinColor={pinColor} />;
+export function Marker({ badgeLabel: _badgeLabel, emphasized: _emphasized, pinColor, zIndex, ...props }: MarkerProps) {
+  return <RNMarker {...props} pinColor={pinColor} zIndex={zIndex} />;
 }
 
 type PolylineProps = React.ComponentProps<typeof RNPolyline>;

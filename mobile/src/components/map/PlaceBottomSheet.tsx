@@ -15,6 +15,8 @@ export interface SheetPlace {
   discountRate?: number;
   canIssueCoupon?: boolean;
   canOpenDetail?: boolean;
+  contentId?: string;
+  contentTypeId?: string;
 }
 
 interface Props {
@@ -42,12 +44,14 @@ export default function PlaceBottomSheet({ place, issuing, onIssue, onDetail, on
           <Image source={{ uri: place.imageUrl }} style={styles.thumb} />
         ) : (
           <View style={[styles.thumb, styles.fallback]}>
-            <Text style={styles.fallbackText}>{place.kind === 'merchant' ? '%' : '축'}</Text>
+            <Text style={styles.fallbackText}>
+              {place.kind === 'merchant' ? '%' : place.subtitle?.slice(0, 1) || '축'}
+            </Text>
           </View>
         )}
         <View style={{ flex: 1 }}>
           <Text style={styles.kicker}>
-            {place.kind === 'merchant' ? '할인 상가' : place.kind === 'festival' ? '축제' : '주변 장소'}
+            {place.kind === 'merchant' ? '할인 상가' : place.kind === 'festival' ? '축제' : (place.subtitle || '주변 장소')}
           </Text>
           <Text style={styles.title} numberOfLines={1}>{place.title}</Text>
           <Text style={styles.addr} numberOfLines={2}>{place.address ?? place.subtitle ?? '주소 정보 없음'}</Text>

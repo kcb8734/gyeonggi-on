@@ -30,6 +30,7 @@ interface MarkerProps {
   pinColor?: string;
   badgeLabel?: string;
   emphasized?: boolean;
+  zIndex?: number;
   onPress?: () => void;
   tracksViewChanges?: boolean;
   children?: ReactNode;
@@ -77,12 +78,29 @@ function regionToZoom(region: MapRegion): number {
 
 function ensureLeafletCss() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById('leaflet-css')) return;
-  const link = document.createElement('link');
-  link.id = 'leaflet-css';
-  link.rel = 'stylesheet';
-  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-  document.head.appendChild(link);
+  if (!document.getElementById('leaflet-css')) {
+    const link = document.createElement('link');
+    link.id = 'leaflet-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+  }
+  if (document.getElementById('onandon-leaflet-fix')) return;
+  const style = document.createElement('style');
+  style.id = 'onandon-leaflet-fix';
+  style.textContent = `
+    .leaflet-container { position: relative !important; width: 100%; height: 100%; }
+    .leaflet-pane, .leaflet-map-pane, .leaflet-tile-pane, .leaflet-overlay-pane,
+    .leaflet-shadow-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane {
+      position: absolute; left: 0; top: 0;
+    }
+    .leaflet-marker-icon, .leaflet-div-icon, .onandon-pin {
+      background: transparent !important;
+      border: none !important;
+    }
+    .onandon-pin { display: flex; align-items: center; justify-content: center; }
+  `;
+  document.head.appendChild(style);
 }
 
 const COLOR: Record<string, string> = {
@@ -168,13 +186,23 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         ? `<div style="min-width:${size}px;height:${size}px;padding:0 6px;background:${color};color:#fff;border:2px solid #fff;border-radius:${size / 2}px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:800 ${marker.emphasized ? 12 : 10}px/${size - 4}px sans-serif;text-align:center">${marker.badgeLabel}</div>`
         : `<div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`;
       const icon = L.divIcon({
-        className: 'onandon-pin',
+        className: 'leaflet-div-icon onandon-pin',
         html: badge,
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
       });
-      const pin = L.marker([marker.coordinate.latitude, marker.coordinate.longitude], { icon, title: marker.title });
-      if (marker.onPress) pin.on('click', marker.onPress);
+      const pin = L.marker([marker.coordinate.latitude, marker.coordinate.longitude], {
+        icon,
+        title: marker.title,
+        zIndexOffset: Number(marker.zIndex || 0) * 10,
+        riseOnHover: true,
+      });
+      if (marker.onPress) {
+        pin.on('click', (event) => {
+          L.DomEvent.stopPropagation(event);
+          marker.onPress?.();
+        });
+      }
       pin.addTo(layer);
     });
   };
@@ -267,14 +295,14 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   }, [children]);
 
   useEffect(() => {
-    const next = region ?? initialRegion;
+    const next = region;
     if (!next || !mapRef.current) return;
     const key = `${next.latitude.toFixed(4)},${next.longitude.toFixed(4)},${Number(next.latitudeDelta).toFixed(3)}`;
     if (appliedKey.current === key) return;
     appliedKey.current = key;
     fly(next, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [region?.latitude, region?.longitude, region?.latitudeDelta, initialRegion?.latitude, initialRegion?.longitude, initialRegion?.latitudeDelta]);
+  }, [region?.latitude, region?.longitude, region?.latitudeDelta]);
 
   return (
     <View style={[styles.wrap, style]}>
