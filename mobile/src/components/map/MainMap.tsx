@@ -9,7 +9,7 @@ import { useFestivalMap } from '../../hooks/useFestivalMap';
 import type { FestivalPin, MapRegion, MerchantPin } from '../../types/map';
 import type { TourPlace, TourPlaceKind } from '../../types/tour';
 import { TOUR_KIND_META } from '../../types/tour';
-import { regionFromPoints, validLatLng } from '../../utils/mapCamera';
+import { validLatLng } from '../../utils/mapCamera';
 import { spreadOverlappingPins } from '../../utils/mapPins';
 import { MapView, Marker, PROVIDER_GOOGLE } from './CompatibleMap';
 import CategoryFilterBar from './CategoryFilterBar';
@@ -81,13 +81,12 @@ function toSheetFromPlace(place: TourPlace): SheetPlace {
   };
 }
 
-function clampRegion(region: MapRegion): MapRegion {
-  return {
-    ...region,
-    latitudeDelta: Math.min(Math.max(region.latitudeDelta, 0.025), 0.09),
-    longitudeDelta: Math.min(Math.max(region.longitudeDelta, 0.025), 0.09),
-  };
-}
+const NEARBY_VIEW = { latitudeDelta: 0.045, longitudeDelta: 0.045 };
+
+type OverlayPin =
+  | { layer: 'festival'; latitude: number; longitude: number; festival: FestivalPin }
+  | { layer: 'merchant'; latitude: number; longitude: number; merchant: MerchantPin }
+  | { layer: 'place'; latitude: number; longitude: number; place: TourPlace };
 
 export default function MainMap({ festivalId, userId }: MainMapProps) {
   const insets = useSafeAreaInsets();
@@ -129,32 +128,44 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     return tourPlaces.filter((item) => item.kind === (layer as TourPlaceKind));
   }, [layer, tourPlaces]);
 
-  const festivalPins = useMemo(
-    () => spreadOverlappingPins(visibleFestivals.filter((item) => validLatLng(item.latitude, item.longitude))),
-    [visibleFestivals],
-  );
-  const merchantPins = useMemo(
-    () => spreadOverlappingPins(visibleMerchants.filter((item) => validLatLng(item.latitude, item.longitude))),
-    [visibleMerchants],
-  );
-  const placePins = useMemo(
-    () => spreadOverlappingPins(
-      visiblePlaces
+  const overlayPins = useMemo(() => {
+    const raw: OverlayPin[] = [
+      ...visibleFestivals
+        .filter((item) => validLatLng(item.latitude, item.longitude))
+        .map((festival) => ({
+          layer: 'festival' as const,
+          latitude: festival.latitude,
+          longitude: festival.longitude,
+          festival,
+        })),
+      ...visiblePlaces
         .filter((item) => validLatLng(item.mapY, item.mapX))
-        .map((item) => ({ ...item, latitude: item.mapY, longitude: item.mapX })),
-    ),
-    [visiblePlaces],
-  );
+        .map((place) => ({
+          layer: 'place' as const,
+          latitude: place.mapY,
+          longitude: place.mapX,
+          place,
+        })),
+      ...visibleMerchants
+        .filter((item) => validLatLng(item.latitude, item.longitude))
+        .map((merchant) => ({
+          layer: 'merchant' as const,
+          latitude: merchant.latitude,
+          longitude: merchant.longitude,
+          merchant,
+        })),
+    ];
+    return spreadOverlappingPins(raw);
+  }, [visibleFestivals, visiblePlaces, visibleMerchants]);
 
   const initialRegion = useMemo<MapRegion>(() => {
     if (userLocation) {
-      return { ...userLocation, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+      return { ...userLocation, ...NEARBY_VIEW };
     }
     return {
       latitude: regionPreset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
       longitude: regionPreset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
-      latitudeDelta: 0.06,
-      longitudeDelta: 0.06,
+      ...NEARBY_VIEW,
     };
   }, [userLocation, regionPreset]);
 
@@ -167,31 +178,19 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     }
     if (!fitOnce.current || !mapRef.current) return;
     fitOnce.current = false;
-    const points = [
-      userLocation,
-      ...festivalPins,
-      ...merchantPins,
-      ...placePins,
-    ].filter((item): item is { latitude: number; longitude: number } => Boolean(item && validLatLng(item.latitude, item.longitude)));
-    const fitted = regionFromPoints(points, 0.03);
-    if (fitted) {
-      mapRef.current.animateToRegion(clampRegion(fitted));
-      return;
-    }
     mapRef.current.animateToRegion(initialRegion);
-  }, [loading, festivalPins, merchantPins, placePins, userLocation, initialRegion]);
+  }, [loading, initialRegion]);
 
-  const handleSelectFestival = (id: string) => {
-    const found = festivals.find((item) => item.id === id);
+  const handleSelectFestival = (festival: FestivalPin) => {
     setSelectedMerchant(null);
     setCouponCode(null);
     setIssueError(null);
-    setSelectedFestivalId(id);
-    if (found) {
-      setSheet(toSheetFromFestival(found));
+    setSelectedFestivalId(festival.id);
+    setSheet(toSheetFromFestival(festival));
+    if (validLatLng(festival.latitude, festival.longitude)) {
       mapRef.current?.animateToRegion({
-        latitude: found.latitude,
-        longitude: found.longitude,
+        latitude: festival.latitude,
+        longitude: festival.longitude,
         ...FESTIVAL_FOCUS_DELTA,
       });
     }
@@ -203,6 +202,13 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     setCouponCode(null);
     setIssueError(null);
     setSheet(toSheetFromMerchant(merchant));
+    if (validLatLng(merchant.latitude, merchant.longitude)) {
+      mapRef.current?.animateToRegion({
+        latitude: merchant.latitude,
+        longitude: merchant.longitude,
+        ...FESTIVAL_FOCUS_DELTA,
+      });
+    }
   };
 
   const handleSelectPlace = (place: TourPlace) => {
@@ -211,6 +217,13 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
     setCouponCode(null);
     setIssueError(null);
     setSheet(toSheetFromPlace(place));
+    if (validLatLng(place.mapY, place.mapX)) {
+      mapRef.current?.animateToRegion({
+        latitude: place.mapY,
+        longitude: place.mapX,
+        ...FESTIVAL_FOCUS_DELTA,
+      });
+    }
   };
 
   const handleIssueCoupon = async () => {
@@ -238,7 +251,20 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
   };
 
   const openDetail = (place: SheetPlace) => {
-    if (place.kind === 'place' || place.kind === 'festival') {
+    if (place.kind === 'place') {
+      navigation.navigate('TourDetail', {
+        contentId: place.contentId ?? place.id,
+        contentTypeId: place.contentTypeId,
+        title: place.title,
+        address: place.address,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        metro: regionPreset.id,
+        imageUrl: place.imageUrl ?? undefined,
+      });
+      return;
+    }
+    if (place.kind === 'festival') {
       const festival = festivals.find((item) => item.id === place.id);
       navigation.navigate('TourDetail', {
         contentId: place.contentId ?? festival?.contentId ?? place.id,
@@ -266,52 +292,69 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         style={styles.map}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={initialRegion}
+        pointerEvents="auto"
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass
       >
-        {festivalPins.map((festival) => (
+        {userLocation ? (
           <Marker
-            key={`festival-${festival.id}`}
-            coordinate={{ latitude: festival.latitude, longitude: festival.longitude }}
-            pinColor="red"
-            badgeLabel="축"
-            title={festival.title}
-            description={festival.location_name ?? undefined}
-            zIndex={40}
-            onPress={() => handleSelectFestival(festival.id)}
+            key="user-location"
+            coordinate={userLocation}
+            pinColor="blue"
+            badgeLabel="나"
+            title="내 위치"
+            zIndex={80}
+            interactive={false}
           />
-        ))}
-
-        {placePins.map((place) => {
-          const meta = TOUR_KIND_META[place.kind] ?? TOUR_KIND_META.other;
+        ) : null}
+        {overlayPins.map((pin, index) => {
+          if (pin.layer === 'festival') {
+            const festival = pin.festival;
+            return (
+              <Marker
+                key={`festival-${festival.id}-${index}`}
+                coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+                pinColor="red"
+                badgeLabel="축"
+                title={festival.title}
+                description={festival.location_name ?? undefined}
+                zIndex={40}
+                onPress={() => handleSelectFestival(festival)}
+              />
+            );
+          }
+          if (pin.layer === 'place') {
+            const place = pin.place;
+            const meta = TOUR_KIND_META[place.kind] ?? TOUR_KIND_META.other;
+            return (
+              <Marker
+                key={`tour-${place.kind}-${place.contentId}-${index}`}
+                coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+                pinColor={meta.pinColor}
+                badgeLabel={meta.badge}
+                title={place.title}
+                description={place.address}
+                zIndex={20}
+                onPress={() => handleSelectPlace(place)}
+              />
+            );
+          }
+          const merchant = pin.merchant;
           return (
             <Marker
-              key={`tour-${place.contentId}`}
-              coordinate={{ latitude: place.latitude, longitude: place.longitude }}
-              pinColor={meta.pinColor}
-              badgeLabel={meta.badge}
-              title={place.title}
-              description={place.address}
-              zIndex={20}
-              onPress={() => handleSelectPlace(place)}
+              key={`merchant-${merchant.id}-${index}`}
+              coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+              pinColor="green"
+              badgeLabel={`${Math.round(merchant.total_discount_rate)}%`}
+              title={merchant.business_name}
+              description={merchant.address ?? undefined}
+              zIndex={30}
+              onPress={() => handleSelectMerchant(merchant)}
+              tracksViewChanges={false}
             />
           );
         })}
-
-        {merchantPins.map((merchant) => (
-          <Marker
-            key={`merchant-${merchant.id}`}
-            coordinate={{ latitude: merchant.latitude, longitude: merchant.longitude }}
-            pinColor="green"
-            badgeLabel={`${Math.round(merchant.total_discount_rate)}%`}
-            title={merchant.business_name}
-            description={merchant.address ?? undefined}
-            zIndex={30}
-            onPress={() => handleSelectMerchant(merchant)}
-            tracksViewChanges={false}
-          />
-        ))}
       </MapView>
 
       <View style={[styles.topOverlay, { paddingTop: Math.max(insets.top, 8) }]} pointerEvents="box-none">
@@ -341,7 +384,10 @@ export default function MainMap({ festivalId, userId }: MainMapProps) {
         <FestivalChipBar
           festivals={visibleFestivals}
           selectedFestivalId={selectedFestivalId}
-          onSelect={handleSelectFestival}
+          onSelect={(id) => {
+            const found = festivals.find((item) => item.id === id);
+            if (found) handleSelectFestival(found);
+          }}
         />
         {selectedFestival && layer !== 'festivals' ? (
           <CategoryFilterBar

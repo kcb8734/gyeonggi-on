@@ -19,8 +19,8 @@ export function withinKm(point: LatLng, center: LatLng, km: number) {
   return haversineKm(point, center) <= km;
 }
 
-/** 같은 좌표에 쌓인 핀을 원형으로 벌려 각각 누를 수 있게 한다. */
-export function spreadOverlappingPins<T extends LatLng>(pins: T[], minDeg = 0.00022): T[] {
+/** 같은 건물·같은 좌표에 쌓인 핀을 원형으로 벌려 각각 누를 수 있게 한다. */
+export function spreadOverlappingPins<T extends LatLng>(pins: T[], minDeg = 0.0022): T[] {
   const groups = new Map<string, number[]>();
   pins.forEach((pin, index) => {
     if (!validLatLng(pin.latitude, pin.longitude)) return;
@@ -38,7 +38,7 @@ export function spreadOverlappingPins<T extends LatLng>(pins: T[], minDeg = 0.00
       const slot = i % 8;
       const count = Math.min(8, indexes.length - ring * 8);
       const angle = (2 * Math.PI * slot) / count;
-      const radius = minDeg * (1.35 + ring);
+      const radius = minDeg * (1.4 + ring * 1.15);
       next[index] = {
         ...next[index],
         latitude: origin.latitude + Math.cos(angle) * radius,

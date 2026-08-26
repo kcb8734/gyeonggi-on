@@ -12,6 +12,7 @@ test('같은 좌표 핀을 서로 떨어뜨린다', () => {
   const keys = new Set(spread.map((pin) => `${pin.latitude.toFixed(6)},${pin.longitude.toFixed(6)}`));
   assert.equal(keys.size, 3);
   assert.equal(spread[0].id, 'a');
+  assert.ok(haversineKm(spread[0], spread[1]) > 0.15);
 });
 
 test('서로 다른 좌표는 그대로 둔다', () => {

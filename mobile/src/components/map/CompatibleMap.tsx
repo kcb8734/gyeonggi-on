@@ -24,9 +24,10 @@ type MarkerProps = Omit<MapMarkerProps, 'pinColor'> & {
   emphasized?: boolean;
   pinColor?: string;
   zIndex?: number;
+  interactive?: boolean;
 };
 
-export function Marker({ badgeLabel: _badgeLabel, emphasized: _emphasized, pinColor, zIndex, ...props }: MarkerProps) {
+export function Marker({ badgeLabel: _badgeLabel, emphasized: _emphasized, pinColor, zIndex, interactive: _interactive, ...props }: MarkerProps) {
   return <RNMarker {...props} pinColor={pinColor} zIndex={zIndex} />;
 }
 

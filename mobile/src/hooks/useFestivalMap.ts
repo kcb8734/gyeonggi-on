@@ -74,7 +74,7 @@ export function useFestivalMap(initialFestivalId?: string) {
       const nearbyFestivals = list.filter((item) =>
         validLatLng(item.latitude, item.longitude) && withinKm(item, center, NEARBY_KM),
       );
-      setFestivals(nearbyFestivals.length ? nearbyFestivals : list.filter((item) => validLatLng(item.latitude, item.longitude)));
+      setFestivals(nearbyFestivals);
       const promoPins = (feed?.promotions ?? [])
         .map(toMerchantPin)
         .filter((item): item is MerchantPin => Boolean(item))

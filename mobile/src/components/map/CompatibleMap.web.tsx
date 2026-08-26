@@ -33,6 +33,7 @@ interface MarkerProps {
   zIndex?: number;
   onPress?: () => void;
   tracksViewChanges?: boolean;
+  interactive?: boolean;
   children?: ReactNode;
 }
 
@@ -97,8 +98,16 @@ function ensureLeafletCss() {
     .leaflet-marker-icon, .leaflet-div-icon, .onandon-pin {
       background: transparent !important;
       border: none !important;
+      pointer-events: auto !important;
+      cursor: pointer;
     }
     .onandon-pin { display: flex; align-items: center; justify-content: center; }
+    .onandon-pin-hit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -136,7 +145,7 @@ function fitPadding(options?: {
 }
 
 export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
-  { style, initialRegion, region, children, onRegionChangeComplete },
+  { style, initialRegion, region, children, onRegionChangeComplete, pointerEvents },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -181,25 +190,31 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       const marker = child.props as MarkerProps;
       if (!validLatLng(marker.coordinate?.latitude, marker.coordinate?.longitude)) return;
       const color = COLOR[marker.pinColor ?? 'red'] ?? marker.pinColor ?? '#E0392A';
-      const size = marker.emphasized ? 28 : 22;
+      const emphasized = Boolean(marker.emphasized);
+      const width = marker.badgeLabel ? (emphasized ? 44 : 36) : 22;
+      const height = marker.badgeLabel ? (emphasized ? 28 : 24) : 22;
+      const fontSize = emphasized ? 12 : 11;
       const badge = marker.badgeLabel
-        ? `<div style="min-width:${size}px;height:${size}px;padding:0 6px;background:${color};color:#fff;border:2px solid #fff;border-radius:${size / 2}px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:800 ${marker.emphasized ? 12 : 10}px/${size - 4}px sans-serif;text-align:center">${marker.badgeLabel}</div>`
-        : `<div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`;
+        ? `<div class="onandon-pin-hit" style="width:${width}px;height:${height}px"><div style="min-width:${height}px;height:${height}px;padding:0 7px;background:${color};color:#fff;border:2px solid #fff;border-radius:${height / 2}px;box-shadow:0 2px 6px rgba(0,0,0,.25);font:800 ${fontSize}px/${height - 4}px sans-serif;text-align:center;white-space:nowrap">${marker.badgeLabel}</div></div>`
+        : `<div class="onandon-pin-hit" style="width:${width}px;height:${height}px"><div style="width:16px;height:16px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div></div>`;
       const icon = L.divIcon({
         className: 'leaflet-div-icon onandon-pin',
         html: badge,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+        iconSize: [width, height],
+        iconAnchor: [width / 2, height / 2],
       });
       const pin = L.marker([marker.coordinate.latitude, marker.coordinate.longitude], {
         icon,
         title: marker.title,
+        keyboard: false,
+        interactive: marker.interactive !== false,
+        bubblingMouseEvents: false,
         zIndexOffset: Number(marker.zIndex || 0) * 10,
         riseOnHover: true,
       });
       if (marker.onPress) {
         pin.on('click', (event) => {
-          L.DomEvent.stopPropagation(event);
+          L.DomEvent.stop(event);
           marker.onPress?.();
         });
       }
@@ -281,8 +296,17 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       paintOverlays();
     };
     const timer = window.setTimeout(invalidate, 120);
+    const late = window.setTimeout(invalidate, 600);
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          map.invalidateSize();
+        })
+      : null;
+    observer?.observe(el);
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(late);
+      observer?.disconnect();
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -305,8 +329,11 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   }, [region?.latitude, region?.longitude, region?.latitudeDelta]);
 
   return (
-    <View style={[styles.wrap, style]}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 180 }} />
+    <View style={[styles.wrap, style]} pointerEvents={pointerEvents ?? 'auto'}>
+      <div
+        ref={containerRef}
+        style={{ width: '100%', height: '100%', minHeight: 180, pointerEvents: 'auto' }}
+      />
     </View>
   );
 });
