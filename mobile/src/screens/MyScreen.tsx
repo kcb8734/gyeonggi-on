@@ -147,9 +147,6 @@ export default function MyScreen() {
         <TouchableOpacity style={styles.govBtn} onPress={() => setFestivalModal(true)}>
           <Text style={styles.govBtnText}>지자체 축제 등록하기</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.merchantGhost} onPress={() => navigation.navigate('CenterDirectors')}>
-          <Text style={styles.merchantGhostText}>지역 센터장 선정 현황 · 지원하기</Text>
-        </TouchableOpacity>
         {manager.sessionEmail ? (
           <TouchableOpacity style={styles.merchantGhost} onPress={logoutFestivalManager}>
             <Text style={styles.merchantGhostText}>{manager.sessionEmail} 담당자 로그아웃</Text>
@@ -160,6 +157,17 @@ export default function MyScreen() {
         {app.localFestivals.length ? (
           <Text style={styles.govMeta}>이 기기에서 등록한 축제 {app.localFestivals.length}건 · 홈 리스트에 바로 반영</Text>
         ) : null}
+      </View>
+
+      <View style={styles.centerBox}>
+        <Text style={styles.centerKicker}>지역 센터장</Text>
+        <Text style={styles.cardTitle}>지역센터장 선정 현황 · 지원하기</Text>
+        <Text style={styles.centerBody}>
+          지역센터 운영 취지와 17개 권역 선정 현황을 확인하고, 시·군·구 센터장에 지원하세요.
+        </Text>
+        <TouchableOpacity style={styles.centerBtn} onPress={() => navigation.navigate('CenterDirectors', { tab: 'status' })}>
+          <Text style={styles.centerBtnText}>지역센터장 선정 현황 · 지원하기</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.section}>최근 본 축제</Text>
@@ -333,6 +341,23 @@ const styles = StyleSheet.create({
   govBtn: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginTop: 14 },
   govBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   govMeta: { fontSize: 12, color: '#555555', marginTop: 10, fontWeight: '600' },
+  centerBox: {
+    marginTop: 22,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    shadowColor: '#111827',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  centerKicker: { fontSize: 12, fontWeight: '800', color: '#9A3412' },
+  centerBody: { fontSize: 13, color: '#9A3412', marginTop: 6, lineHeight: 20, fontWeight: '600' },
+  centerBtn: { backgroundColor: '#EA580C', borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginTop: 14 },
+  centerBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   cardKicker: { fontSize: 12, fontWeight: '800', color: '#3730A3' },
   cardTitle: { fontSize: 17, fontWeight: '800', marginTop: 4, color: '#111827' },
   cardBody: { fontSize: 13, color: '#374151', marginTop: 6, lineHeight: 20, fontWeight: '600' },

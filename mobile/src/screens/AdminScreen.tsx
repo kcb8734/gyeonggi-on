@@ -9,6 +9,7 @@ import {
   StatusBadge,
   WeightSlider,
 } from '../components/admin/AdminWidgets';
+import AdminCenterPanel from '../components/admin/AdminCenterPanel';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
 import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
@@ -204,7 +205,7 @@ function mergeDashboard(next: any) {
   };
 }
 
-type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats';
+type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats' | 'centers';
 
 function formatWhen(value?: string) {
   if (!value) return '-';
@@ -450,6 +451,7 @@ export default function AdminScreen() {
           ['tour', 'TourAPI'],
           ['coupon', '상가·쿠폰'],
           ['match', '지자체'],
+          ['centers', '센터장'],
           ['feeds', '피드정산'],
           ['ai', 'AI 코스'],
           ['stats', '통계'],
@@ -596,6 +598,8 @@ export default function AdminScreen() {
           ))}
         </View>
       ) : null}
+
+      {menu === 'centers' ? <AdminCenterPanel /> : null}
 
       {menu === 'match' ? (
         <>

@@ -234,7 +234,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 28 + insets.bottom }}>
         <View style={styles.brandBar}>
           <Text style={styles.brandLead}>지자체 축제와 소상공인 상생을 잇는 온앤온+</Text>
-          <TouchableOpacity style={styles.centerCta} onPress={() => navigation.navigate('CenterDirectors')}>
+          <TouchableOpacity style={styles.centerCta} onPress={() => navigation.navigate('CenterDirectors', { tab: 'status' })}>
             <Text style={styles.centerCtaText}>지역 센터장 선정 현황 · 지원하기</Text>
           </TouchableOpacity>
         </View>

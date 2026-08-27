@@ -55,8 +55,43 @@ test('GET /api/centers returns 17 region summaries', async () => {
 test('GET /api/centers/GYEONGGI lists suwon as selected', async () => {
   const result = await invoke({ method: 'GET', url: '/api/centers/GYEONGGI' });
   assert.equal(result.status, 200);
-  const rows = (result.body as { data: Array<{ label: string; status: string }> }).data;
+  const rows = (result.body as { data: Array<{ label: string; status: string; applicantCount?: number }> }).data;
   assert.equal(rows.length, 31);
   assert.equal(rows.find((row) => row.label === '수원시')?.status, 'selected');
+  assert.equal(rows.find((row) => row.label === '용인시')?.applicantCount, 1);
+});
+
+test('POST /api/centers/apply then admin card apply', async () => {
+  const apply = await invoke({
+    method: 'POST',
+    url: '/api/centers/apply',
+    body: {
+      localityKey: 'GANGWON:춘천시',
+      name: '홍길동',
+      age: '42',
+      phone: '010-1234-5678',
+      email: 'chuncheon@kdanji.com',
+      address: '강원특별자치도 춘천시 중앙로 123, 3층',
+      career: '춘천 축제 기획',
+      intro: '마임축제와 중앙시장을 잇겠습니다.',
+    },
+  });
+  assert.equal(apply.status, 200);
+  const applied = apply.body as { success: boolean; data: { id: string } };
+  assert.equal(applied.success, true);
+  const listed = await invoke({ method: 'GET', url: '/api/centers/applications' });
+  assert.equal(listed.status, 200);
+  const rows = (listed.body as { data: Array<{ name: string; address?: string }> }).data;
+  assert.ok(rows.some((row) => row.name === '홍길동' && row.address?.includes('춘천시')));
+  const card = await invoke({
+    method: 'POST',
+    url: `/api/centers/applications/${applied.data.id}/card`,
+    body: {},
+  });
+  assert.equal(card.status, 200);
+  const chuncheon = await invoke({ method: 'GET', url: '/api/centers/GANGWON' });
+  const cities = (chuncheon.body as { data: Array<{ label: string; status: string; director?: { website?: string } }> }).data;
+  assert.equal(cities.find((row) => row.label === '춘천시')?.status, 'selected');
+  assert.equal(cities.find((row) => row.label === '춘천시')?.director?.website, 'kdanji.com/chuncheon');
 });
 

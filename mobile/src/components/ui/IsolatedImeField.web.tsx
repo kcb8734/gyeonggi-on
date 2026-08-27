@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { TextInput, View } from 'react-native';
+import { KOREAN_FONT_FAMILY } from '../../utils/koreanFont';
 import { mountBodyField } from '../../utils/nativeImeHost';
 
 /**
@@ -67,5 +68,34 @@ export default function IsolatedImeField({
     };
   }, [fieldKey, ignoreModalLock, inputMode, maxLength, multiline, placeholder]);
 
-  return <View ref={hostRef} style={{ height: multiline ? 96 : 48, width: '100%' }} />;
+  return (
+    <View ref={hostRef} style={{ height: multiline ? 96 : 48, width: '100%' }}>
+      <TextInput
+        defaultValue={valueRef.current}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        editable
+        multiline={multiline}
+        autoCorrect={false}
+        autoCapitalize="none"
+        keyboardType={inputMode === 'text' ? 'default' : 'number-pad'}
+        onChangeText={(text) => {
+          valueRef.current = text;
+          onLiveChange?.(text);
+        }}
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: '#DDD',
+          paddingHorizontal: 12,
+          height: multiline ? 96 : 48,
+          fontSize: 16,
+          fontFamily: KOREAN_FONT_FAMILY,
+          color: '#111827',
+          textAlignVertical: multiline ? 'top' : 'center',
+        }}
+      />
+    </View>
+  );
 }
