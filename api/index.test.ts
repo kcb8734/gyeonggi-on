@@ -42,6 +42,15 @@ test('GET /api/home is not a 404', async () => {
   assert.notEqual(result.status, 404);
 });
 
+test('POST /api/festivals/sync returns a sync payload', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/festivals/sync' });
+  assert.notEqual(result.status, 404);
+  assert.notEqual(result.status, 401);
+  const body = result.body as { fetched?: number; message?: string; success?: boolean };
+  assert.equal(typeof body.message, 'string');
+  assert.equal(typeof body.fetched, 'number');
+});
+
 test('GET /api/centers returns 17 region summaries', async () => {
   const result = await invoke({ method: 'GET', url: '/api/centers' });
   assert.equal(result.status, 200);

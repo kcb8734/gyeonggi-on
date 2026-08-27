@@ -36,6 +36,7 @@ import {
   toHomeFestival,
   tourServiceKey,
 } from './tourLive.js';
+import { persistTourFestivals } from './festivalDbSync.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -306,6 +307,61 @@ async function listFestivalsLive(req, res) {
       festivals: [],
       data: [],
       message: 'TourAPI 목록이 비어 있습니다.',
+    }, headers);
+  }
+}
+
+async function syncFestivalsLive(req, res) {
+  const headers = corsHeaders(req);
+  const method = String(req.method || 'GET').toUpperCase();
+  if (method === 'OPTIONS') {
+    send(res, 204, {}, headers);
+    return;
+  }
+  const query = readQuery(req);
+  const metroKey = normalizeMetroId(query.metro);
+  try {
+    const result = await searchFestival2({
+      metro: metroKey,
+      areaCode: query.areaCode || METRO_AREA[metroKey],
+      month: query.month,
+      year: query.year,
+      category: query.category,
+    });
+    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    const persist = await persistTourFestivals(result.festivals);
+    send(res, 200, {
+      success: true,
+      metro: result.metro,
+      regionalZone: result.metro,
+      areaCode: result.areaCode,
+      moiCode: MOI_CODE_BY_METRO[result.metro] || result.lDongRegnCd,
+      regionLabel: result.regionLabel,
+      count: festivals.length,
+      fetched: festivals.length,
+      upserted: persist.upserted,
+      skipped: persist.skipped,
+      persisted: persist.ok,
+      source: result.source,
+      festivals: festivals,
+      data: festivals,
+      message: persist.ok
+        ? result.regionLabel + ' 축제 ' + persist.upserted + '건을 DB에 동기화했습니다. (' + result.source + ')'
+        : result.regionLabel + ' 축제 ' + festivals.length + '건을 TourAPI에서 수집했습니다. ' + persist.message,
+    }, headers);
+  } catch (err) {
+    console.error('[api] festival sync', err && err.message ? err.message : err);
+    send(res, 502, {
+      success: false,
+      metro: metroKey,
+      fetched: 0,
+      upserted: 0,
+      skipped: 0,
+      persisted: false,
+      source: 'none',
+      festivals: [],
+      data: [],
+      message: err && err.message ? err.message : '축제 동기화에 실패했습니다.',
     }, headers);
   }
 }
@@ -668,11 +724,12 @@ async function handler(req, res) {
       }
     }
     if (/cron\/festivals|festivals\/sync/i.test(path)) {
-      if (!cronAuthorized(req)) {
+      const isCron = /cron\/festivals/i.test(path);
+      if (isCron && !cronAuthorized(req)) {
         send(res, 401, { success: false, message: 'cron 인증이 필요합니다.' }, corsHeaders(req));
         return;
       }
-      await listFestivalsLive(req, res);
+      await syncFestivalsLive(req, res);
       return;
     }
 
