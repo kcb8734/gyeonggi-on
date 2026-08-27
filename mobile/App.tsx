@@ -61,7 +61,7 @@ export type RootStackParamList = {
   FeedView: { postId: string };
   Login: undefined;
   Admin: undefined;
-  CenterDirectors: undefined;
+  CenterDirectors: { tab?: 'purpose' | 'status' } | undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -242,7 +242,7 @@ export default function App() {
             <Stack.Screen
               name="CenterDirectors"
               component={CenterDirectorsScreen}
-              options={{ title: '센터장 선정 현황', headerBackVisible: false, headerLeft: () => <StackBack /> }}
+              options={{ title: '지역 센터장', headerBackVisible: false, headerLeft: () => <StackBack /> }}
             />
           </Stack.Navigator>
         </NavigationContainer>

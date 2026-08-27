@@ -115,7 +115,7 @@ export function mountBodyField(options: {
   if (options.fieldKey) field.setAttribute('data-onandon-ime-key', options.fieldKey);
   field.style.cssText = [
     'position:fixed',
-    'z-index:2147483000',
+    'z-index:2147483646',
     'box-sizing:border-box',
     'margin:0',
     'border:1px solid #DDD',
