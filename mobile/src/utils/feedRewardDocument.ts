@@ -317,28 +317,6 @@ export function buildKoreanFeedPdf(input: FeedRewardDocumentInput): Uint8Array |
   }
 }
 
-function printOfficialForm(html: string) {
-  if (typeof document === 'undefined') return;
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument;
-  if (!doc) return;
-  doc.open();
-  doc.write(html);
-  doc.close();
-  setTimeout(() => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-    setTimeout(() => iframe.remove(), 2000);
-  }, 300);
-}
-
 export function downloadFeedRewardPdf(rows: FeedRewardRow[], city?: string): boolean {
   if (!rows.length) return false;
   const input = buildFeedRewardInput(rows, city);
@@ -346,11 +324,11 @@ export function downloadFeedRewardPdf(rows: FeedRewardRow[], city?: string): boo
   const stem = input.documentNo.replace(/\s+/g, '_');
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     const koreanPdf = buildKoreanFeedPdf(input);
-    downloadBlob(`${stem}.html`, `\uFEFF${html}`, 'text/html;charset=utf-8');
     if (koreanPdf) {
       downloadBlob(`${stem}.pdf`, koreanPdf as BlobPart, 'application/pdf');
+    } else {
+      downloadBlob(`${stem}.html`, `\uFEFF${html}`, 'text/html;charset=utf-8');
     }
-    printOfficialForm(html);
     return true;
   }
   return false;
