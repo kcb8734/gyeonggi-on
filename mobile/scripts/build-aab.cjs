@@ -26,6 +26,7 @@ const {
   applySdk36ToGradlePropertiesText,
   applySdk36ToProjectBuildGradle,
   patchExpoModulesCoreForCompileSdk36,
+  patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
 
 const root = path.resolve(__dirname, '..');
@@ -185,6 +186,9 @@ function ensureSdk36Gradle() {
   log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} buildToolsVersion=${BUILD_TOOLS}`);
   if (patchExpoModulesCoreForCompileSdk36(root)) {
     log('[build:aab] expo-modules-core PermissionsService.kt 를 compileSdk 36에 맞게 패치했습니다.');
+  }
+  if (patchReactNativeScreensKotlinList(root)) {
+    log('[build:aab] react-native-screens ScreenStack.kt removeLast 충돌을 패치했습니다.');
   }
 }
 

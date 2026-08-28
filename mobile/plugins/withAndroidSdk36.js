@@ -81,6 +81,28 @@ function patchExpoModulesCoreForCompileSdk36(projectRoot) {
   return true;
 }
 
+function applyReactNativeScreensKotlinListPatch(source) {
+  return source.replace(
+    /drawingOpPool\.removeLast\(\)/g,
+    'drawingOpPool.removeAt(drawingOpPool.lastIndex)',
+  );
+}
+
+function patchReactNativeScreensKotlinList(projectRoot) {
+  const file = path.join(
+    projectRoot,
+    'node_modules',
+    'react-native-screens',
+    'android/src/main/java/com/swmansion/rnscreens/ScreenStack.kt',
+  );
+  if (!fs.existsSync(file)) return false;
+  const source = fs.readFileSync(file, 'utf8');
+  const next = applyReactNativeScreensKotlinListPatch(source);
+  if (next === source) return false;
+  fs.writeFileSync(file, next);
+  return true;
+}
+
 function withAndroidSdk36(config) {
   config.android = config.android || {};
   config.android.compileSdkVersion = COMPILE_SDK;
@@ -110,6 +132,7 @@ function withAndroidSdk36(config) {
     'android',
     (cfg) => {
       patchExpoModulesCoreForCompileSdk36(cfg.modRequest.projectRoot);
+      patchReactNativeScreensKotlinList(cfg.modRequest.projectRoot);
       return cfg;
     },
   ]);
@@ -126,3 +149,5 @@ module.exports.applySdk36ToProjectBuildGradle = applySdk36ToProjectBuildGradle;
 module.exports.applySdk36ToAppBuildGradle = applySdk36ToAppBuildGradle;
 module.exports.applyExpoModulesCoreSdk36Patch = applyExpoModulesCoreSdk36Patch;
 module.exports.patchExpoModulesCoreForCompileSdk36 = patchExpoModulesCoreForCompileSdk36;
+module.exports.applyReactNativeScreensKotlinListPatch = applyReactNativeScreensKotlinListPatch;
+module.exports.patchReactNativeScreensKotlinList = patchReactNativeScreensKotlinList;

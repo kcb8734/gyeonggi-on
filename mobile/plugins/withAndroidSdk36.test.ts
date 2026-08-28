@@ -11,6 +11,8 @@ const plugin = require('./withAndroidSdk36.js') as {
   applySdk36ToGradlePropertiesText: (text: string) => string;
   applySdk36ToProjectBuildGradle: (text: string) => string;
   applySdk36ToAppBuildGradle: (text: string) => string;
+  applyExpoModulesCoreSdk36Patch: (text: string) => string;
+  applyReactNativeScreensKotlinListPatch: (text: string) => string;
 };
 const appJson = JSON.parse(readFileSync(join(dir, '..', 'app.json'), 'utf8')) as {
   expo: { android: { compileSdkVersion: number; targetSdkVersion: number }; plugins: unknown[] };
@@ -68,4 +70,15 @@ test('expo-modules-core requestedPermissions call is made null-safe', () => {
     '        return requestedPermissions.contains(permission)\n',
   );
   assert.equal(next, '        return requestedPermissions?.contains(permission) ?: false\n');
+});
+
+test('react-native-screens removeLast is rewritten to removeAt', () => {
+  const next = plugin.applyReactNativeScreensKotlinListPatch(
+    '        if (drawingOpPool.isEmpty()) DrawingOp() else drawingOpPool.removeLast()\n',
+  );
+  assert.equal(
+    next,
+    '        if (drawingOpPool.isEmpty()) DrawingOp() else drawingOpPool.removeAt(drawingOpPool.lastIndex)\n',
+  );
+  assert.doesNotMatch(next, /removeLast\(/);
 });
