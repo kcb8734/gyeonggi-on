@@ -63,6 +63,7 @@ export interface CenterOverlay {
   reviewingKeys?: string[];
   applications?: CenterApplicationRecord[];
   directors?: Record<string, CenterDirectorProfile>;
+  localityStatus?: Record<string, CenterStatus>;
 }
 
 const GOV_NAME: Record<string, string> = Object.fromEntries(
@@ -256,6 +257,8 @@ function overlayOf(extra?: string[] | CenterOverlay): CenterOverlay {
 }
 
 function statusFor(key: string, overlay: CenterOverlay = {}): CenterStatus {
+  const forced = overlay.localityStatus?.[key];
+  if (forced === 'recruiting' || forced === 'reviewing' || forced === 'selected') return forced;
   if (overlay.directors?.[key] || SELECTED_DIRECTORS[key]) return 'selected';
   if (overlay.applications?.some((row) => row.localityKey === key && row.reviewStatus === 'selected')) return 'selected';
   if (overlay.reviewingKeys?.includes(key) || SEED_REVIEWING.has(key)) return 'reviewing';
@@ -326,9 +329,9 @@ export function overlayRegions(rows: CenterRegionSummary[], extra: CenterOverlay
     if (!overlay) return row;
     return {
       ...row,
-      selected: Math.max(row.selected, overlay.selected),
-      reviewing: Math.max(row.reviewing, overlay.reviewing),
-      recruiting: Math.min(row.recruiting, overlay.recruiting),
+      selected: overlay.selected,
+      reviewing: overlay.reviewing,
+      recruiting: overlay.recruiting,
     };
   });
 }

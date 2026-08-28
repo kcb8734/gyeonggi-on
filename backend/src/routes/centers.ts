@@ -13,6 +13,7 @@ const router = Router();
 router.get('/', listCenterRegions);
 router.get('/applications', listCenterApplications);
 router.post('/apply', applyCenter);
+router.post('/applications/:id', reviewCenterApplication);
 router.patch('/applications/:id', reviewCenterApplication);
 router.post('/applications/:id/card', applyCenterCard);
 router.get('/course-auth', courseAuthStatusApi);

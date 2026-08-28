@@ -85,4 +85,25 @@ test('admin can mark reviewing, selected, and apply business card fields', () =>
   assert.equal(selected?.director?.address, '강원특별자치도 춘천시 중앙로 123, 3층');
   assert.equal(selected?.director?.website, 'kdanji.com/chuncheon');
   assert.equal(localityWebSlug('춘천시'), 'chuncheon');
+  const reviewingAgain = reviewApplication(applied.data.id, 'reviewing');
+  assert.equal(reviewingAgain.ok, true);
+  const afterCard = listCenterLocalities('GANGWON').find((row) => row.id === target!.id);
+  assert.equal(afterCard?.status, 'reviewing');
+  assert.equal(afterCard?.director, undefined);
+  const reopened = reviewApplication(applied.data.id, 'submitted');
+  assert.equal(reopened.ok, true);
+  const recruitingAgain = listCenterLocalities('GANGWON').find((row) => row.id === target!.id);
+  assert.equal(recruitingAgain?.status, 'recruiting');
+  assert.equal(recruitingAgain?.director, undefined);
+  const second = applyCenterDirector({
+    localityKey: target!.id,
+    name: '김결격',
+    age: '40',
+    phone: '010-2222-3333',
+    email: 'retry@kdanji.com',
+    address: '강원특별자치도 춘천시 중앙로 1',
+    career: '재지원',
+    intro: '다시 지원합니다.',
+  });
+  assert.equal(second.ok, true);
 });

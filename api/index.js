@@ -99,7 +99,7 @@ function originOf(req) {
 function corsHeaders(req) {
   const origin = originOf(req);
   const headers = {
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
   };
   if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {

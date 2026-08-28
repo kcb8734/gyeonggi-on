@@ -43,7 +43,7 @@ export function listCenterApplications(_req: Request, res: Response) {
 export function reviewCenterApplication(req: Request, res: Response) {
   const status = String(req.body?.status || '') as CenterReviewStatus;
   if (status !== 'submitted' && status !== 'reviewing' && status !== 'selected') {
-    return res.status(400).json({ success: false, message: '지원완료(선정 심사 중) 또는 선정 완료만 지정할 수 있습니다.' });
+    return res.status(400).json({ success: false, message: '지원하기, 지원완료(선정 심사 중) 또는 선정 완료만 지정할 수 있습니다.' });
   }
   const result = reviewApplication(String(req.params.id || ''), status);
   if (!result.ok) return res.status(404).json({ success: false, message: result.message });

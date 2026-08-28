@@ -102,6 +102,16 @@ test('POST /api/centers/apply then admin card apply', async () => {
   const cities = (chuncheon.body as { data: Array<{ label: string; status: string; director?: { website?: string } }> }).data;
   assert.equal(cities.find((row) => row.label === '춘천시')?.status, 'selected');
   assert.equal(cities.find((row) => row.label === '춘천시')?.director?.website, 'kdanji.com/chuncheon');
+  const reset = await invoke({
+    method: 'POST',
+    url: `/api/centers/applications/${applied.data.id}`,
+    body: { status: 'submitted' },
+  });
+  assert.equal(reset.status, 200);
+  const afterReset = await invoke({ method: 'GET', url: '/api/centers/GANGWON' });
+  const resetCities = (afterReset.body as { data: Array<{ label: string; status: string; director?: { name?: string } }> }).data;
+  assert.equal(resetCities.find((row) => row.label === '춘천시')?.status, 'recruiting');
+  assert.equal(resetCities.find((row) => row.label === '춘천시')?.director, undefined);
 });
 
 test('GET /api/centers/courses returns suwon seed and POST stays pending until approve', async () => {

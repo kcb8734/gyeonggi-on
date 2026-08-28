@@ -43,7 +43,16 @@ export default function CenterDirectorsScreen() {
 
   const reload = () => {
     fetchCenterRegions().then(setRegions);
-    if (regionId) fetchCenterLocalities(regionId).then(setLocalities);
+    if (regionId) {
+      fetchCenterLocalities(regionId).then((rows) => {
+        setLocalities(rows);
+        setCard((current) => {
+          if (!current) return null;
+          const next = rows.find((row) => row.id === current.id);
+          return next?.status === 'selected' ? next : null;
+        });
+      });
+    }
   };
 
   useEffect(() => {
@@ -57,7 +66,16 @@ export default function CenterDirectorsScreen() {
     fetchCenterRegions().then(setRegions);
     return subscribeCenterApplications(() => {
       fetchCenterRegions().then(setRegions);
-      if (regionId) fetchCenterLocalities(regionId).then(setLocalities);
+      if (regionId) {
+        fetchCenterLocalities(regionId).then((rows) => {
+          setLocalities(rows);
+          setCard((current) => {
+            if (!current) return null;
+            const next = rows.find((row) => row.id === current.id);
+            return next?.status === 'selected' ? next : null;
+          });
+        });
+      }
     });
   }, [regionId]);
 
@@ -70,7 +88,7 @@ export default function CenterDirectorsScreen() {
       setLocalities(rows);
       if (route.params?.openCard && route.params?.locality) {
         const match = rows.find((item) => item.id === route.params.locality);
-        if (match) setCard(match);
+        if (match?.status === 'selected') setCard(match);
       }
     });
   }, [regionId, route.params?.openCard, route.params?.locality]);
@@ -88,7 +106,7 @@ export default function CenterDirectorsScreen() {
       setCard(row);
       return;
     }
-    setApplyRow(row);
+    if (row.status === 'recruiting') setApplyRow(row);
   };
 
   return (
@@ -177,7 +195,7 @@ export default function CenterDirectorsScreen() {
                           <Text style={styles.boxMeta}>{row.director.name} 센터장 명함 보기</Text>
                         ) : null}
                       </View>
-                      {row.status === 'selected' ? (
+                        {row.status === 'selected' ? (
                         <View style={{ gap: 8 }}>
                           <TouchableOpacity style={styles.cardBtn} onPress={() => setCard(row)}>
                             <Text style={styles.cardBtnText}>명함</Text>
@@ -185,6 +203,10 @@ export default function CenterDirectorsScreen() {
                           <TouchableOpacity style={styles.courseBtn} onPress={() => openCourse(row)}>
                             <Text style={styles.courseBtnText}>코스 등록</Text>
                           </TouchableOpacity>
+                        </View>
+                      ) : row.status === 'reviewing' ? (
+                        <View style={[styles.doneBtn, { backgroundColor: copy.bg }]}>
+                          <Text style={[styles.doneBtnText, { color: copy.color }]}>지원완료</Text>
                         </View>
                       ) : (
                         <TouchableOpacity style={styles.applyBtn} onPress={() => setApplyRow(row)}>
@@ -306,6 +328,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   applyText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  doneBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  doneBtnText: { fontWeight: '800', fontSize: 12 },
   cardBtn: {
     backgroundColor: '#0F766E',
     borderRadius: 12,
