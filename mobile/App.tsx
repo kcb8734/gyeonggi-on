@@ -23,6 +23,7 @@ import CenterDirectorsScreen from './src/screens/CenterDirectorsScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
+import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
 import { findLocalityByWebSlug } from './src/constants/centerDirectors';
 
 ensureKoreanWebFont();

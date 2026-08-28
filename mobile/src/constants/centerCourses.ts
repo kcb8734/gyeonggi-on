@@ -69,7 +69,9 @@ function notify() {
 
 export function subscribeCenterCourses(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 function regionToken(value: string) {
