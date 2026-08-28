@@ -253,6 +253,10 @@ function applyReleaseSigning(signing) {
 
 function main() {
   log('=== 온앤온+ Android App Bundle (release AAB) ===');
+  const appJson = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8'));
+  const versionName = appJson?.expo?.version;
+  const versionCode = appJson?.expo?.android?.versionCode;
+  log(`[build:aab] versionName=${versionName} versionCode=${versionCode}`);
   const signing = ensureKeystore();
   const sdk = ensureAndroidSdk();
   log(`[build:aab] ANDROID_HOME=${sdk}`);
@@ -285,6 +289,8 @@ function main() {
   log(`Gradle 산출물: ${gradleAab}`);
   log(`복사본:         ${copiedAab}`);
   log(`크기:           ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
+  log(`versionName:    ${versionName}`);
+  log(`versionCode:    ${versionCode}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
 }
 

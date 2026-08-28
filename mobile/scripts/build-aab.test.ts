@@ -24,3 +24,11 @@ test('build:aab installs Android SDK 36 instead of 34', () => {
   assert.doesNotMatch(source, /platforms;android-34/);
   assert.doesNotMatch(source, /build-tools;34\.0\.0/);
 });
+
+test('build:aab logs versionName and versionCode from app.json', () => {
+  assert.match(source, /versionName=\$\{versionName\}/);
+  assert.match(source, /versionCode=\$\{versionCode\}/);
+  const appJson = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app.json'), 'utf8'));
+  assert.equal(appJson.expo.version, '1.0.1');
+  assert.equal(appJson.expo.android.versionCode, 2);
+});
