@@ -71,3 +71,19 @@ test('searchFestival2 retries with areaCode=31 when lDongRegnCd returns empty', 
     else process.env.TOUR_API_SERVICE_KEY = prev;
   }
 });
+
+test('searchFestival2 returns Gyeonggi fallback when TourAPI rate-limits', async () => {
+  const prev = process.env.TOUR_API_SERVICE_KEY;
+  process.env.TOUR_API_SERVICE_KEY = 'test-key';
+  const fetchImpl = async () => ({ ok: false, status: 429, json: async () => ({}) });
+  try {
+    const { searchFestival2 } = await import('./tourLive.js');
+    const result = await searchFestival2({ metro: 'GYEONGGI', month: 8, year: 2026 }, fetchImpl);
+    assert.ok(result.festivals.length > 0);
+    assert.ok(result.source === 'fallback' || result.source === 'cache');
+    assert.ok(result.festivals.some((item) => item.title.includes('수원화성')));
+  } finally {
+    if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
+    else process.env.TOUR_API_SERVICE_KEY = prev;
+  }
+});

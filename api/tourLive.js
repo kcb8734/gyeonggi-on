@@ -195,6 +195,28 @@ export function toPlace(item) {
   };
 }
 
+async function sleep(ms) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const LAST_OK_FESTIVALS = new Map();
+
+function festivalCacheKey(resolved) {
+  return [resolved.metro || '', resolved.areaCode || '', resolved.month || '', resolved.year || ''].join(':');
+}
+
+function builtinFestivals(resolved) {
+  const metro = resolved.metro || 'GYEONGGI';
+  if (metro !== 'GYEONGGI' && resolved.areaCode !== '31') return [];
+  return [
+    { contentId: 'suwon-hwaseong', contentTypeId: '15', title: '수원화성문화제', address: '경기도 수원시 팔달구 정조로 825', eventStartDate: '2026-08-19', eventEndDate: '2026-09-21', firstImage: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80', mapX: 127.013, mapY: 37.287, tel: '031-228-3675', category: '문화/예술', overview: '세계유산 수원화성을 무대로 펼쳐지는 야간 퍼레이드와 전통 공연', areaCode: '31' },
+    { contentId: 'yongin-folk', contentTypeId: '15', title: '용인 한국민속촌 축제', address: '경기도 용인시 기흥구 민속촌로 90', eventStartDate: '2026-08-21', eventEndDate: '2026-09-11', firstImage: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80', mapX: 127.117, mapY: 37.259, tel: '031-288-0000', category: '가족', overview: '전통 가옥과 장터 체험이 이어지는 용인 대표 가족 축제', areaCode: '31' },
+    { contentId: 'gapyeong-jazz', contentTypeId: '15', title: '가평 자라섬 재즈페스티벌', address: '경기도 가평군 가평읍 자라섬로 60', eventStartDate: '2026-08-22', eventEndDate: '2026-09-05', firstImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80', mapX: 127.513, mapY: 37.823, tel: '031-582-0174', category: '계절축제', overview: '북한강 위 자라섬에서 열리는 국내 대표 재즈 페스티벌', areaCode: '31' },
+    { contentId: 'suwon-yeongdong', contentTypeId: '15', title: '수원 영동시장 먹거리 축제', address: '경기도 수원시 팔달구 수원천로 255', eventStartDate: '2026-08-20', eventEndDate: '2026-09-09', firstImage: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80', mapX: 127.0168, mapY: 37.2762, tel: '031-241-1101', category: '먹거리', overview: '영동시장 골목 상인과 함께하는 먹거리 축제', areaCode: '31' },
+    { contentId: 'yongin-flea', contentTypeId: '15', title: '용인 플리마켓 위크', address: '경기도 용인시 기흥구 구갈로 70', eventStartDate: '2026-08-22', eventEndDate: '2026-09-01', firstImage: 'https://images.unsplash.com/photo-1515165562839-978bbcf01262?w=800&q=80', mapX: 127.1148, mapY: 37.2755, tel: '031-324-2114', category: '플리마켓', overview: '빈티지·수공예 셀러가 모이는 용인 야외 플리마켓', areaCode: '31' },
+  ];
+}
+
 async function tourGet(path, query, fetchImpl) {
   const key = tourServiceKey();
   if (!key) throw new Error('TOUR_API_SERVICE_KEY 가 없습니다.');
@@ -208,16 +230,26 @@ async function tourGet(path, query, fetchImpl) {
     params.set(name, String(value));
   });
   const url = KOR_SERVICE2 + path + '?' + params.toString();
-  const response = await (fetchImpl || fetch)(url, { headers: { Accept: 'application/json' } });
-  if (!response.ok) throw new Error('TourAPI HTTP ' + response.status);
-  const payload = await response.json();
-  const code = payload && payload.response && payload.response.header && payload.response.header.resultCode;
-  if (code && code !== '0000') {
-    throw new Error(payload.response.header.resultMsg || code);
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await (fetchImpl || fetch)(url, { headers: { Accept: 'application/json' } });
+    if (response.status === 429) {
+      lastErr = new Error('TourAPI HTTP 429');
+      if (attempt < 3 && !fetchImpl) await sleep(350 * attempt);
+      else if (attempt < 3 && fetchImpl) break;
+      continue;
+    }
+    if (!response.ok) throw new Error('TourAPI HTTP ' + response.status);
+    const payload = await response.json();
+    const code = payload && payload.response && payload.response.header && payload.response.header.resultCode;
+    if (code && code !== '0000') {
+      throw new Error(payload.response.header.resultMsg || code);
+    }
+    const items = payload && payload.response && payload.response.body && payload.response.body.items;
+    if (!items || typeof items === 'string') return [];
+    return asList(items.item);
   }
-  const items = payload && payload.response && payload.response.body && payload.response.body.items;
-  if (!items || typeof items === 'string') return [];
-  return asList(items.item);
+  throw lastErr || new Error('TourAPI HTTP 429');
 }
 
 export async function searchFestival2(input, fetchImpl) {
@@ -227,27 +259,43 @@ export async function searchFestival2(input, fetchImpl) {
   delete query.MobileOS;
   delete query.MobileApp;
   delete query._type;
-  const items = await tourGet(resolved.path, query, fetchImpl);
-  if (!items.length && query.lDongRegnCd && resolved.areaCode) {
-    const retry = { ...query };
-    delete retry.lDongRegnCd;
-    retry.areaCode = resolved.areaCode;
-    items.splice(0, items.length, ...(await tourGet(resolved.path, retry, fetchImpl)));
+  const key = festivalCacheKey(resolved);
+  try {
+    const items = await tourGet(resolved.path, query, fetchImpl);
+    if (!items.length && query.lDongRegnCd && resolved.areaCode) {
+      const retry = { ...query };
+      delete retry.lDongRegnCd;
+      retry.areaCode = resolved.areaCode;
+      items.splice(0, items.length, ...(await tourGet(resolved.path, retry, fetchImpl)));
+    }
+    let festivals = items.map(toTourFestival).filter(Boolean);
+    if (resolved.month) {
+      const start = ymd(resolved.year, resolved.month, 1);
+      const end = resolved.params.eventEndDate;
+      festivals = festivals.filter((item) => {
+        const a = String(item.eventStartDate || '').replace(/\D/g, '');
+        const b = String(item.eventEndDate || item.eventStartDate || '').replace(/\D/g, '');
+        return a && b && a <= end && b >= start;
+      });
+    }
+    if (input.category) {
+      festivals = festivals.filter((item) => item.category === input.category);
+    }
+    if (festivals.length) {
+      LAST_OK_FESTIVALS.set(key, festivals);
+      return { ...resolved, festivals: festivals, source: 'searchFestival2' };
+    }
+    const cached = LAST_OK_FESTIVALS.get(key) || [];
+    if (cached.length) return { ...resolved, festivals: cached, source: 'cache' };
+    const fallback = builtinFestivals(resolved);
+    return { ...resolved, festivals: fallback, source: fallback.length ? 'fallback' : 'none' };
+  } catch (err) {
+    const cached = LAST_OK_FESTIVALS.get(key) || [];
+    if (cached.length) return { ...resolved, festivals: cached, source: 'cache' };
+    const fallback = builtinFestivals(resolved);
+    if (fallback.length) return { ...resolved, festivals: fallback, source: 'fallback' };
+    throw err;
   }
-  let festivals = items.map(toTourFestival).filter(Boolean);
-  if (resolved.month) {
-    const start = ymd(resolved.year, resolved.month, 1);
-    const end = resolved.params.eventEndDate;
-    festivals = festivals.filter((item) => {
-      const a = String(item.eventStartDate || '').replace(/\D/g, '');
-      const b = String(item.eventEndDate || item.eventStartDate || '').replace(/\D/g, '');
-      return a && b && a <= end && b >= start;
-    });
-  }
-  if (input.category) {
-    festivals = festivals.filter((item) => item.category === input.category);
-  }
-  return { ...resolved, festivals: festivals, source: festivals.length ? 'searchFestival2' : 'none' };
 }
 
 export async function searchNearby2(params, fetchImpl) {
