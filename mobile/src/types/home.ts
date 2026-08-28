@@ -76,6 +76,8 @@ export interface HomePromotion {
   settlementAmount?: number;
   managerEmail?: string;
   maxDiscountAmount?: number;
+  /** 권역 견본(샘플) 쿠폰. 홈 리스트 뱃지는 이것에만 표시한다. */
+  is_sample?: boolean;
 }
 
 export interface HomeFeed {

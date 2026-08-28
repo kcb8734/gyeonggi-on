@@ -6,6 +6,7 @@ import type { CenterApplicationRecord, CenterLocalityRow } from '../../constants
 import { applyCenterBusinessCard, fetchCenterApplications, reviewCenterApplication } from '../../api/centers';
 import { subscribeCenterApplications } from '../../stores/centerApplyStore';
 import { CenterCardFaces } from '../ui/CenterDirectorCard';
+import CenterCourseForm from '../ui/CenterCourseForm';
 import { buildCenterCardModel } from '../../utils/centerCardDocument';
 import { directorTitleFor, websiteForLocality } from '../../constants/centerDirectors';
 
@@ -49,6 +50,7 @@ export default function AdminCenterPanel() {
   const [region, setRegion] = useState('ALL');
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [courseRow, setCourseRow] = useState<CenterLocalityRow | null>(null);
 
   const load = () => {
     fetchCenterApplications().then(setRows);
@@ -135,6 +137,12 @@ export default function AdminCenterPanel() {
                 load();
               }}
             />
+            {row.reviewStatus === 'selected' ? (
+              <ActionButton
+                label="추천 코스 등록"
+                onPress={() => setCourseRow(rowFromApplication(row))}
+              />
+            ) : null}
           </View>
         </View>
       ))}
@@ -146,6 +154,7 @@ export default function AdminCenterPanel() {
         </View>
       ) : null}
       {message ? <Text style={styles.ok}>{message}</Text> : null}
+      <CenterCourseForm visible={Boolean(courseRow)} row={courseRow} onClose={() => setCourseRow(null)} />
     </>
   );
 }

@@ -75,7 +75,7 @@ export default function FestivalDetailPopup({
               <View style={styles.row}>
                 <Text style={styles.dday}>{ddayLabel(festival.start_date, festival.end_date)}</Text>
                 {festival.category ? <Text style={styles.cat}>{festival.category}</Text> : null}
-                <Text style={styles.couponChip}>쿠폰 발행</Text>
+                {promotions.length ? <Text style={styles.couponChip}>쿠폰 발행</Text> : null}
               </View>
               <Text style={styles.title}>{festival.title}</Text>
               <Text style={styles.meta}>{formatRange(festival.start_date, festival.end_date)}</Text>

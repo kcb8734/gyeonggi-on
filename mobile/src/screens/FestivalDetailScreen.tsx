@@ -309,7 +309,7 @@ export default function FestivalDetailScreen({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6' },
-  hero: { width: 390, height: 220, backgroundColor: '#E5E7EB' },
+  hero: { width: '100%' as unknown as number, height: 220, backgroundColor: '#E5E7EB' },
   heroFallback: { width: '100%', alignItems: 'center', justifyContent: 'center' },
   heroFallbackText: { color: '#6B7280', fontWeight: '700' },
   body: { padding: 16, gap: 10 },

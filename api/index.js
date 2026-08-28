@@ -27,6 +27,10 @@ import {
   reviewApplication,
   summarizeCenterRegions,
 } from './centerDirectors.js';
+import {
+  listCenterCourses,
+  upsertCenterCourse,
+} from './centerCourses.js';
 import { sendResendEmail } from './resendFrom.js';
 import {
   getTourDetail2,
@@ -653,6 +657,24 @@ async function handler(req, res) {
     if (/\/api\/centers\/applications/i.test(path)) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       send(res, 200, { success: true, data: listApplications() }, corsHeaders(req));
+      return;
+    }
+    if (/\/api\/centers\/courses/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const query = readQuery(req);
+      if (method === 'POST') {
+        const result = upsertCenterCourse(body);
+        send(res, result.ok ? 200 : 400, {
+          success: result.ok,
+          data: result.data,
+          message: result.ok ? '추천 코스를 등록했습니다.' : result.message,
+        }, corsHeaders(req));
+        return;
+      }
+      send(res, 200, {
+        success: true,
+        data: listCenterCourses(query.regionId || query.region || query.city, query.metro),
+      }, corsHeaders(req));
       return;
     }
     const centerRegion = path.match(/\/api\/centers\/([^/?\s]+)/i);

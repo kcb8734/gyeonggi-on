@@ -11,6 +11,13 @@ import {
   type CenterReviewStatus,
 } from '../constants/centerDirectors';
 import {
+  hydrateCenterCourses,
+  listCenterCourses,
+  upsertCenterCourse,
+  type CenterCourseInput,
+  type CenterLocalCourse,
+} from '../constants/centerCourses';
+import {
   applyLocalBusinessCard,
   centerOverlay,
   hydrateRemoteApplications,
@@ -87,6 +94,36 @@ export async function applyCenterBusinessCard(id: string) {
     if (res.data?.data) hydrateRemoteApplications([res.data.data]);
   } catch {
     // 로컬 반영 유지
+  }
+  return local;
+}
+
+export async function fetchCenterCourses(filter: { regionId?: string; metro?: string } = {}): Promise<CenterLocalCourse[]> {
+  try {
+    const res = await api.get<{ success: boolean; data: CenterLocalCourse[] }>('/api/centers/courses', {
+      params: { regionId: filter.regionId, metro: filter.metro },
+    });
+    if (res.data?.data?.length) hydrateCenterCourses(res.data.data);
+  } catch {
+    // 로컬 코스
+  }
+  return listCenterCourses(filter.regionId, filter.metro);
+}
+
+export async function saveCenterCourse(input: CenterCourseInput): Promise<CenterLocalCourse> {
+  const local = upsertCenterCourse(input);
+  try {
+    const res = await api.post<{ success: boolean; data?: CenterLocalCourse; message?: string }>('/api/centers/courses', input);
+    if (res.data?.success === false) throw new Error(res.data.message || '코스 등록에 실패했습니다.');
+    if (res.data?.data) {
+      hydrateCenterCourses([res.data.data]);
+      return res.data.data;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    if (message && !/network|timeout|404|failed/i.test(message) && !message.includes('Network')) {
+      throw err;
+    }
   }
   return local;
 }

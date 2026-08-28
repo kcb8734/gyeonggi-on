@@ -23,7 +23,7 @@ import CenterDirectorsScreen from './src/screens/CenterDirectorsScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
-import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
+import { findLocalityByWebSlug } from './src/constants/centerDirectors';
 
 ensureKoreanWebFont();
 installImeGuard();
@@ -61,7 +61,7 @@ export type RootStackParamList = {
   FeedView: { postId: string };
   Login: undefined;
   Admin: undefined;
-  CenterDirectors: { tab?: 'purpose' | 'status' } | undefined;
+  CenterDirectors: { tab?: 'purpose' | 'status'; region?: string; locality?: string; openCard?: boolean } | undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -173,8 +173,20 @@ function startsOnSettlement() {
 }
 
 function startsOnCenters() {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
-  return window.location.pathname.replace(/\/+$/, '') === '/centers';
+  return Boolean(centerLaunch());
+}
+
+function centerLaunch(): RootStackParamList['CenterDirectors'] {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (path === '/centers') return { tab: 'status' };
+  const slug = path.replace(/^\//, '');
+  if (!slug || slug.includes('/')) return undefined;
+  const reserved = new Set(['admin', 'merchant', 'api', 'health', 'centers', 'index.html', 'privacy', 'support']);
+  if (reserved.has(slug)) return undefined;
+  const row = findLocalityByWebSlug(slug);
+  if (!row) return undefined;
+  return { tab: 'status', region: row.region, locality: row.id, openCard: row.status === 'selected' };
 }
 
 export default function App() {
@@ -242,6 +254,7 @@ export default function App() {
             <Stack.Screen
               name="CenterDirectors"
               component={CenterDirectorsScreen}
+              initialParams={centerLaunch()}
               options={{ title: '지역 센터장', headerBackVisible: false, headerLeft: () => <StackBack /> }}
             />
           </Stack.Navigator>
@@ -273,6 +286,7 @@ const styles = StyleSheet.create({
   },
   phone: {
     width: 390,
+    maxWidth: '100%',
     height: 844,
     maxHeight: '100%' as unknown as number,
     backgroundColor: '#fff',

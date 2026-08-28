@@ -104,3 +104,39 @@ test('POST /api/centers/apply then admin card apply', async () => {
   assert.equal(cities.find((row) => row.label === '춘천시')?.director?.website, 'kdanji.com/chuncheon');
 });
 
+test('GET /api/centers/courses returns suwon seed and POST upserts', async () => {
+  const listed = await invoke({ method: 'GET', url: '/api/centers/courses?regionId=수원시' });
+  assert.equal(listed.status, 200);
+  const rows = (listed.body as { data: Array<{ regionId: string; title: string }> }).data;
+  assert.ok(rows.some((row) => row.regionId === '수원시'));
+  const created = await invoke({
+    method: 'POST',
+    url: '/api/centers/courses',
+    body: {
+      regionId: '강릉시',
+      metro: 'GANGWON',
+      centerId: 'GANGWON:강릉시',
+      title: '강릉 커피 하루 코스',
+      description: '오죽헌과 중앙시장',
+      images: [],
+      historyCourse: { name: '오죽헌', description: '율곡 유적' },
+      marketFoodCourse: { name: '강릉 중앙시장', description: '닭강정' },
+      mainAxis: { name: '강릉커피축제', description: '메인' },
+      campingAccommodation: { name: '경포해변 캠핑장', description: '숙박' },
+    },
+  });
+  assert.equal(created.status, 200);
+  const saved = created.body as { success: boolean; data: { title: string } };
+  assert.equal(saved.success, true);
+  assert.equal(saved.data.title, '강릉 커피 하루 코스');
+});
+
+test('GET /api/courses/recommend for suwon uses center director course', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/courses/recommend?title=수원화성문화제&city=수원시' });
+  assert.equal(result.status, 200);
+  const course = (result.body as { data: { course_title: string; itinerary: Array<{ category: string }> } }).data;
+  assert.match(course.course_title, /수원/);
+  assert.equal(course.itinerary.length, 4);
+  assert.ok(course.itinerary.some((item) => item.category.includes('역사')));
+});
+

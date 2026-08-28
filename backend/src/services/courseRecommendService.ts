@@ -8,6 +8,7 @@ import {
 } from '../constants/courseLandmarks';
 import { tryQuery } from '../db/pool';
 import { memoryEditorsPicks } from './inMemoryPlatform';
+import { centerCourseToFestivalCourse, findCenterCourseForPlace } from '../constants/centerCourses';
 
 export type CourseItinerary = {
   step: number;
@@ -152,7 +153,8 @@ export async function recommendFestivalCourse(input: {
   kind?: string;
   category?: string;
 }) {
-  const course = buildFestivalCourse(input);
+  const center = findCenterCourseForPlace(input);
+  const course = center ? centerCourseToFestivalCourse(center) : buildFestivalCourse(input);
   const saved = await tryQuery(
     `INSERT INTO ai_courses (festival_id, festival_title, course_json, recommend_count)
      VALUES ($1, $2, $3::jsonb, 1)
