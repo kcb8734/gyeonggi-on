@@ -81,6 +81,7 @@ export function resolveFestivalQuery(input = {}) {
     pageNo: '1',
     arrange: 'C',
     eventStartDate: eventStartDate,
+    contentTypeId: '15',
   };
   if (eventEndDate) params.eventEndDate = eventEndDate;
   if (lDongRegnCd) params.lDongRegnCd = lDongRegnCd;
@@ -227,6 +228,12 @@ export async function searchFestival2(input, fetchImpl) {
   delete query.MobileApp;
   delete query._type;
   const items = await tourGet(resolved.path, query, fetchImpl);
+  if (!items.length && query.lDongRegnCd && resolved.areaCode) {
+    const retry = { ...query };
+    delete retry.lDongRegnCd;
+    retry.areaCode = resolved.areaCode;
+    items.splice(0, items.length, ...(await tourGet(resolved.path, retry, fetchImpl)));
+  }
   let festivals = items.map(toTourFestival).filter(Boolean);
   if (resolved.month) {
     const start = ymd(resolved.year, resolved.month, 1);

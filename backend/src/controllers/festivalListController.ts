@@ -43,7 +43,6 @@ export const listSyncedFestivals = async (_req: Request, res: Response) => {
          mu.name AS municipality_name
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
-       WHERE f.end_date >= CURRENT_DATE
        ORDER BY f.is_trending DESC, f.start_date ASC
        LIMIT 80`,
     );

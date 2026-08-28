@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type { CenterDirectorProfile, CenterLocalityRow } from '../../constants/centerDirectors';
-import { CARD_MM, buildCenterCardFaceDocument, buildCenterCardModel, downloadCenterCardFace, type CenterCardModel } from '../../utils/centerCardDocument';
+import { CARD_COLORS, CARD_MM, CARD_PRINT_CM, buildCenterCardFaceDocument, buildCenterCardModel, downloadCenterCardFace, type CenterCardModel } from '../../utils/centerCardDocument';
 import ModalExitButton from './ModalExitButton';
 import OnAndOnPlusLogo from './OnAndOnPlusLogo';
 import CenterCardHtmlFrame from './CenterCardHtmlFrame';
@@ -27,8 +27,10 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
   const photoW = Math.round(cardW * (CARD_MM.photoW / CARD_MM.width));
   const photoH = Math.round(cardH * (CARD_MM.photoH / CARD_MM.height));
   const qr = Math.round(cardH * 0.46);
-  const type = Math.max(9, Math.round(11 * Math.min(1, s * 1.15)));
+  const mm = (value: number) => Math.round(cardW * (value / CARD_MM.width));
+  const type = Math.max(10, Math.round(12 * Math.min(1, s * 1.15)));
   const initial = model.name.slice(0, 1);
+  const sizeLabel = `9.2cm × 5.2cm`;
   if (Platform.OS === 'web') {
     return (
       <View style={styles.faces}>
@@ -37,7 +39,7 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
           <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'front')} width={cardW} height={cardH} />
         </View>
         <View style={styles.sheet}>
-          <Text style={styles.sideLabel}>후면 · 지역 QR</Text>
+          <Text style={styles.sideLabel}>후면 · {sizeLabel}</Text>
           <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'back')} width={cardW} height={cardH} />
         </View>
       </View>
@@ -54,11 +56,11 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
               <View style={[styles.who, { marginTop: Math.round(cardH * 0.1) }]}>
                 <Text style={[styles.name, { fontSize: Math.round(cardH * 0.088) }]}>{model.name}</Text>
                 <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.078) }]}>|</Text>
-                <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066) }]} numberOfLines={1}>{model.title}</Text>
+                <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066), color: CARD_COLORS.title }]} numberOfLines={1}>{model.title}</Text>
               </View>
-              <View style={styles.brandBlock}>
-                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078) }]}>온앤온+</Text>
-                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+              <View style={[styles.brandBlock, { paddingBottom: mm(CARD_MM.brandAboveRule) }]}>
+                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand }]}>온앤온+</Text>
+                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
               </View>
             </View>
             {model.photoUrl ? (
@@ -70,20 +72,21 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
             )}
           </View>
           <View style={styles.rule} />
-          <View style={styles.grid}>
-            <View style={styles.col}>
-              <ContactLine label="M." value={model.phone} size={type} />
-              <ContactLine label="A." value={model.address} size={type} />
+          <View style={[styles.grid, { paddingTop: mm(CARD_MM.contactBelowRule), minHeight: mm(CARD_MM.ruleFromBottom) }]}>
+            <View style={styles.contactRow}>
+              <View style={styles.col}>
+                <ContactLine label="M." value={model.phone} size={type} />
+              </View>
+              <View style={styles.col}>
+                <ContactLine label="E." value={model.email} size={type} />
+              </View>
             </View>
-            <View style={styles.col}>
-              <ContactLine label="E." value={model.email} size={type} />
-              <ContactLine label="W." value={model.website} size={type} />
-            </View>
+            <ContactLine label="A." value={model.address} size={type} />
           </View>
         </View>
       </View>
       <View style={styles.sheet}>
-        <Text style={styles.sideLabel}>후면 · 지역 QR</Text>
+        <Text style={styles.sideLabel}>후면 · {sizeLabel}</Text>
         <View style={[styles.card, { width: cardW, height: cardH, padding: pad }]}>
           <OnAndOnPlusLogo height={logoH} />
           <View style={styles.backRow}>
@@ -142,7 +145,7 @@ export default function CenterDirectorCard({
                   }
                 }}
               >
-                <Text style={styles.downloadText}>{busy === 'front' ? '전면 저장 중...' : '전면 JPEG 다운로드'}</Text>
+                <Text style={styles.downloadText}>{busy === 'front' ? '전면 저장 중...' : `전면 JPEG 다운로드 · ${CARD_PRINT_CM.width}cm × ${CARD_PRINT_CM.height}cm`}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.download}
@@ -156,9 +159,10 @@ export default function CenterDirectorCard({
                   }
                 }}
               >
-                <Text style={styles.downloadText}>{busy === 'back' ? '후면 저장 중...' : '후면 JPEG 다운로드'}</Text>
+                <Text style={styles.downloadText}>{busy === 'back' ? '후면 저장 중...' : `후면 JPEG 다운로드 · ${CARD_PRINT_CM.width}cm × ${CARD_PRINT_CM.height}cm`}</Text>
               </TouchableOpacity>
             </View>
+            <Text style={styles.downloadHint}>저장 크기 가로 {CARD_PRINT_CM.width}cm × 세로 {CARD_PRINT_CM.height}cm (실물 명함)</Text>
           </ScrollView>
         </View>
       </View>
@@ -206,12 +210,13 @@ const styles = StyleSheet.create({
   who: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   name: { fontWeight: '800', color: '#111827' },
   bar: { color: '#D1D5DB', fontWeight: '400' },
-  title: { color: '#6B7280', fontWeight: '500', flexShrink: 1 },
+  title: { color: CARD_COLORS.title, fontWeight: '500', flexShrink: 1 },
   brandBlock: { marginTop: 'auto' as const, paddingTop: 8 },
-  brand: { fontWeight: '800', color: '#111827' },
-  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: '#111827' },
-  rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 3, marginBottom: 5 },
-  grid: { flexDirection: 'row', gap: 8 },
+  brand: { fontWeight: '800', color: CARD_COLORS.brand },
+  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
+  rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 0, marginBottom: 0 },
+  grid: { gap: 4 },
+  contactRow: { flexDirection: 'row', gap: 8 },
   col: { flex: 1, gap: 3 },
   kv: { flexDirection: 'row', alignItems: 'flex-start' },
   key: { fontWeight: '800', color: '#111827' },
@@ -228,4 +233,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   downloadText: { color: '#fff', fontWeight: '800', fontSize: 13, textAlign: 'center' },
+  downloadHint: { marginTop: 8, fontSize: 11, fontWeight: '700', color: '#6B7280', textAlign: 'center' },
 });

@@ -613,7 +613,7 @@ export async function searchFestivals(
 
   try {
     const festivals = await cacheOf(options).wrap(cacheKey, async () => {
-      const items = await tourGet<FestivalItem>('/searchFestival2', {
+      let items = await tourGet<FestivalItem>('/searchFestival2', {
         contentTypeId: CONTENT_TYPE.FESTIVAL,
         areaCode: areaCode && AREA_TO_LDONG[areaCode] ? undefined : areaCode,
         lDongRegnCd,
@@ -623,6 +623,18 @@ export async function searchFestivals(
         pageNo: 1,
         arrange: 'C',
       }, options);
+
+      if (!items.length && areaCode && lDongRegnCd) {
+        items = await tourGet<FestivalItem>('/searchFestival2', {
+          contentTypeId: CONTENT_TYPE.FESTIVAL,
+          areaCode,
+          eventStartDate,
+          eventEndDate,
+          numOfRows: params.numOfRows ?? 100,
+          pageNo: 1,
+          arrange: 'C',
+        }, options);
+      }
 
       let next = items.map((item) => toFestival(item)).filter((item): item is TourFestival => item != null);
 
