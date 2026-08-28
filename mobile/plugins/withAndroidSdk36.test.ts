@@ -29,6 +29,7 @@ test('gradle.properties fallbacks become 36', () => {
   assert.match(next, /android\.compileSdkVersion=36/);
   assert.match(next, /android\.targetSdkVersion=36/);
   assert.match(next, /android\.buildToolsVersion=36\.0\.0/);
+  assert.match(next, /android\.suppressUnsupportedCompileSdk=36/);
 });
 
 test('project build.gradle default SDK versions become 36', () => {

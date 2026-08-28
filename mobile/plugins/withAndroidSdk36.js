@@ -30,6 +30,7 @@ function applySdk36ToGradlePropertiesText(text) {
   next = upsertPropertyLine(next, 'android.compileSdkVersion', COMPILE_SDK);
   next = upsertPropertyLine(next, 'android.targetSdkVersion', TARGET_SDK);
   next = upsertPropertyLine(next, 'android.buildToolsVersion', BUILD_TOOLS);
+  next = upsertPropertyLine(next, 'android.suppressUnsupportedCompileSdk', COMPILE_SDK);
   return next;
 }
 
@@ -64,6 +65,7 @@ function withAndroidSdk36(config) {
     setGradleProperty(cfg.modResults, 'android.compileSdkVersion', COMPILE_SDK);
     setGradleProperty(cfg.modResults, 'android.targetSdkVersion', TARGET_SDK);
     setGradleProperty(cfg.modResults, 'android.buildToolsVersion', BUILD_TOOLS);
+    setGradleProperty(cfg.modResults, 'android.suppressUnsupportedCompileSdk', COMPILE_SDK);
     return cfg;
   });
 
