@@ -32,10 +32,11 @@ test('build:aab logs versionName and versionCode from app.json', () => {
   const appJson = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app.json'), 'utf8'));
   assert.match(source, /readAabIdentity/);
   assert.match(source, /assertAabIdentity/);
+  assert.match(source, /ensureAppVersion/);
   assert.match(source, /onandon-\$\{versionName\}-vc\$\{versionCode\}\.aab/);
   assert.match(source, /rootAab/);
-  assert.equal(appJson.expo.version, '1.0.4');
-  assert.equal(appJson.expo.android.versionCode, 5);
+  assert.equal(appJson.expo.version, '1.0.5');
+  assert.equal(appJson.expo.android.versionCode, 6);
   assert.equal(appJson.expo.icon, './assets/icon.png');
   assert.equal(appJson.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
   assert.ok(appJson.expo.android.permissions.includes('INTERNET'));
