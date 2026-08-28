@@ -156,24 +156,27 @@ export function ActionButton({
   onPress,
   kind = 'primary',
   disabled,
+  active,
 }: {
   label: string;
   onPress: () => void;
   kind?: 'primary' | 'ghost' | 'danger';
   disabled?: boolean;
+  active?: boolean;
 }) {
+  const tone = active ? 'primary' : kind;
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
       style={[
         styles.btn,
-        kind === 'ghost' && styles.btnGhost,
-        kind === 'danger' && styles.btnDanger,
+        tone === 'ghost' && styles.btnGhost,
+        tone === 'danger' && styles.btnDanger,
         disabled && styles.btnOff,
       ]}
     >
-      <Text style={[styles.btnText, kind === 'ghost' && { color: '#111827' }]}>{label}</Text>
+      <Text style={[styles.btnText, tone === 'ghost' && { color: '#111827' }]}>{label}</Text>
     </TouchableOpacity>
   );
 }

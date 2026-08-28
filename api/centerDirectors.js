@@ -109,7 +109,7 @@ export function applyCenterDirector(input) {
   if (!key || !name || !age || !phone || !address || !career || !intro) {
     return { ok: false, message: '이름, 나이, 연락처, 활동 주소, 경력, 자기소개를 모두 입력해 주세요.' };
   }
-  if (SELECTED_DIRECTORS[key] || localityReview.get(key) === 'selected') {
+  if (statusFor(key) === 'selected') {
     return { ok: false, message: '이미 센터장이 선정된 지역입니다.' };
   }
   const meta = localityMeta(key);
@@ -141,13 +141,25 @@ export function listApplications() {
 
 export function reviewApplication(id, status) {
   if (status !== 'submitted' && status !== 'reviewing' && status !== 'selected') {
-    return { ok: false, message: '지원완료(선정 심사 중) 또는 선정 완료만 지정할 수 있습니다.' };
+    return { ok: false, message: '지원하기, 지원완료(선정 심사 중) 또는 선정 완료만 지정할 수 있습니다.' };
   }
   const row = applications.find((item) => item.id === id);
   if (!row) return { ok: false, message: '지원서를 찾을 수 없습니다.' };
   row.reviewStatus = status;
-  if (status === 'reviewing' && localityReview.get(row.localityKey) !== 'selected') {
+  row.cardApplied = status === 'selected' ? row.cardApplied : false;
+  if (status === 'submitted') {
+    localityReview.set(row.localityKey, 'recruiting');
+    delete SELECTED_DIRECTORS[row.localityKey];
+    applications.forEach((item) => {
+      if (item.localityKey === row.localityKey && item.id !== row.id) {
+        item.reviewStatus = 'submitted';
+        item.cardApplied = false;
+      }
+    });
+  }
+  if (status === 'reviewing') {
     localityReview.set(row.localityKey, 'reviewing');
+    delete SELECTED_DIRECTORS[row.localityKey];
   }
   if (status === 'selected') {
     localityReview.set(row.localityKey, 'selected');
@@ -195,8 +207,10 @@ function applicantCountFor(key) {
 }
 
 function statusFor(key) {
-  if (SELECTED_DIRECTORS[key] || localityReview.get(key) === 'selected') return 'selected';
-  if (localityReview.get(key) === 'reviewing' || SEED_REVIEWING.has(key)) return 'reviewing';
+  const review = localityReview.get(key);
+  if (review === 'recruiting') return 'recruiting';
+  if (review === 'selected' || SELECTED_DIRECTORS[key]) return 'selected';
+  if (review === 'reviewing' || SEED_REVIEWING.has(key)) return 'reviewing';
   if (applications.some((row) => row.localityKey === key && row.reviewStatus === 'reviewing')) return 'reviewing';
   return 'recruiting';
 }

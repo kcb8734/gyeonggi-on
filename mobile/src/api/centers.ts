@@ -94,7 +94,7 @@ export async function fetchCenterApplications(): Promise<CenterApplicationRecord
 export async function reviewCenterApplication(id: string, status: CenterReviewStatus) {
   reviewLocalApplication(id, status);
   try {
-    await api.patch(`/api/centers/applications/${id}`, { status });
+    await api.post(`/api/centers/applications/${id}`, { status });
   } catch {
     // 로컬 반영 유지
   }

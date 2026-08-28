@@ -4,6 +4,7 @@ import type {
   CenterDirectorProfile,
   CenterOverlay,
   CenterReviewStatus,
+  CenterStatus,
 } from '../constants/centerDirectors';
 import { directorTitleFor, websiteForLocality, localityWebSlug } from '../constants/centerDirectors';
 
@@ -14,9 +15,10 @@ type State = {
   applications: CenterApplicationRecord[];
   directors: Record<string, CenterDirectorProfile>;
   reviewingKeys: string[];
+  localityStatus: Record<string, CenterStatus>;
 };
 
-let memory: State = { applications: [], directors: {}, reviewingKeys: [] };
+let memory: State = { applications: [], directors: {}, reviewingKeys: [], localityStatus: {} };
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -41,6 +43,7 @@ function read(): State {
         applications: Array.isArray(parsed.applications) ? parsed.applications : [],
         directors: parsed.directors && typeof parsed.directors === 'object' ? parsed.directors : {},
         reviewingKeys: Array.isArray(parsed.reviewingKeys) ? parsed.reviewingKeys : [],
+        localityStatus: parsed.localityStatus && typeof parsed.localityStatus === 'object' ? parsed.localityStatus : {},
       };
       return memory;
     }
@@ -51,6 +54,7 @@ function read(): State {
         applications: [],
         directors: {},
         reviewingKeys: Array.isArray(keys) ? keys.map(String) : [],
+        localityStatus: {},
       };
     }
   } catch {
@@ -89,6 +93,7 @@ export function centerOverlay(): CenterOverlay {
     applications: state.applications,
     directors: state.directors,
     reviewingKeys: state.reviewingKeys,
+    localityStatus: state.localityStatus,
   };
 }
 
@@ -133,32 +138,62 @@ export function hydrateRemoteApplications(rows: CenterApplicationRecord[]) {
   persist({ ...state, applications: [...byId.values()] });
 }
 
+function directorFromApplication(target: CenterApplicationRecord): CenterDirectorProfile {
+  return {
+    name: target.name,
+    title: directorTitleFor(target.regionLabel || '', target.localityLabel || ''),
+    phone: target.phone,
+    email: target.email || `${localityWebSlug(target.localityLabel || '')}@kdanji.com`,
+    intro: target.intro,
+    photoUrl: target.photoUrl,
+    address: target.address,
+    website: websiteForLocality(target.localityLabel || ''),
+    age: target.age,
+  };
+}
+
+function localityStatusForReview(status: CenterReviewStatus): CenterStatus {
+  if (status === 'selected') return 'selected';
+  if (status === 'reviewing') return 'reviewing';
+  return 'recruiting';
+}
+
 export function reviewLocalApplication(id: string, status: CenterReviewStatus) {
   const state = read();
-  const applications = state.applications.map((row) => (
-    row.id === id ? { ...row, reviewStatus: status } : row
-  ));
-  const target = applications.find((row) => row.id === id);
-  const reviewingKeys = [...state.reviewingKeys];
+  const target = state.applications.find((row) => row.id === id);
+  if (!target) return undefined;
+  const applications = state.applications.map((row) => {
+    if (row.id !== id && row.localityKey !== target.localityKey) return row;
+    if (row.id === id) {
+      return {
+        ...row,
+        reviewStatus: status,
+        cardApplied: status === 'selected' ? row.cardApplied : false,
+      };
+    }
+    if (status === 'submitted') {
+      return { ...row, reviewStatus: 'submitted' as const, cardApplied: false };
+    }
+    return row;
+  });
   const directors = { ...state.directors };
-  if (target && status === 'reviewing' && !directors[target.localityKey]) {
-    reviewingKeys.push(target.localityKey);
+  const reviewingKeys = state.reviewingKeys.filter((key) => key !== target.localityKey);
+  const localityStatus = { ...state.localityStatus };
+  const nextStatus = localityStatusForReview(status);
+  localityStatus[target.localityKey] = nextStatus;
+  if (status === 'selected') {
+    directors[target.localityKey] = directorFromApplication(target);
+  } else {
+    delete directors[target.localityKey];
   }
-  if (target && status === 'selected') {
-    directors[target.localityKey] = {
-      name: target.name,
-      title: directorTitleFor(target.regionLabel || '', target.localityLabel || ''),
-      phone: target.phone,
-      email: target.email || `${localityWebSlug(target.localityLabel || '')}@kdanji.com`,
-      intro: target.intro,
-      photoUrl: target.photoUrl,
-      address: target.address,
-      website: websiteForLocality(target.localityLabel || ''),
-      age: target.age,
-    };
-  }
-  persist({ applications, directors, reviewingKeys: [...new Set(reviewingKeys)] });
-  return target;
+  if (status === 'reviewing') reviewingKeys.push(target.localityKey);
+  persist({
+    applications,
+    directors,
+    reviewingKeys: [...new Set(reviewingKeys)],
+    localityStatus,
+  });
+  return applications.find((row) => row.id === id);
 }
 
 export function applyLocalBusinessCard(id: string) {
@@ -170,20 +205,14 @@ export function applyLocalBusinessCard(id: string) {
   ));
   persist({
     applications,
-    reviewingKeys: state.reviewingKeys,
+    reviewingKeys: state.reviewingKeys.filter((key) => key !== target.localityKey),
     directors: {
       ...state.directors,
-      [target.localityKey]: {
-        name: target.name,
-        title: directorTitleFor(target.regionLabel || '', target.localityLabel || ''),
-        phone: target.phone,
-        email: target.email || `${localityWebSlug(target.localityLabel || '')}@kdanji.com`,
-        intro: target.intro,
-        photoUrl: target.photoUrl,
-        address: target.address,
-        website: websiteForLocality(target.localityLabel || ''),
-        age: target.age,
-      },
+      [target.localityKey]: directorFromApplication(target),
+    },
+    localityStatus: {
+      ...state.localityStatus,
+      [target.localityKey]: 'selected',
     },
   });
   return { ...target, reviewStatus: 'selected' as const, cardApplied: true };

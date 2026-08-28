@@ -125,8 +125,8 @@ export default function AdminCenterPanel() {
     () => rows.filter((row) => region === 'ALL' || row.region === region),
     [rows, region],
   );
-  const preview = filtered.find((row) => row.id === previewId) || filtered[0];
-  const previewModel = preview ? buildCenterCardModel(rowFromApplication(preview)) : null;
+  const preview = filtered.find((row) => row.id === previewId) || filtered.find((row) => row.reviewStatus === 'selected') || null;
+  const previewModel = preview && preview.reviewStatus === 'selected' ? buildCenterCardModel(rowFromApplication(preview)) : null;
   const selectedCourse = courses.find((item) => item.id === selectedCourseId) || courses[0] || null;
   const selectedDirector = selectedCourse ? directorRowForCourse(selectedCourse, rows) : null;
   const selectedCard = selectedDirector ? buildCenterCardModel(selectedDirector) : null;
@@ -151,10 +151,11 @@ export default function AdminCenterPanel() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>지역센터장 지원 현황</Text>
             <Text style={styles.hint}>
-              지원서를 확인하고 지원완료(선정 심사 중) 또는 선정 완료를 체크하세요. 선정된 센터장은 명함에 적용하면 사진·이름·연락처·이메일·활동주소·링크·후면 QR이 자동 입력됩니다.
+              지원하기·지원완료(선정 심사 중)·선정 완료를 누르면 지역센터장 페이지 표시가 바로 바뀝니다. 선정 이후 결격 사유가 있으면 지원하기로 되돌려 다시 모집할 수 있고, 그때 기존 명함 자료는 초기화됩니다.
             </Text>
             <View style={styles.kpiRow}>
               <Text style={styles.kpi}>전체 {rows.length}건</Text>
+              <Text style={styles.kpi}>접수 {rows.filter((row) => row.reviewStatus === 'submitted').length}건</Text>
               <Text style={styles.kpi}>심사 중 {rows.filter((row) => row.reviewStatus === 'reviewing').length}건</Text>
               <Text style={styles.kpi}>선정 {rows.filter((row) => row.reviewStatus === 'selected').length}건</Text>
             </View>
@@ -190,15 +191,31 @@ export default function AdminCenterPanel() {
               <Text style={styles.intro}>{row.intro}</Text>
               <View style={styles.actions}>
                 <ActionButton
+                  label="지원하기"
+                  kind="ghost"
+                  active={row.reviewStatus === 'submitted'}
+                  onPress={async () => {
+                    await reviewCenterApplication(row.id, 'submitted');
+                    if (previewId === row.id) setPreviewId(null);
+                    setMessage(`${row.localityLabel}을(를) 다시 지원하기 상태로 되돌렸습니다. 기존 명함 자료는 초기화되었습니다.`);
+                    load();
+                  }}
+                />
+                <ActionButton
                   label="지원완료(선정 심사 중)"
+                  kind="ghost"
+                  active={row.reviewStatus === 'reviewing'}
                   onPress={async () => {
                     await reviewCenterApplication(row.id, 'reviewing');
+                    if (previewId === row.id) setPreviewId(null);
                     setMessage(`${row.name} 지원서를 선정 심사 중으로 표시했습니다.`);
                     load();
                   }}
                 />
                 <ActionButton
                   label="선정 완료"
+                  kind="ghost"
+                  active={row.reviewStatus === 'selected'}
                   onPress={async () => {
                     await reviewCenterApplication(row.id, 'selected');
                     setPreviewId(row.id);
@@ -208,6 +225,8 @@ export default function AdminCenterPanel() {
                 />
                 <ActionButton
                   label="명함에 적용"
+                  kind="ghost"
+                  active={Boolean(row.cardApplied)}
                   onPress={async () => {
                     await applyCenterBusinessCard(row.id);
                     setPreviewId(row.id);
@@ -237,7 +256,7 @@ export default function AdminCenterPanel() {
           {previewModel ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>명함 미리보기 · 적용 결과</Text>
-              <Text style={styles.hint}>전면 사진·이름·M·E·A·W와 후면 지자체 QR이 지원서 기준으로 채워집니다. 센터장은 선정 완료 카드에서 다운로드할 수 있습니다.</Text>
+              <Text style={styles.hint}>전면 사진·이름·M·E·A·W와 후면 지자체 QR이 지원서 기준으로 채워집니다. 지원하기로 되돌리면 명함 자료가 지워집니다.</Text>
               <CenterCardFaces model={previewModel} />
             </View>
           ) : null}
