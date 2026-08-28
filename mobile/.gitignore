@@ -2,4 +2,9 @@ node_modules/
 .expo/
 dist/
 web-build/
+/android/
+/ios/
+credentials/android/*.keystore
+credentials/android/keystore.properties
+*.jks
 *.log

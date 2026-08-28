@@ -2,6 +2,7 @@
   "name": "gyeonggi-on",
   "private": true,
   "scripts": {
-    "deploy:prod": "node scripts/deploy-prod.mjs"
+    "deploy:prod": "node scripts/deploy-prod.mjs",
+    "build:aab": "node mobile/scripts/build-aab.cjs"
   }
 }

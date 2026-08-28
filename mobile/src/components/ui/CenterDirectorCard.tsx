@@ -1,16 +1,17 @@
 import React from 'react';
-import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type { CenterDirectorProfile, CenterLocalityRow } from '../../constants/centerDirectors';
-import { CARD_MM, buildCenterCardModel, downloadCenterCardFace, type CenterCardModel } from '../../utils/centerCardDocument';
+import { CARD_MM, buildCenterCardFaceDocument, buildCenterCardModel, downloadCenterCardFace, type CenterCardModel } from '../../utils/centerCardDocument';
 import ModalExitButton from './ModalExitButton';
 import OnAndOnPlusLogo from './OnAndOnPlusLogo';
+import CenterCardHtmlFrame from './CenterCardHtmlFrame';
 
 function ContactLine({ label, value, size }: { label: string; value: string; size: number }) {
   return (
     <View style={styles.kv}>
       <Text style={[styles.key, { fontSize: size, lineHeight: size + 4, width: Math.round(size * 1.7) }]}>{label}</Text>
-      <Text style={[styles.val, { fontSize: size, lineHeight: size + 4 }]}>{value}</Text>
+      <Text style={[styles.val, { fontSize: size, lineHeight: size + 4 }]} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
@@ -21,13 +22,27 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
   const s = frame / (CARD_MM.width * (96 / 25.4));
   const cardW = frame;
   const cardH = Math.round(cardW * CARD_MM.height / CARD_MM.width);
-  const pad = Math.max(18, Math.round(cardW * (CARD_MM.pad / CARD_MM.width)));
+  const pad = Math.max(22, Math.round(cardW * (CARD_MM.pad / CARD_MM.width)));
   const logoH = Math.max(16, Math.round(cardH * 0.123));
   const photoW = Math.round(cardW * (CARD_MM.photoW / CARD_MM.width));
   const photoH = Math.round(cardH * (CARD_MM.photoH / CARD_MM.height));
   const qr = Math.round(cardH * 0.46);
   const type = Math.max(9, Math.round(11 * Math.min(1, s * 1.15)));
   const initial = model.name.slice(0, 1);
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.faces}>
+        <View style={styles.sheet}>
+          <Text style={styles.sideLabel}>전면 · 9.2cm × 5.2cm</Text>
+          <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'front')} width={cardW} height={cardH} />
+        </View>
+        <View style={styles.sheet}>
+          <Text style={styles.sideLabel}>후면 · 지역 QR</Text>
+          <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'back')} width={cardW} height={cardH} />
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.faces}>
       <View style={styles.sheet}>
@@ -36,8 +51,8 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
           <View style={styles.topRow}>
             <View style={[styles.copyCol, { minHeight: photoH }]}>
               <OnAndOnPlusLogo height={logoH} />
-              <View style={[styles.who, { marginTop: Math.round(cardH * 0.08) }]}>
-                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.098) }]}>{model.name}</Text>
+              <View style={[styles.who, { marginTop: Math.round(cardH * 0.1) }]}>
+                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.088) }]}>{model.name}</Text>
                 <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.078) }]}>|</Text>
                 <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066) }]} numberOfLines={1}>{model.title}</Text>
               </View>
@@ -179,7 +194,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     overflow: 'hidden',
   },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flex: 1 },
   copyCol: { flex: 1, minWidth: 0, paddingRight: 6, justifyContent: 'flex-start' },
   photo: {
     borderRadius: 14,
@@ -195,9 +210,9 @@ const styles = StyleSheet.create({
   brandBlock: { marginTop: 'auto' as const, paddingTop: 8 },
   brand: { fontWeight: '800', color: '#111827' },
   dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: '#111827' },
-  rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 6, marginBottom: 8 },
-  grid: { flexDirection: 'row', gap: 12 },
-  col: { flex: 1, gap: 6 },
+  rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 3, marginBottom: 5 },
+  grid: { flexDirection: 'row', gap: 8 },
+  col: { flex: 1, gap: 3 },
   kv: { flexDirection: 'row', alignItems: 'flex-start' },
   key: { fontWeight: '800', color: '#111827' },
   val: { flex: 1, color: '#111827', fontWeight: '600' },

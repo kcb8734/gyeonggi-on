@@ -47,6 +47,7 @@ export default function SupportScreen({ topic }: { topic?: 'notice' | 'help' | '
             <Text style={styles.meta}>
               열람·정정·삭제·처리정지를 요청할 수 있습니다. 문의: help@gyeonggi-on.kr / 경기도 콜센터 120.
             </Text>
+            <Text style={styles.meta}>공개 URL: https://www.kdanji.com/privacy</Text>
           </View>
         </View>
       ) : isHelp ? (

@@ -29,7 +29,9 @@
     { "source": "/api/health", "destination": "/api" },
     { "source": "/health", "destination": "/api" },
     { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!_expo/|assets/).*)", "destination": "/index.html" }
+    { "source": "/privacy", "destination": "/privacy/index.html" },
+    { "source": "/privacy/", "destination": "/privacy/index.html" },
+    { "source": "/((?!_expo/|assets/|privacy).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

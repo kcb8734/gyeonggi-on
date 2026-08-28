@@ -50,4 +50,11 @@ if (fs.existsSync(indexPath)) {
   fs.writeFileSync(indexPath, html);
 }
 
+const privacySrc = path.join(root, 'public/privacy/index.html');
+const privacyDestDir = path.join(root, 'dist/privacy');
+if (fs.existsSync(privacySrc)) {
+  fs.mkdirSync(privacyDestDir, { recursive: true });
+  fs.copyFileSync(privacySrc, path.join(privacyDestDir, 'index.html'));
+}
+
 process.exit(result.status ?? 1);
