@@ -78,9 +78,11 @@ export default function TabGlyph({
   return (
     <View style={styles.wrap}>
       <Icon name={name} color={color} />
-      <Text
+        <Text
         numberOfLines={1}
         ellipsizeMode="clip"
+        allowFontScaling={false}
+        maxFontSizeMultiplier={1}
         style={[
           styles.label,
           { color, fontWeight: focused ? '700' : '600' },

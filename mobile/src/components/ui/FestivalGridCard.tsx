@@ -50,7 +50,7 @@ export default function FestivalGridCard({ festival, discountRate, hasCoupon, on
         </View>
       </View>
       <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={2}>{festival.title}</Text>
+        <Text style={styles.title} numberOfLines={2} allowFontScaling={false}>{festival.title}</Text>
         <Text style={styles.place} numberOfLines={1}>{festival.location_name ?? '장소 미정'}</Text>
         <Text style={styles.cat}>{festival.category ?? '축제'}{festival.tel ? ` · ${festival.tel}` : ''}</Text>
         {festival.fee ? <Text style={styles.fee} numberOfLines={1}>{festival.fee}</Text> : null}

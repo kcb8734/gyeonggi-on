@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { firstNonEmptyFestivals, mergeFestivalSources } from './festivalFeed';
+import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import type { HomeFestival } from '../types/home';
 
 function fest(id: string, title = id): HomeFestival {
@@ -28,4 +29,10 @@ test('listed festivals stay first but still merge missing TourAPI rows', () => {
   const tour = [fest('tour-1', '수원화성문화제'), fest('tour-2', '가평 자라섬 재즈페스티벌')];
   const merged = mergeFestivalSources(listed, tour, []);
   assert.equal(merged.map((item) => item.id).join(','), 'tour-1,tour-2');
+});
+
+test('GYEONGGI fallbacks keep the home list populated', () => {
+  assert.ok((REGION_FESTIVAL_FALLBACKS.GYEONGGI?.length ?? 0) >= 5);
+  const merged = mergeFestivalSources([], [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI);
+  assert.ok(merged.some((item) => item.title.includes('수원화성')));
 });

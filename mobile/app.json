@@ -3,11 +3,14 @@
     "name": "온앤온+",
     "slug": "gyeonggi-on",
     "scheme": "onandon",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#111827"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E6FEA"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -22,10 +25,15 @@
     },
     "android": {
       "package": "kr.gyeonggion.app",
-      "versionCode": 2,
+      "versionCode": 4,
       "compileSdkVersion": 36,
       "targetSdkVersion": 36,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": ["INTERNET", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E6FEA"
+      },
+      "icon": "./assets/icon.png",
       "config": {
         "googleMaps": {
           "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY"
@@ -47,10 +55,13 @@
           "photosPermission": "축제 현장 피드를 올리기 위해 사진 접근이 필요합니다.",
           "cameraPermission": "축제 현장 사진을 촬영하기 위해 카메라 접근이 필요합니다."
         }
-      ]
+      ],
+      "expo-sharing",
+      "react-native-webview"
     ],
     "web": {
       "bundler": "metro",
+      "favicon": "./assets/favicon.png",
       "name": "온앤온+",
       "shortName": "on&on+"
     }

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type { CenterDirectorProfile, CenterLocalityRow } from '../../constants/centerDirectors';
-import { CARD_COLORS, CARD_MM, CARD_PRINT_CM, buildCenterCardFaceDocument, buildCenterCardModel, downloadCenterCardFace, type CenterCardModel } from '../../utils/centerCardDocument';
+import { CARD_COLORS, CARD_MM, CARD_PRINT_CM, buildCenterCardFaceDocument, buildCenterCardModel, type CenterCardModel } from '../../utils/centerCardDocument';
+import { shareCenterCardFace } from '../../utils/centerCardShare';
 import ModalExitButton from './ModalExitButton';
 import OnAndOnPlusLogo from './OnAndOnPlusLogo';
 import CenterCardHtmlFrame from './CenterCardHtmlFrame';
@@ -16,7 +17,15 @@ function ContactLine({ label, value, size }: { label: string; value: string; siz
   );
 }
 
-export function CenterCardFaces({ model }: { model: CenterCardModel }) {
+export function CenterCardFaces({
+  model,
+  frontRef,
+  backRef,
+}: {
+  model: CenterCardModel;
+  frontRef?: React.Ref<View>;
+  backRef?: React.Ref<View>;
+}) {
   const { width } = useWindowDimensions();
   const frame = Math.min(420, Math.max(280, width - 32));
   const s = frame / (CARD_MM.width * (96 / 25.4));
@@ -49,7 +58,11 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
     <View style={styles.faces}>
       <View style={styles.sheet}>
         <Text style={styles.sideLabel}>전면 · 9.2cm × 5.2cm</Text>
-        <View style={[styles.card, { width: cardW, height: cardH, padding: pad }]}>
+        <View
+          ref={frontRef}
+          collapsable={false}
+          style={[styles.card, { width: cardW, height: cardH, padding: pad }]}
+        >
           <View style={styles.topRow}>
             <View style={[styles.copyCol, { minHeight: photoH }]}>
               <OnAndOnPlusLogo height={logoH} />
@@ -87,7 +100,11 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
       </View>
       <View style={styles.sheet}>
         <Text style={styles.sideLabel}>후면 · {sizeLabel}</Text>
-        <View style={[styles.card, { width: cardW, height: cardH, padding: pad }]}>
+        <View
+          ref={backRef}
+          collapsable={false}
+          style={[styles.card, { width: cardW, height: cardH, padding: pad }]}
+        >
           <OnAndOnPlusLogo height={logoH} />
           <View style={styles.backRow}>
             <View style={{ flex: 1, paddingRight: 10, justifyContent: 'center' }}>
@@ -120,6 +137,8 @@ export default function CenterDirectorCard({
   const { width } = useWindowDimensions();
   const model = row ? buildCenterCardModel(row, director) : null;
   const [busy, setBusy] = React.useState<'front' | 'back' | null>(null);
+  const frontRef = React.useRef<View>(null);
+  const backRef = React.useRef<View>(null);
   if (!visible || !row || !model) return null;
   const compact = width < 640;
   return (
@@ -131,7 +150,7 @@ export default function CenterDirectorCard({
           <ScrollView contentContainerStyle={{ padding: compact ? 12 : 16, paddingBottom: 24 }}>
             <Text style={styles.kicker}>온앤온+ 공식 디지털 명함</Text>
             <Text style={styles.panelTitle}>{row.regionLabel} {row.label} 센터장</Text>
-            <CenterCardFaces model={model} />
+            <CenterCardFaces model={model} frontRef={frontRef} backRef={backRef} />
             <View style={styles.downloadRow}>
               <TouchableOpacity
                 style={styles.download}
@@ -139,7 +158,8 @@ export default function CenterDirectorCard({
                 onPress={async () => {
                   setBusy('front');
                   try {
-                    await downloadCenterCardFace(model, 'front');
+                    const ok = await shareCenterCardFace(model, 'front', frontRef);
+                    if (!ok) Alert.alert('저장 실패', '명함 전면 이미지를 만들지 못했습니다.');
                   } finally {
                     setBusy(null);
                   }
@@ -153,7 +173,8 @@ export default function CenterDirectorCard({
                 onPress={async () => {
                   setBusy('back');
                   try {
-                    await downloadCenterCardFace(model, 'back');
+                    const ok = await shareCenterCardFace(model, 'back', backRef);
+                    if (!ok) Alert.alert('저장 실패', '명함 후면 이미지를 만들지 못했습니다.');
                   } finally {
                     setBusy(null);
                   }

@@ -14,6 +14,39 @@ import { requestUserLocation, type UserLocationResult } from '../utils/userLocat
 const TOUR_RADIUS_M = 4000;
 const NEARBY_KM = 12;
 
+function toFestivalPin(item: {
+  id: string;
+  title: string;
+  location_name?: string | null;
+  latitude?: number;
+  longitude?: number;
+  start_date?: string;
+  end_date?: string;
+  municipality_name?: string | null;
+  description?: string | null;
+  contentId?: string;
+  contentTypeId?: string;
+  tel?: string;
+  image_url?: string | null;
+}): FestivalPin | null {
+  if (!validLatLng(item.latitude, item.longitude)) return null;
+  return {
+    id: item.id,
+    title: item.title,
+    location_name: item.location_name,
+    latitude: item.latitude as number,
+    longitude: item.longitude as number,
+    start_date: item.start_date,
+    end_date: item.end_date,
+    municipality_name: item.municipality_name,
+    description: item.description,
+    contentId: item.contentId,
+    contentTypeId: item.contentTypeId,
+    tel: item.tel,
+    image_url: item.image_url,
+  };
+}
+
 function toMerchantPin(promo: {
   id: string;
   business_name?: string;
@@ -74,7 +107,17 @@ export function useFestivalMap(initialFestivalId?: string) {
       const nearbyFestivals = list.filter((item) =>
         validLatLng(item.latitude, item.longitude) && withinKm(item, center, NEARBY_KM),
       );
-      setFestivals(nearbyFestivals);
+      const feedPins = (feed?.festivals ?? [])
+        .map(toFestivalPin)
+        .filter((item): item is FestivalPin => Boolean(item));
+      let pins = nearbyFestivals;
+      if (!pins.length) {
+        pins = feedPins.filter((item) => withinKm(item, center, 40));
+      }
+      if (!pins.length) {
+        pins = feedPins.length ? feedPins : list.filter((item) => validLatLng(item.latitude, item.longitude));
+      }
+      setFestivals(pins);
       const promoPins = (feed?.promotions ?? [])
         .map(toMerchantPin)
         .filter((item): item is MerchantPin => Boolean(item))
@@ -83,7 +126,7 @@ export function useFestivalMap(initialFestivalId?: string) {
       setTourPlaces(
         (places ?? []).filter((item) => validLatLng(item.mapY, item.mapX)),
       );
-      if (initialFestivalId && list.some((item) => item.id === initialFestivalId)) {
+      if (initialFestivalId && pins.some((item) => item.id === initialFestivalId)) {
         setSelectedFestivalId(initialFestivalId);
       }
     } catch {

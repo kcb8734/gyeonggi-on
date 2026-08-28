@@ -205,16 +205,42 @@ function festivalCacheKey(resolved) {
   return [resolved.metro || '', resolved.areaCode || '', resolved.month || '', resolved.year || ''].join(':');
 }
 
-function builtinFestivals(resolved) {
-  const metro = resolved.metro || 'GYEONGGI';
-  if (metro !== 'GYEONGGI' && resolved.areaCode !== '31') return [];
-  return [
+const BUILTIN_BY_METRO = {
+  GYEONGGI: [
     { contentId: 'suwon-hwaseong', contentTypeId: '15', title: '수원화성문화제', address: '경기도 수원시 팔달구 정조로 825', eventStartDate: '2026-08-19', eventEndDate: '2026-09-21', firstImage: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80', mapX: 127.013, mapY: 37.287, tel: '031-228-3675', category: '문화/예술', overview: '세계유산 수원화성을 무대로 펼쳐지는 야간 퍼레이드와 전통 공연', areaCode: '31' },
     { contentId: 'yongin-folk', contentTypeId: '15', title: '용인 한국민속촌 축제', address: '경기도 용인시 기흥구 민속촌로 90', eventStartDate: '2026-08-21', eventEndDate: '2026-09-11', firstImage: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80', mapX: 127.117, mapY: 37.259, tel: '031-288-0000', category: '가족', overview: '전통 가옥과 장터 체험이 이어지는 용인 대표 가족 축제', areaCode: '31' },
     { contentId: 'gapyeong-jazz', contentTypeId: '15', title: '가평 자라섬 재즈페스티벌', address: '경기도 가평군 가평읍 자라섬로 60', eventStartDate: '2026-08-22', eventEndDate: '2026-09-05', firstImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80', mapX: 127.513, mapY: 37.823, tel: '031-582-0174', category: '계절축제', overview: '북한강 위 자라섬에서 열리는 국내 대표 재즈 페스티벌', areaCode: '31' },
     { contentId: 'suwon-yeongdong', contentTypeId: '15', title: '수원 영동시장 먹거리 축제', address: '경기도 수원시 팔달구 수원천로 255', eventStartDate: '2026-08-20', eventEndDate: '2026-09-09', firstImage: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80', mapX: 127.0168, mapY: 37.2762, tel: '031-241-1101', category: '먹거리', overview: '영동시장 골목 상인과 함께하는 먹거리 축제', areaCode: '31' },
     { contentId: 'yongin-flea', contentTypeId: '15', title: '용인 플리마켓 위크', address: '경기도 용인시 기흥구 구갈로 70', eventStartDate: '2026-08-22', eventEndDate: '2026-09-01', firstImage: 'https://images.unsplash.com/photo-1515165562839-978bbcf01262?w=800&q=80', mapX: 127.1148, mapY: 37.2755, tel: '031-324-2114', category: '플리마켓', overview: '빈티지·수공예 셀러가 모이는 용인 야외 플리마켓', areaCode: '31' },
-  ];
+    { contentId: 'paju-jangdan', contentTypeId: '15', title: '파주 장단콩축제', address: '경기도 파주시 임진각로 148-40', eventStartDate: '2026-11-14', eventEndDate: '2026-11-16', firstImage: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80', mapX: 126.758, mapY: 37.889, tel: '031-940-8615', category: '먹거리', overview: '임진각에서 열리는 파주 대표 콩·한우 미식 축제', areaCode: '31' },
+    { contentId: 'icheon-rice', contentTypeId: '15', title: '이천쌀문화축제', address: '경기도 이천시 경충대로 2697', eventStartDate: '2026-10-22', eventEndDate: '2026-10-26', firstImage: 'https://images.unsplash.com/photo-1516684738272-a1c3c2c0f4b0?w=800&q=80', mapX: 127.443, mapY: 37.272, tel: '031-644-4135', category: '가족', overview: '임금님표 이천쌀과 가마솥 밥 체험이 이어지는 수확 축제', areaCode: '31' },
+    { contentId: 'ansan-street', contentTypeId: '15', title: '안산 국제거리극축제', address: '경기도 안산시 단원구 화랑로 250', eventStartDate: '2026-05-15', eventEndDate: '2026-05-18', firstImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80', mapX: 126.831, mapY: 37.321, tel: '031-481-3000', category: '공연', overview: '중앙역 일대에서 펼쳐지는 세계 거리극·서커스 축제', areaCode: '31' },
+  ],
+  SEOUL: [
+    { contentId: 'seoul-street', contentTypeId: '15', title: '서울거리예술축제', address: '서울특별시 종로구 세종대로 175', eventStartDate: '2026-09-26', eventEndDate: '2026-10-04', firstImage: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80', mapX: 126.9769, mapY: 37.572, tel: '02-399-1000', category: '공연', overview: '광화문·청계천 일대 거리예술 공연', areaCode: '1' },
+    { contentId: 'seoul-lantern', contentTypeId: '15', title: '서울빛초롱축제', address: '서울특별시 중구 청계천로', eventStartDate: '2026-12-12', eventEndDate: '2027-01-04', firstImage: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&q=80', mapX: 126.9783, mapY: 37.5694, tel: '02-3780-0514', category: '계절축제', overview: '청계천을 중심으로 수놓는 서울 겨울 초롱 축제', areaCode: '1' },
+  ],
+  INCHEON: [
+    { contentId: 'incheon-pentaport', contentTypeId: '15', title: '인천펜타포트락페스티벌', address: '인천광역시 연수구 센트럴로 123', eventStartDate: '2026-08-07', eventEndDate: '2026-08-09', firstImage: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80', mapX: 126.643, mapY: 37.389, tel: '032-832-0001', category: '공연', overview: '송도 달빛축제공원 록 페스티벌', areaCode: '2' },
+  ],
+  BUSAN: [
+    { contentId: 'busan-fireworks', contentTypeId: '15', title: '부산불꽃축제', address: '부산광역시 수영구 광안해변로', eventStartDate: '2026-10-24', eventEndDate: '2026-10-25', firstImage: 'https://images.unsplash.com/photo-1467810563316-b554cbb2ee97?w=800&q=80', mapX: 129.118, mapY: 35.153, tel: '051-610-4000', category: '공연', overview: '광안대교를 배경으로 열리는 부산 대표 불꽃축제', areaCode: '6' },
+  ],
+  GANGWON: [
+    { contentId: 'chuncheon-mime', contentTypeId: '15', title: '춘천마임축제', address: '강원특별자치도 춘천시 축제거리', eventStartDate: '2026-05-21', eventEndDate: '2026-05-31', firstImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80', mapX: 127.73, mapY: 37.8813, tel: '033-242-2587', category: '공연', overview: '춘천 명동·공지천에서 열리는 마임 축제', areaCode: '32' },
+  ],
+};
+
+function builtinFestivals(resolved) {
+  const metro = resolved.metro || metroForArea(resolved.areaCode, 'GYEONGGI');
+  const rows = BUILTIN_BY_METRO[metro];
+  if (rows?.length) return rows;
+  if (metro === 'GYEONGGI' || resolved.areaCode === '31') return BUILTIN_BY_METRO.GYEONGGI;
+  return BUILTIN_BY_METRO.GYEONGGI;
+}
+
+export function fallbackTourFestivals(input = {}) {
+  return builtinFestivals(resolveFestivalQuery(input));
 }
 
 async function tourGet(path, query, fetchImpl) {

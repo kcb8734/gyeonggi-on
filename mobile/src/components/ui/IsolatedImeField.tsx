@@ -38,6 +38,13 @@ export default function IsolatedImeField({
         valueRef.current = text;
         onLiveChange?.(text);
       }}
+      onEndEditing={(event) => {
+        const text = event.nativeEvent.text ?? valueRef.current;
+        valueRef.current = text;
+        onLiveChange?.(text);
+      }}
+      allowFontScaling={false}
+      maxFontSizeMultiplier={1}
       style={[styles.input, multiline && styles.multiline]}
     />
   );

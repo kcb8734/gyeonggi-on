@@ -16,7 +16,11 @@ const CANONICAL_ORIGIN = 'https://www.kdanji.com';
  */
 function resolveApi(): string {
   const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
-  if (isDev) return apiFromEnv || '';
+  if (isDev) {
+    if (apiFromEnv) return apiFromEnv;
+    if (typeof window !== 'undefined' && window.location?.hostname) return '';
+    return CANONICAL_ORIGIN;
+  }
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname;
     if (host === 'kdanji.com') return CANONICAL_ORIGIN;

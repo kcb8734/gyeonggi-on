@@ -87,3 +87,19 @@ test('searchFestival2 returns Gyeonggi fallback when TourAPI rate-limits', async
     else process.env.TOUR_API_SERVICE_KEY = prev;
   }
 });
+
+test('searchFestival2 returns Seoul fallback when TourAPI rate-limits', async () => {
+  const prev = process.env.TOUR_API_SERVICE_KEY;
+  process.env.TOUR_API_SERVICE_KEY = 'test-key';
+  const fetchImpl = async () => ({ ok: false, status: 429, json: async () => ({}) });
+  try {
+    const { searchFestival2 } = await import('./tourLive.js');
+    const result = await searchFestival2({ metro: 'SEOUL' }, fetchImpl);
+    assert.ok(result.festivals.length > 0);
+    assert.equal(result.source, 'fallback');
+    assert.ok(result.festivals.some((item) => item.title.includes('서울')));
+  } finally {
+    if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
+    else process.env.TOUR_API_SERVICE_KEY = prev;
+  }
+});

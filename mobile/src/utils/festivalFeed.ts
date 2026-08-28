@@ -1,7 +1,9 @@
 import type { HomeFestival } from '../types/home';
 
 function festivalKey(item: HomeFestival) {
-  return String(item.contentId || item.id || item.title || '').trim();
+  const title = String(item.title || '').trim();
+  if (title) return `title:${title}`;
+  return String(item.contentId || item.id || '').trim();
 }
 
 export function mergeFestivalSources(...groups: HomeFestival[][]) {
