@@ -163,7 +163,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function startsOnAdmin() {
+function startsOnPrivacy() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return window.location.pathname.replace(/\/+$/, '') === '/privacy';
+}
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   return window.location.pathname.replace(/\/+$/, '') === '/admin';
 }
@@ -196,7 +199,7 @@ export default function App() {
       <StatusBar style="dark" />
       <AppShell>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName={startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : startsOnCenters() ? 'CenterDirectors' : 'Tabs'}>
+          <Stack.Navigator initialRouteName={startsOnPrivacy() ? 'Support' : startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : startsOnCenters() ? 'CenterDirectors' : 'Tabs'}>
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="PromotionRegister"
@@ -239,7 +242,7 @@ export default function App() {
                 : route.params?.topic === 'privacy'
                   ? '개인정보처리방침'
                   : '공지사항',
-            })} name="Support">
+            })} name="Support" initialParams={startsOnPrivacy() ? { topic: 'privacy' } : undefined}>
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>
             <Stack.Screen
