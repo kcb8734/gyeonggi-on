@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "export:web": "node scripts/export-web.cjs",
     "build:web": "node scripts/export-web.cjs",
+    "build:aab": "node scripts/build-aab.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
