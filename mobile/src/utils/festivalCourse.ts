@@ -1,7 +1,9 @@
 import {
   COUPON_COMING_SOON,
   inferCoursePlaceKind,
+  kmBetween,
   landmarkFor,
+  LOCAL_COURSE_MAX_KM,
   resolveCourseCity,
   withCouponComingSoon,
   type CoursePlaceKind,
@@ -57,7 +59,7 @@ export function buildFestivalCourse(input: {
   category?: string;
 }): FestivalCourse {
   const title = String(input.title || '').trim();
-  const city = resolveCourseCity(input);
+  const city = resolveCourseCity(input) || '이 지역';
   const placeKind = inferCoursePlaceKind({
     contentTypeId: input.contentTypeId,
     kind: input.kind,
@@ -72,63 +74,69 @@ export function buildFestivalCourse(input: {
   const festLat = Number(input.latitude);
   const festLng = Number(input.longitude);
   const hasFestGps = Number.isFinite(festLat) && Number.isFinite(festLng) && festLat !== 0 && festLng !== 0;
+  const itinerary = [
+    {
+      step: 1,
+      category: '역사체험',
+      place_name: history.name,
+      description: withCouponComingSoon(history.hint),
+      estimated_time: '1시간 30분',
+      latitude: history.lat,
+      longitude: history.lng,
+    },
+    {
+      step: 2,
+      category: '전통시장 먹거리',
+      place_name: market.name,
+      description: withCouponComingSoon(market.hint),
+      estimated_time: '1시간',
+      latitude: market.lat,
+      longitude: market.lng,
+    },
+    {
+      step: 3,
+      category: hub.category,
+      place_name: hubName,
+      description: hub.description,
+      estimated_time: hub.estimated_time,
+      latitude: hasFestGps ? festLat : (history.lat + market.lat) / 2,
+      longitude: hasFestGps ? festLng : (history.lng + market.lng) / 2,
+    },
+    {
+      step: 4,
+      category: '캠핑장/숙박',
+      place_name: camp.name,
+      description: withCouponComingSoon(camp.hint),
+      estimated_time: '숙박',
+      latitude: camp.lat,
+      longitude: camp.lng,
+    },
+  ];
+  const span = Math.round(itinerarySpanKm({ itinerary }));
 
   return {
     course_title: hub.titleSuffix.startsWith('와')
       ? `[${city}] ${hubName}${hub.titleSuffix}`
       : `[${city}] ${hubName} ${hub.titleSuffix}`,
     target_audience: hub.audience || '가족 · 연인 · 캠핑을 즐기는 2030 여행객',
-    total_distance: '18~40km',
-    itinerary: [
-      {
-        step: 1,
-        category: '역사체험',
-        place_name: history.name,
-        description: withCouponComingSoon(history.hint),
-        estimated_time: '1시간 30분',
-        latitude: history.lat,
-        longitude: history.lng,
-      },
-      {
-        step: 2,
-        category: '전통시장 먹거리',
-        place_name: market.name,
-        description: withCouponComingSoon(market.hint),
-        estimated_time: '1시간',
-        latitude: market.lat,
-        longitude: market.lng,
-      },
-      {
-        step: 3,
-        category: hub.category,
-        place_name: hubName,
-        description: hub.description,
-        estimated_time: hub.estimated_time,
-        latitude: hasFestGps ? festLat : (history.lat + market.lat) / 2,
-        longitude: hasFestGps ? festLng : (history.lng + market.lng) / 2,
-      },
-      {
-        step: 4,
-        category: '캠핑장/숙박',
-        place_name: camp.name,
-        description: withCouponComingSoon(camp.hint),
-        estimated_time: '숙박',
-        latitude: camp.lat,
-        longitude: camp.lng,
-      },
-    ],
+    total_distance: span > 0 ? `${Math.max(3, span - 4)}~${Math.max(8, span)}km` : '4~12km',
+    itinerary,
     local_benefit_tip: COUPON_COMING_SOON,
   };
 }
 
-function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number) {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const lat1 = toRad(aLat);
-  const lat2 = toRad(bLat);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+function itinerarySpanKm(course: { itinerary?: FestivalCourse['itinerary'] }) {
+  const pts = (course.itinerary ?? [])
+    .map((step) => ({ lat: Number(step.latitude), lng: Number(step.longitude) }))
+    .filter((pt) => Number.isFinite(pt.lat) && Number.isFinite(pt.lng) && pt.lat !== 0);
+  if (pts.length < 2) return 0;
+  let max = 0;
+  for (let i = 0; i < pts.length; i += 1) {
+    for (let j = i + 1; j < pts.length; j += 1) {
+      max = Math.max(max, kmBetween(pts[i].lat, pts[i].lng, pts[j].lat, pts[j].lng));
+    }
+  }
+  return max;
 }
 
 /** 같은 지명 혼동·수원 기본값처럼 장소와 동떨어진 원격 코스는 로컬 생성본을 쓴다. */
@@ -151,20 +159,23 @@ export function shouldRejectRemoteCourse(
   const metroGwangju = (/광주광역시|광산구/.test(hay) || input.metro === 'GWANGJU') && !/경기도.{0,10}광주/.test(hay);
   if (metroGwangju && /남한산성|경기도자|경안시장|화담숲|곤지암/.test(places)) return true;
 
+  const city = resolveCourseCity(input);
+  if (city && city !== '수원' && /수원화성|화성행궁|영동시장|광교호수/.test(places)) return true;
+  if (city && city !== '용인' && /한국민속촌/.test(places)) return true;
+
   const originLat = Number(input.latitude);
   const originLng = Number(input.longitude);
   if (Number.isFinite(originLat) && Number.isFinite(originLng) && originLat !== 0 && originLng !== 0) {
     const far = (course.itinerary ?? []).filter((step) => {
+      if (Number(step.step) === 3) return false;
       const lat = Number(step.latitude);
       const lng = Number(step.longitude);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0) return false;
-      return kmBetween(originLat, originLng, lat, lng) > 80;
+      return kmBetween(originLat, originLng, lat, lng) > LOCAL_COURSE_MAX_KM;
     });
-    if (far.length >= 2) return true;
+    if (far.length >= 1) return true;
   }
 
-  const localContext = /수원|용인|GYEONGGI/.test(hay)
-    && !/보령|여수|제주|서울|인천|춘천|강릉|부산|진주|경주|청주|전주|강원|GANGWON|속초|평창|광주/.test(hay);
   const history = course.itinerary?.[0]?.place_name || '';
-  return !localContext && /수원화성|화성행궁|한국민속촌|광교호수/.test(history);
+  return Boolean(city) && city !== '수원' && /수원화성|화성행궁|한국민속촌|광교호수/.test(history);
 }

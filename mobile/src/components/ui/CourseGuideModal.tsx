@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FestivalCourse } from '../../api/courses';
 import { MapView, Marker, Polyline } from '../map/CompatibleMap';
-import { categoryPinColor, regionFromPoints, validLatLng } from '../../utils/mapCamera';
+import { boundToLocality, categoryPinColor, regionFromPoints, validLatLng } from '../../utils/mapCamera';
 import ModalExitButton from './ModalExitButton';
 
 type Focus = 'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박';
@@ -31,11 +31,18 @@ export default function CourseGuideModal({
     const rows = course?.itinerary ?? [];
     return focus === 'all' ? rows : rows.filter((item) => item.category === focus);
   }, [course, focus]);
+  const origin = steps.find((step) => Number(step.step) === 3);
   const points = useMemo(
-    () => steps
-      .filter((step) => validLatLng(step.latitude, step.longitude))
-      .map((step) => ({ latitude: Number(step.latitude), longitude: Number(step.longitude) })),
-    [steps],
+    () => boundToLocality(
+      steps
+        .filter((step) => validLatLng(step.latitude, step.longitude))
+        .map((step) => ({ latitude: Number(step.latitude), longitude: Number(step.longitude) })),
+      28,
+      origin && validLatLng(origin.latitude, origin.longitude)
+        ? { latitude: Number(origin.latitude), longitude: Number(origin.longitude) }
+        : undefined,
+    ),
+    [steps, origin],
   );
   const overview = useMemo(() => regionFromPoints(points, 0.05), [points]);
   const current = steps[Math.min(stepIndex, Math.max(steps.length - 1, 0))];

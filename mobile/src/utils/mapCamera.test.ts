@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { categoryPinColor, regionFromPoints, validLatLng } from './mapCamera';
+import { boundToLocality, categoryPinColor, regionFromPoints, validLatLng } from './mapCamera';
 
 test('강릉 좌표만 유효로 본다', () => {
   assert.equal(validLatLng(37.7792, 128.878), true);
@@ -26,4 +26,14 @@ test('코스 지점으로 강릉 bounds를 만든다', () => {
   assert.ok(region.latitude > 37.7 && region.latitude < 37.85);
   assert.ok(region.longitude > 128.8 && region.longitude < 129.0);
   assert.ok(region.latitudeDelta < 0.2);
+});
+
+test('타 지역 좌표는 바운더리에서 제외한다', () => {
+  const points = boundToLocality([
+    { latitude: 37.3215, longitude: 126.8308 },
+    { latitude: 37.2997, longitude: 126.8370 },
+    { latitude: 35.0966, longitude: 129.0306 },
+  ], 40, { latitude: 37.3215, longitude: 126.8308 });
+  assert.equal(points.some((point) => point.longitude > 128), false);
+  assert.ok(points.length >= 2);
 });

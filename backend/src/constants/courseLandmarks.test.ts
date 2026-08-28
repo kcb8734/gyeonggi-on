@@ -81,3 +81,15 @@ test('coupon usage copy becomes coming soon', () => {
   assert.match(withCouponComingSoon('현장 가맹점에서 On&On+ 쿠폰을 사용합니다.'), /추후 준비/);
   assert.doesNotMatch(withCouponComingSoon('떡갈비·주먹밥을 쿠폰으로 결제합니다.'), /쿠폰으로 결제/);
 });
+
+test('안산 여주 부천 서울 bind to local municipalities not Suwon', () => {
+  assert.equal(resolveCourseCity({ city: '안산시', address: '경기도 안산시 단원구', metro: 'GYEONGGI' }), '안산');
+  assert.match(landmarkFor('history', '안산').name, /성호|별망성/);
+  assert.match(landmarkFor('market', '안산').name, /중앙시장/);
+  assert.equal(resolveCourseCity({ city: '여주시', address: '경기도 여주시', metro: 'GYEONGGI' }), '여주');
+  assert.match(landmarkFor('history', '여주').name, /세종대왕릉|신륵사/);
+  assert.equal(resolveCourseCity({ city: '부천시', address: '경기도 부천시', metro: 'GYEONGGI' }), '부천');
+  assert.match(landmarkFor('history', '부천').name, /한옥마을|활박물관/);
+  assert.equal(resolveCourseCity({ city: '서울특별시', address: '서울특별시 종로구', metro: 'SEOUL' }), '서울');
+  assert.notEqual(resolveCourseCity({ metro: 'GYEONGGI' }), '수원');
+});

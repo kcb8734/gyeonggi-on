@@ -35,21 +35,16 @@ export default function FestivalGridCard({ festival, discountRate, hasCoupon, on
           </View>
         ) : null}
         <View style={styles.badgeCol} pointerEvents="box-none">
-          <View style={styles.tour}>
-            <Text style={styles.tourText}>TourAPI 4.0</Text>
-          </View>
-          {showCoupon ? (
-            <TouchableOpacity
-              style={styles.couponBadge}
-              activeOpacity={0.85}
-              onPress={(event) => {
-                event.stopPropagation();
-                (onCouponPress ?? onPress)();
-              }}
-            >
-              <Text style={styles.couponText}>🎁 쿠폰 있음</Text>
-            </TouchableOpacity>
-          ) : null}
+          <TouchableOpacity
+            style={styles.couponBadge}
+            activeOpacity={0.85}
+            onPress={(event) => {
+              event.stopPropagation();
+              (onCouponPress ?? onPress)();
+            }}
+          >
+            <Text style={styles.couponText}>{showCoupon ? '🎁 쿠폰 발행' : '쿠폰 발행'}</Text>
+          </TouchableOpacity>
         </View>
       </View>
       <View style={styles.body}>
@@ -106,13 +101,6 @@ const styles = StyleSheet.create({
     gap: 4,
     zIndex: 2,
   },
-  tour: {
-    backgroundColor: '#1D4ED8',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  tourText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   couponBadge: {
     backgroundColor: '#EA580C',
     borderRadius: 8,
