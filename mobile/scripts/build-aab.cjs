@@ -258,6 +258,20 @@ function restoreExpoStartScripts() {
   if (changed) fs.writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 
+function ensureAppVersion(versionName, versionCode) {
+  const gradle = path.join(root, 'android', 'app', 'build.gradle');
+  if (!fs.existsSync(gradle)) fail('android/app/build.gradle 이 없습니다.');
+  let source = fs.readFileSync(gradle, 'utf8');
+  const next = source
+    .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+    .replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
+  if (next === source && !new RegExp(`versionCode\\s+${versionCode}`).test(source)) {
+    fail(`build.gradle 에 versionCode ${versionCode} 를 쓰지 못했습니다.`);
+  }
+  fs.writeFileSync(gradle, next);
+  log(`[build:aab] android/app/build.gradle versionName=${versionName} versionCode=${versionCode}`);
+}
+
 function applyReleaseSigning(signing) {
   const gradle = path.join(root, 'android', 'app', 'build.gradle');
   if (!fs.existsSync(gradle)) fail('android/app/build.gradle 이 없습니다. prebuild가 실패했을 수 있습니다.');
@@ -312,6 +326,7 @@ function main() {
   applyReleaseSigning(signing);
   ensureSplashColor();
   ensureSdk36Gradle();
+  ensureAppVersion(versionName, versionCode);
   restoreExpoStartScripts();
 
   const gradlew = path.join(root, 'android', 'gradlew');
@@ -340,7 +355,7 @@ function main() {
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
-  log('주의: 저장소 루트의 예전 app-release.aab(versionCode 3)를 올리지 마세요. 방금 빌드한 파일의 versionCode를 확인하세요.');
+  log('주의: 저장소 루트의 예전 app-release.aab(versionCode 5 이하)를 올리지 마세요. 방금 빌드한 파일의 versionCode 6을 확인하세요.');
 }
 
 main();
