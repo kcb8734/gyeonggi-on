@@ -27,10 +27,11 @@ function readMap(): Record<string, string> {
 const memoryPasswords: Record<string, string> = {};
 
 function writeMap(map: Record<string, string>) {
+  const next = { ...map };
   Object.keys(memoryPasswords).forEach((key) => { delete memoryPasswords[key]; });
-  Object.assign(memoryPasswords, map);
+  Object.assign(memoryPasswords, next);
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(KEY, JSON.stringify(map));
+  localStorage.setItem(KEY, JSON.stringify(next));
 }
 
 export function hasCoursePassword(centerId: string) {

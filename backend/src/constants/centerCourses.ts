@@ -39,7 +39,7 @@ export type CenterLocalCourse = {
   updatedAt: string;
 };
 
-export type CenterCourseInput = Omit<CenterLocalCourse, 'id' | 'updatedAt'> & { id?: string; status?: CenterCourseStatus };
+export type CenterCourseInput = Omit<CenterLocalCourse, 'id' | 'updatedAt' | 'status'> & { id?: string; status?: CenterCourseStatus };
 
 const COURSES: CenterLocalCourse[] = [
   {

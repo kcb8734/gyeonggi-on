@@ -167,9 +167,9 @@ export function buildCenterCardHtml(model: CenterCardModel) {
 </html>`;
 }
 
-function downloadBlob(filename: string, data: BlobPart, mime: string) {
+function downloadBlob(filename: string, data: Uint8Array, mime: string) {
   if (typeof document === 'undefined') return false;
-  const blob = new Blob([data], { type: mime });
+  const blob = new Blob([new Uint8Array(data)], { type: mime });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
