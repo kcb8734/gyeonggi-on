@@ -6,6 +6,7 @@ import {
   findCenterCourseForPlace,
   listCenterCourses,
   listPendingCenterCourses,
+  reviewCenterCourse,
   upsertCenterCourse,
 } from './centerCourses';
 
@@ -42,6 +43,13 @@ test('upsert stays pending until admin approves', () => {
   assert.equal(listCenterCourses('여수시').length, 0);
   assert.equal(listCenterCourses('여수시', undefined, 'all')[0].title, '여수 밤바다 코스');
   assert.ok(listPendingCenterCourses().some((item) => item.id === result.data.id));
+  const revised = reviewCenterCourse(result.data.id, 'revision');
+  assert.equal(revised.ok, true);
+  if (revised.ok) assert.equal(revised.data.status, 'revision');
+  assert.equal(listCenterCourses('여수시').length, 0);
+  const rejected = reviewCenterCourse(result.data.id, 'rejected');
+  assert.equal(rejected.ok, true);
+  if (rejected.ok) assert.equal(rejected.data.status, 'rejected');
   const approved = approveCenterCourse(result.data.id);
   assert.equal(approved.ok, true);
   assert.equal(listCenterCourses('여수시')[0].title, '여수 밤바다 코스');

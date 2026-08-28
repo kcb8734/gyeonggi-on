@@ -15,7 +15,6 @@ import CenterApplyModal from '../components/ui/CenterApplyModal';
 import CenterDirectorCard from '../components/ui/CenterDirectorCard';
 import CenterCourseForm from '../components/ui/CenterCourseForm';
 import CenterCourseAuthModal from '../components/ui/CenterCourseAuthModal';
-import CenterLocalCourseBoard from '../components/ui/CenterLocalCourseBoard';
 import { subscribeCenterApplications } from '../stores/centerApplyStore';
 import { CENTER_PURPOSE_NOTICE_TITLE, CENTER_PURPOSE_SECTIONS } from '../constants/centerPurposeNotice';
 import { isCourseSessionUnlocked } from '../constants/centerCourseAuth';
@@ -162,7 +161,6 @@ export default function CenterDirectorsScreen() {
               </View>
             ) : (
               <View style={styles.list}>
-                <CenterLocalCourseBoard flush regionId={localities.find((item) => item.status === 'selected')?.label} metro={regionId || undefined} />
                 {localities.map((row) => {
                   const copy = STATUS_COPY[row.status];
                   return (

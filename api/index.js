@@ -32,8 +32,8 @@ import {
   courseAuth,
   hasCoursePassword,
   listCenterCourses,
-  listPendingCenterCourses,
   resetCoursePassword,
+  reviewCenterCourse,
   upsertCenterCourse,
 } from './centerCourses.js';
 import { sendResendEmail } from './resendFrom.js';
@@ -664,6 +664,17 @@ async function handler(req, res) {
       send(res, 200, { success: true, data: listApplications() }, corsHeaders(req));
       return;
     }
+    const courseReview = path.match(/\/api\/centers\/courses\/([^/?\s]+)\/review/i);
+    if (courseReview) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = reviewCenterCourse(decodeURIComponent(courseReview[1]), body.status);
+      send(res, result.ok ? 200 : 400, {
+        success: result.ok,
+        data: result.data,
+        message: result.ok ? '코스 검토 상태를 저장했습니다.' : result.message,
+      }, corsHeaders(req));
+      return;
+    }
     const courseApprove = path.match(/\/api\/centers\/courses\/([^/?\s]+)\/approve/i);
     if (courseApprove) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
@@ -715,9 +726,7 @@ async function handler(req, res) {
       }
       send(res, 200, {
         success: true,
-        data: review && !query.regionId && !query.region && !query.city && !query.metro
-          ? listPendingCenterCourses()
-          : listCenterCourses(query.regionId || query.region || query.city, query.metro, review),
+        data: listCenterCourses(query.regionId || query.region || query.city, query.metro, review),
       }, corsHeaders(req));
       return;
     }

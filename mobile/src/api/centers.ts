@@ -14,9 +14,10 @@ import {
   approveCenterCourse,
   hydrateCenterCourses,
   listCenterCourses,
-  listPendingCenterCourses,
+  reviewCenterCourse,
   upsertCenterCourse,
   type CenterCourseInput,
+  type CenterCourseStatus,
   type CenterLocalCourse,
 } from '../constants/centerCourses';
 import {
@@ -124,7 +125,6 @@ export async function fetchCenterCourses(filter: { regionId?: string; metro?: st
     // 로컬 코스
   }
   if (filter.review) {
-    if (!filter.regionId && !filter.metro) return listPendingCenterCourses();
     return listCenterCourses(filter.regionId, filter.metro, 'all');
   }
   return listCenterCourses(filter.regionId, filter.metro);
@@ -148,8 +148,22 @@ export async function saveCenterCourse(input: CenterCourseInput): Promise<Center
   return local;
 }
 
-export async function fetchPendingCenterCourses(): Promise<CenterLocalCourse[]> {
+export async function fetchReviewCenterCourses(): Promise<CenterLocalCourse[]> {
   return fetchCenterCourses({ review: true });
+}
+
+export async function saveCenterCourseReview(id: string, status: CenterCourseStatus): Promise<CenterLocalCourse | null> {
+  const local = reviewCenterCourse(id, status);
+  try {
+    const res = await api.post<{ success: boolean; data?: CenterLocalCourse }>(`/api/centers/courses/${id}/review`, { status });
+    if (res.data?.data) {
+      hydrateCenterCourses([res.data.data]);
+      return res.data.data;
+    }
+  } catch {
+    // 로컬 검토 유지
+  }
+  return local;
 }
 
 export async function publishCenterCourse(id: string): Promise<CenterLocalCourse | null> {

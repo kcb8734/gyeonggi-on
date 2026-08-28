@@ -1,7 +1,13 @@
 import { REGION_LABEL } from '../constants/regions';
 import { dataUrlToBytes, jpegPagesToPdf } from './pdfJpeg';
 
-export type FeedRewardStatus = 'PENDING' | 'PAID';
+export type FeedRewardStatus = 'PENDING' | 'PAID' | 'BLOCKED';
+
+export function feedRewardStatusLabel(status: FeedRewardStatus): string {
+  if (status === 'PAID') return '지급';
+  if (status === 'BLOCKED') return '불가';
+  return '대기';
+}
 
 export interface FeedRewardRow {
   id: string;
@@ -78,7 +84,7 @@ export function buildFeedRewardHtml(input: FeedRewardDocumentInput): string {
           <td>${escapeHtml(row.festival)}</td>
           <td class="c">${escapeHtml(row.postedAt)}</td>
           <td class="r">${Number(row.amountWon).toLocaleString('ko-KR')}원</td>
-          <td class="c">${row.status === 'PAID' ? '지급' : '대기'}</td>
+          <td class="c">${feedRewardStatusLabel(row.status)}</td>
         </tr>`).join('')
     : '<tr><td class="c" colspan="6">지급 내역이 없습니다.</td></tr>';
 
@@ -244,7 +250,7 @@ function drawKoreanFeedPages(input: FeedRewardDocumentInput): Array<{ width: num
           row.festival,
           row.postedAt,
           `${Number(row.amountWon).toLocaleString('ko-KR')}원`,
-          row.status === 'PAID' ? '지급' : '대기',
+          feedRewardStatusLabel(row.status),
         ];
         x = 56;
         values.forEach((value, i) => {
@@ -286,7 +292,7 @@ function drawKoreanFeedPages(input: FeedRewardDocumentInput): Array<{ width: num
           row.festival,
           row.postedAt,
           `${Number(row.amountWon).toLocaleString('ko-KR')}원`,
-          row.status === 'PAID' ? '지급' : '대기',
+          feedRewardStatusLabel(row.status),
         ];
         x = 56;
         values.forEach((value, i) => {
@@ -339,7 +345,7 @@ function printOfficialForm(html: string) {
   }, 300);
 }
 
-export function downloadFeedRewardPdf(rows: FeedRewardRow[], city?: string): boolean {
+export function downloadFeedRewardPdf(rows: FeedRewardRow[], city?: string, options?: { print?: boolean }): boolean {
   if (!rows.length) return false;
   const input = buildFeedRewardInput(rows, city);
   const html = buildFeedRewardHtml(input);
@@ -350,7 +356,7 @@ export function downloadFeedRewardPdf(rows: FeedRewardRow[], city?: string): boo
     if (koreanPdf) {
       downloadBlob(`${stem}.pdf`, koreanPdf as BlobPart, 'application/pdf');
     }
-    printOfficialForm(html);
+    if (options?.print !== false) printOfficialForm(html);
     return true;
   }
   return false;

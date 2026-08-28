@@ -45,6 +45,7 @@ import {
 } from '../stores/appStore';
 import { getFeedPosts, getMyFeedPosts } from '../stores/feedStore';
 import { validLatLng } from '../utils/mapCamera';
+import { ddayLabel } from '../utils/date';
 
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 const ALL = '전체';
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   const [selected, setSelected] = useState<HomeFestival | null>(null);
   const [popupFocus, setPopupFocus] = useState<'info' | 'coupon'>('info');
   const [merchant, setMerchant] = useState<HomePromotion | null>(null);
+  const [hideEnded, setHideEnded] = useState(false);
   const app = useAppState();
 
   const openFestival = (festival: HomeFestival, focus: 'info' | 'coupon' = 'info') => {
@@ -135,9 +137,10 @@ export default function HomeScreen() {
     return locatedFestivals.filter((item) => {
       const matchCategory = category === ALL || item.category === category;
       const matchQuery = !q || `${item.title} ${item.location_name}`.includes(q);
-      return matchCategory && matchQuery;
+      const matchEnded = !hideEnded || ddayLabel(item.start_date, item.end_date) !== '종료';
+      return matchCategory && matchQuery && matchEnded;
     });
-  }, [locatedFestivals, category, query]);
+  }, [locatedFestivals, category, query, hideEnded]);
 
   const mapPins = useMemo(
     () => locatedFestivals.filter((item) => validLatLng(item.latitude, item.longitude)),
@@ -303,7 +306,17 @@ export default function HomeScreen() {
         <Text style={styles.section}>축제 현장 피드 올리고 지역화폐 받기</Text>
         <FeedRail metro={metro} onPress={(postId) => navigation.navigate('FeedView', { postId })} />
 
-        <Text style={styles.section}>지역별 축제 리스트</Text>
+        <View style={styles.sectionRow}>
+          <Text style={[styles.section, styles.sectionInRow]}>지역별 축제 리스트</Text>
+          <TouchableOpacity
+            style={[styles.hideEnded, hideEnded && styles.hideEndedOn]}
+            onPress={() => setHideEnded((value) => !value)}
+          >
+            <Text style={[styles.hideEndedText, hideEnded && styles.hideEndedTextOn]}>
+              {hideEnded ? '종료 축제 표시' : '종료 축제 숨기기'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -328,7 +341,9 @@ export default function HomeScreen() {
             <Text style={styles.empty}>
               {locatedFestivals.length === 0
                 ? '선택하신 권역에 등록된 축제가 없습니다. 다른 권역을 선택해보세요'
-                : '이 달의 해당 카테고리 축제가 없습니다'}
+                : hideEnded
+                  ? '진행 중이거나 예정된 축제가 없습니다. 종료 축제를 다시 표시해 보세요'
+                  : '이 달의 해당 카테고리 축제가 없습니다'}
             </Text>
           </View>
         ) : (
@@ -456,6 +471,26 @@ const styles = StyleSheet.create({
   },
   mapHintText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   section: { fontSize: 17, fontWeight: '800', marginTop: 20, marginHorizontal: 16, color: '#111827' },
+  sectionRow: {
+    marginTop: 20,
+    marginHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sectionInRow: { marginTop: 0, marginHorizontal: 0, flex: 1 },
+  hideEnded: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  hideEndedOn: { backgroundColor: '#111827', borderColor: '#111827' },
+  hideEndedText: { fontSize: 11, fontWeight: '800', color: '#374151' },
+  hideEndedTextOn: { color: '#fff' },
   carousel: { paddingHorizontal: 16, paddingTop: 10, gap: 10 },
   catBar: {
     flexDirection: 'row',

@@ -24,7 +24,8 @@ test('selected suwon card html matches print spec', () => {
   assert.match(html, /kdanji.com\/suwon/);
   assert.match(html, /온앤온\+/);
   assert.match(html, /class="kv"/);
-  assert.match(html, /class="front-copy"/);
+  assert.match(html, /class="brand-block"/);
+  assert.match(html, /font-size: 11pt/);
   assert.match(html, /data:image\/png/);
   assert.match(html, /aspect-ratio: 92 \/ 52/);
   assert.match(html, /viewport/);

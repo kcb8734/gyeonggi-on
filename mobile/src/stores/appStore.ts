@@ -184,6 +184,10 @@ export function rememberFestival(festival: HomeFestival) {
   emit({ ...state, recent: next });
 }
 
+export function forgetFestival(id: string) {
+  emit({ ...state, recent: state.recent.filter((item) => item.id !== id) });
+}
+
 export function toggleFavorite(festival: HomeFestival) {
   const exists = state.favorites.some((item) => item.id === festival.id);
   emit({

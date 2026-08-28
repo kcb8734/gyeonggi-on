@@ -85,16 +85,17 @@ export function buildCenterCardHtml(model: CenterCardModel) {
     }
     .brand-logo { height: 6.4mm; width: auto; display: block; max-width: 34mm; object-fit: contain; }
     .front-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 3mm; }
-    .front-copy { flex: 1; min-width: 0; }
+    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 25mm; }
     .photo { width: 20mm; height: 25mm; object-fit: cover; border-radius: 3.6mm; background: #d1d5db; flex-shrink: 0; }
     .ph { display: flex; align-items: center; justify-content: center; font-size: 16pt; font-weight: 800; color: #6b7280; }
-    .who { margin-top: 2.4mm; display: flex; align-items: baseline; gap: 2mm; flex-wrap: nowrap; }
-    .name { font-size: 13.5pt; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
+    .who { margin-top: 5.4mm; display: flex; align-items: baseline; gap: 2mm; flex-wrap: nowrap; }
+    .name { font-size: 11pt; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; }
-    .title { font-size: 8.4pt; color: #6b7280; font-weight: 500; }
-    .brand { margin-top: 1.5mm; font-size: 10pt; font-weight: 800; color: #111; }
-    .center { margin-top: 0.8mm; font-size: 8.2pt; font-style: italic; font-weight: 700; color: #111; }
-    .rule { margin-top: 2.3mm; border: 0; border-top: 0.25mm solid #d1d5db; }
+    .title { font-size: 7.6pt; color: #6b7280; font-weight: 500; }
+    .brand-block { margin-top: auto; }
+    .brand { margin-top: 0; font-size: 9.2pt; font-weight: 800; color: #111; }
+    .center { margin-top: 0.5mm; font-size: 8pt; font-style: italic; font-weight: 700; color: #111; }
+    .rule { margin-top: 1.4mm; border: 0; border-top: 0.25mm solid #d1d5db; }
     .grid { margin-top: 2mm; display: grid; grid-template-columns: 1.18fr 1fr; gap: 1.5mm 4mm; font-size: 6.6pt; color: #111; line-height: 1.45; }
     .kv { display: grid; grid-template-columns: 5.2mm 1fr; column-gap: 1.1mm; align-items: start; }
     .k { font-weight: 800; }
@@ -140,8 +141,10 @@ export function buildCenterCardHtml(model: CenterCardModel) {
           <span class="bar">|</span>
           <span class="title">${escapeHtml(model.title)}</span>
         </div>
-        <div class="brand">온앤온+</div>
-        <div class="center">${escapeHtml(model.dedicatedCenter)}</div>
+        <div class="brand-block">
+          <div class="brand">온앤온+</div>
+          <div class="center">${escapeHtml(model.dedicatedCenter)}</div>
+        </div>
       </div>
       ${photo}
     </div>
@@ -192,7 +195,7 @@ function loadHtmlImage(src: string): Promise<HTMLImageElement | null> {
   if (typeof Image === 'undefined' || !src) return Promise.resolve(null);
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (!src.startsWith('data:')) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;
@@ -251,41 +254,39 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     }
     ctx.restore();
 
-    let y = pad + mm(11.2);
+    const ruleY = pad + mm(23);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#111111';
-    ctx.font = font('800', 4.8);
-    ctx.fillText(model.name, pad, y);
+    ctx.font = font('800', 4);
+    const nameY = pad + mm(14.2);
+    ctx.fillText(model.name, pad, nameY);
     const nameW = ctx.measureText(model.name).width;
     ctx.fillStyle = '#c5c5c5';
-    ctx.font = font('400', 4.2);
-    ctx.fillText('|', pad + nameW + mm(1.6), y);
+    ctx.font = font('400', 3.6);
+    ctx.fillText('|', pad + nameW + mm(1.6), nameY);
     ctx.fillStyle = '#6b7280';
-    ctx.font = font('500', 3);
-    ctx.fillText(model.title, pad + nameW + mm(4.2), y);
+    ctx.font = font('500', 2.7);
+    ctx.fillText(model.title, pad + nameW + mm(4.2), nameY);
 
-    y += mm(5.2);
     ctx.fillStyle = '#111111';
-    ctx.font = font('800', 3.6);
-    ctx.fillText('온앤온+', pad, y);
-    y += mm(4.2);
-    ctx.font = font('italic 700', 2.9);
-    ctx.fillText(model.dedicatedCenter, pad, y);
+    ctx.font = font('800', 3.3);
+    ctx.fillText('온앤온+', pad, ruleY - mm(4.6));
+    ctx.font = font('italic 700', 2.8);
+    ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(1.6));
 
-    y += mm(2.4);
     ctx.strokeStyle = '#d1d5db';
     ctx.lineWidth = Math.max(1, mm(0.25));
     ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(W - pad, y);
+    ctx.moveTo(pad, ruleY);
+    ctx.lineTo(W - pad, ruleY);
     ctx.stroke();
 
     const col = (W - pad * 2) / 2;
     const rows: Array<[string, string, number, number]> = [
-      ['M.', model.phone, pad, y + mm(3.6)],
-      ['E.', model.email, pad + col + mm(2), y + mm(3.6)],
-      ['A.', model.address, pad, y + mm(8.2)],
-      ['W.', model.website, pad + col + mm(2), y + mm(8.2)],
+      ['M.', model.phone, pad, ruleY + mm(3.6)],
+      ['E.', model.email, pad + col + mm(2), ruleY + mm(3.6)],
+      ['A.', model.address, pad, ruleY + mm(8.2)],
+      ['W.', model.website, pad + col + mm(2), ruleY + mm(8.2)],
     ];
     ctx.font = font('800', 2.35);
     const labelW = mm(5.2);
@@ -317,7 +318,15 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     ctx.fillText(model.website, qx + qrSize / 2, qy + qrSize + mm(3.2));
   }
 
-  return canvas.toDataURL('image/jpeg', 0.95);
+  return jpegFromCanvas(canvas);
+}
+
+function jpegFromCanvas(canvas: HTMLCanvasElement) {
+  try {
+    return canvas.toDataURL('image/jpeg', 0.95);
+  } catch {
+    return null;
+  }
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number) {
@@ -337,20 +346,46 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   });
 }
 
-export async function downloadCenterCard(model: CenterCardModel) {
-  if (typeof document === 'undefined') return false;
-  const stem = `온앤온플러스_명함_${model.name}_${model.localityLabel}`;
+function downloadDataUrl(filename: string, dataUrl: string) {
+  if (typeof document === 'undefined' || !dataUrl) return false;
+  try {
+    downloadBlob(filename, dataUrlToBytes(dataUrl), 'image/jpeg');
+  } catch {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+  return true;
+}
+
+async function cardAssets(model: CenterCardModel) {
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=640x640&margin=8&data=${encodeURIComponent(model.qrUrl)}`;
   const [logo, qr, photo] = await Promise.all([
     loadHtmlImage(ONANDON_LOGO_DATA_URI),
     loadHtmlImage(qrSrc),
     model.photoUrl ? loadHtmlImage(model.photoUrl) : Promise.resolve(null),
   ]);
-  const front = await drawCardFace(model, 'front', logo, qr, photo);
-  const back = await drawCardFace(model, 'back', logo, qr, photo);
-  if (front) downloadBlob(`${stem}_전면.jpg`, dataUrlToBytes(front), 'image/jpeg');
-  if (back) {
-    setTimeout(() => downloadBlob(`${stem}_후면.jpg`, dataUrlToBytes(back), 'image/jpeg'), 250);
-  }
+  return { logo, qr, photo };
+}
+
+export async function downloadCenterCardFace(model: CenterCardModel, side: 'front' | 'back') {
+  if (typeof document === 'undefined') return false;
+  const stem = `온앤온플러스_명함_${model.name}_${model.localityLabel}`;
+  const label = side === 'front' ? '전면' : '후면';
+  const { logo, qr, photo } = await cardAssets(model);
+  let jpeg = await drawCardFace(model, side, logo, qr, photo);
+  if (!jpeg && side === 'front') jpeg = await drawCardFace(model, side, logo, qr, null);
+  if (!jpeg) return false;
+  downloadDataUrl(`${stem}_${label}.jpg`, jpeg);
+  return true;
+}
+
+export async function downloadCenterCard(model: CenterCardModel) {
+  const front = await downloadCenterCardFace(model, 'front');
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  const back = await downloadCenterCardFace(model, 'back');
   return Boolean(front && back);
 }

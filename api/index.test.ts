@@ -194,3 +194,37 @@ test('GET /api/courses/recommend for suwon uses center director course', async (
   assert.ok(course.itinerary.some((item) => item.category.includes('역사')));
 });
 
+test('POST /api/centers/courses/:id/review stores rejected and hides from public list', async () => {
+  const created = await invoke({
+    method: 'POST',
+    url: '/api/centers/courses',
+    body: {
+      regionId: '속초시',
+      metro: 'GANGWON',
+      centerId: 'GANGWON:속초시',
+      title: '속초 해오름 코스',
+      description: '중앙시장과 해변',
+      images: [],
+      historyCourse: { name: '속초등대', description: '전망' },
+      marketFoodCourse: { name: '속초 중앙시장', description: '닭강정' },
+      mainAxis: { name: '설악문화제', description: '메인' },
+      campingAccommodation: { name: '설악 캠핑', description: '숙박' },
+    },
+  });
+  assert.equal(created.status, 200);
+  const id = (created.body as { data?: { id?: string } }).data?.id;
+  assert.ok(id);
+  const rejected = await invoke({
+    method: 'POST',
+    url: `/api/centers/courses/${id}/review`,
+    body: { status: 'rejected' },
+  });
+  assert.equal(rejected.status, 200);
+  assert.equal((rejected.body as { data: { status: string } }).data.status, 'rejected');
+  const listed = await invoke({ method: 'GET', url: '/api/centers/courses?review=1' });
+  const row = ((listed.body as { data: Array<{ id: string; status: string }> }).data || []).find((item) => item.id === id);
+  assert.equal(row?.status, 'rejected');
+  const publicList = await invoke({ method: 'GET', url: '/api/centers/courses?regionId=속초시' });
+  assert.equal(((publicList.body as { data: Array<{ id: string }> }).data || []).some((item) => item.id === id), false);
+});
+

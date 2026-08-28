@@ -13,6 +13,16 @@ import AdminCenterPanel from '../components/admin/AdminCenterPanel';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
 import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
+import {
+  approveUserPoints,
+  downloadFeedPointsPdf,
+  getFeedPayoutMode,
+  listUserPointRecords,
+  mergeFeedRewardRows,
+  setFeedPayoutMode,
+  subscribeFeedPayout,
+  type FeedPayoutMode,
+} from '../stores/feedPayoutStore';
 
 const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
 const ADMIN_PASSWORD = 'admin1234';
@@ -235,6 +245,8 @@ export default function AdminScreen() {
   const [matchRegion, setMatchRegion] = useState('GYEONGGI');
   const [feedRegion, setFeedRegion] = useState('GYEONGGI');
   const [weightMessage, setWeightMessage] = useState('');
+  const [payoutTick, setPayoutTick] = useState(0);
+  const [payoutDraft, setPayoutDraft] = useState<Record<string, FeedPayoutMode>>({});
 
   const loadFestivals = async () => {
     try {
@@ -272,6 +284,8 @@ export default function AdminScreen() {
       loadDashboard();
     }
   }, [authed]);
+
+  useEffect(() => subscribeFeedPayout(() => setPayoutTick((n) => n + 1)), []);
 
   const handleLogin = async () => {
     setError('');
@@ -325,6 +339,7 @@ export default function AdminScreen() {
   };
 
   const approveFeedReward = (rowId: string) => {
+    approveUserPoints(rowId, 'PAID');
     setDashboard((current: any) => ({
       ...(current ?? {}),
       feedRewards: (current?.feedRewards ?? []).map((row: FeedRewardRow) => (
@@ -403,9 +418,15 @@ export default function AdminScreen() {
   };
   const coupons = dashboard?.coupons?.length ? dashboard.coupons : FALLBACK_DASHBOARD.coupons;
   const matching = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
-  const feedRewards: FeedRewardRow[] = dashboard?.feedRewards?.length ? dashboard.feedRewards : FALLBACK_FEED_REWARDS;
+  const feedRewards: FeedRewardRow[] = mergeFeedRewardRows(
+    dashboard?.feedRewards?.length ? dashboard.feedRewards : FALLBACK_FEED_REWARDS,
+  );
+  void payoutTick;
   const regionFeedRewards = feedRewards.filter((row) => (row.regionalZone || 'GYEONGGI') === feedRegion);
-  const feedCities = Array.from(new Set(regionFeedRewards.map((row) => row.city)));
+  const feedCities = Array.from(new Set([
+    ...(METRO_LOCALITIES[feedRegion] ?? []).map((loc) => loc.label),
+    ...regionFeedRewards.map((row) => row.city).filter(Boolean),
+  ]));
   const feedPending = regionFeedRewards.filter((row) => row.status !== 'PAID').length;
   const feedPaidSum = regionFeedRewards.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
   const unassigned = matching.filter((row: any) => !row.officerName);
@@ -670,7 +691,7 @@ export default function AdminScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>축제 참여 피드 지역화폐 정산</Text>
             <Text style={styles.hint}>
-              축제 현장 참여 피드를 게시한 이용자에게 지역화폐를 지급하고, 해당 지자체에 공문 PDF로 내역·정산을 보고합니다.
+              지자체와 지역화폐 협의가 된 곳은 지급, 안 된 곳은 불가로 체크해 저장하세요. 피드 업로드 안내가 자동으로 연동되고, 로그인 유저 포인트 내역은 PDF로 내려받을 수 있습니다.
             </Text>
             <View style={styles.filterRow}>
               {METRO_REGIONS.map((region) => {
@@ -688,25 +709,85 @@ export default function AdminScreen() {
             <Text style={styles.hint}>
               {feedRegionMeta.label} · {regionFeedRewards.length}건 · 대기 {feedPending}건 · 합계 {feedPaidSum.toLocaleString('ko-KR')}원
             </Text>
-            <View style={{ marginTop: 10 }}>
+            <View style={{ marginTop: 10, gap: 8 }}>
               <ActionButton
                 label={`${feedRegionMeta.label} 권역 공문 PDF 보고`}
                 onPress={() => reportFeedPdf(regionFeedRewards)}
               />
+              <ActionButton
+                kind="ghost"
+                label="유저 포인트 현황 PDF 다운로드"
+                onPress={() => {
+                  const ok = downloadFeedPointsPdf();
+                  if (!ok && typeof window !== 'undefined') {
+                    window.alert(listUserPointRecords().length ? '웹 관리자 화면에서 PDF를 내려받을 수 있습니다.' : '저장된 유저 포인트 내역이 없습니다.');
+                  }
+                }}
+              />
             </View>
           </View>
+          {listUserPointRecords().length ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>로그인 유저 포인트 현황</Text>
+              {listUserPointRecords().slice(0, 12).map((row) => (
+                <View key={row.id} style={styles.matchRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tdStrong}>{row.userName}</Text>
+                    <Text style={styles.tdMuted}>{row.festival} · {row.city} · {row.postedAt}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <Text style={styles.officer}>{Number(row.points || row.amountWon).toLocaleString('ko-KR')}P</Text>
+                    <StatusBadge
+                      label={row.status === 'PAID' ? '지급 완료' : row.status === 'BLOCKED' ? '지급 불가' : '지급 대기'}
+                      tone={row.status === 'PAID' ? 'ok' : row.status === 'BLOCKED' ? 'danger' : 'warn'}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
           {feedCities.map((city) => {
             const cityRows = regionFeedRewards.filter((row) => row.city === city);
             const citySum = cityRows.reduce((sum, row) => sum + Number(row.amountWon || 0), 0);
+            const draftKey = `${feedRegion}:${city}`;
+            const mode = payoutDraft[draftKey] ?? getFeedPayoutMode({ metro: feedRegion, city });
             return (
               <View key={city} style={styles.card}>
                 <View style={styles.rowBetween}>
                   <Text style={styles.cardTitle}>{city} · {cityRows.length}건</Text>
-                  <TouchableOpacity style={styles.excelBtn} onPress={() => reportFeedPdf(cityRows, city)}>
-                    <Text style={styles.excelText}>공문 PDF 보고</Text>
+                  {cityRows.length ? (
+                    <TouchableOpacity style={styles.excelBtn} onPress={() => reportFeedPdf(cityRows, city)}>
+                      <Text style={styles.excelText}>공문 PDF 보고</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <Text style={styles.tdMuted}>
+                  정산 {citySum.toLocaleString('ko-KR')}원 · 수신 {city.includes('구') ? `${city}청장` : city.includes('군') ? `${city.replace(/군$/, '군수')}` : `${city.replace(/시$/, '시장')}`}
+                </Text>
+                <Text style={[styles.tdMuted, { marginTop: 8 }]}>지역화폐 지급 설정</Text>
+                <View style={styles.filterRow}>
+                  <TouchableOpacity
+                    style={[styles.chip, mode === 'payable' && styles.chipOn]}
+                    onPress={() => setPayoutDraft((current) => ({ ...current, [draftKey]: 'payable' }))}
+                  >
+                    <Text style={[styles.chipText, mode === 'payable' && styles.chipTextOn]}>지급</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.chip, mode === 'blocked' && styles.chipOn]}
+                    onPress={() => setPayoutDraft((current) => ({ ...current, [draftKey]: 'blocked' }))}
+                  >
+                    <Text style={[styles.chipText, mode === 'blocked' && styles.chipTextOn]}>불가</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.excelBtn}
+                    onPress={() => {
+                      setFeedPayoutMode({ metro: feedRegion, city, mode });
+                      if (typeof window !== 'undefined') window.alert(`${city} 지역화폐를 ${mode === 'payable' ? '지급' : '불가'}로 저장했습니다. 피드 업로드 안내가 바로 연동됩니다.`);
+                    }}
+                  >
+                    <Text style={styles.excelText}>저장</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.tdMuted}>정산 {citySum.toLocaleString('ko-KR')}원 · 수신 {city.includes('구') ? `${city}청장` : city.includes('군') ? `${city.replace(/군$/, '군수')}` : `${city.replace(/시$/, '시장')}`}</Text>
                 {cityRows.map((row) => (
                   <View key={row.id} style={styles.matchRow}>
                     <View style={{ flex: 1 }}>
@@ -714,14 +795,14 @@ export default function AdminScreen() {
                       <Text style={styles.tdMuted}>{row.festival} · {row.postedAt}</Text>
                       <View style={{ marginTop: 6 }}>
                         <StatusBadge
-                          label={row.status === 'PAID' ? '지급 완료' : '지급 대기'}
-                          tone={row.status === 'PAID' ? 'ok' : 'warn'}
+                          label={row.status === 'PAID' ? '지급 완료' : row.status === 'BLOCKED' ? '지급 불가' : '지급 대기'}
+                          tone={row.status === 'PAID' ? 'ok' : row.status === 'BLOCKED' ? 'danger' : 'warn'}
                         />
                       </View>
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 6 }}>
                       <Text style={styles.officer}>{Number(row.amountWon).toLocaleString('ko-KR')}원</Text>
-                      {row.status !== 'PAID' ? (
+                      {row.status === 'PENDING' ? (
                         <TouchableOpacity style={styles.assignBtn} onPress={() => approveFeedReward(row.id)}>
                           <Text style={styles.assignText}>지급 승인</Text>
                         </TouchableOpacity>

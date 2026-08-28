@@ -5,8 +5,9 @@ import {
   findCenterCourseForPlace,
   hydrateCenterCourses,
   listCenterCourses,
-  listPendingCenterCourses,
+  reviewCenterCourse,
   upsertCenterCourse,
+  type CenterCourseStatus,
   type CenterLocalCourse,
 } from '../constants/centerCourses';
 import {
@@ -15,6 +16,11 @@ import {
   resetCoursePassword,
 } from '../constants/centerCourseAuth';
 import { tryQuery } from '../db/pool';
+
+function parseStatus(value: unknown): CenterCourseStatus {
+  if (value === 'approved' || value === 'revision' || value === 'rejected' || value === 'pending') return value;
+  return 'pending';
+}
 
 function parseStop(value: unknown) {
   const stop = (value || {}) as { name?: string; description?: string; latitude?: number; longitude?: number };
@@ -39,7 +45,7 @@ function fromRow(row: Record<string, unknown>): CenterLocalCourse {
     marketFoodCourse: parseStop(row.market_food_course),
     mainAxis: parseStop(row.main_axis),
     campingAccommodation: parseStop(row.camping_accommodation),
-    status: row.status === 'approved' ? 'approved' : 'pending',
+    status: parseStatus(row.status),
     updatedAt: String(row.updated_at || new Date().toISOString()),
   };
 }
@@ -65,9 +71,6 @@ export async function listCenterCoursesApi(req: Request, res: Response) {
   const review = req.query.review === '1' || req.query.review === 'true';
   const db = await loadFromDb(regionId || undefined, metro || undefined, review);
   if (db) return res.json({ success: true, data: db });
-  if (review && !regionId && !metro) {
-    return res.json({ success: true, data: listPendingCenterCourses() });
-  }
   return res.json({
     success: true,
     data: listCenterCourses(regionId || undefined, metro || undefined, review ? 'all' : 'approved'),
@@ -129,6 +132,20 @@ export async function upsertCenterCourseApi(req: Request, res: Response) {
     data: saved,
     course: centerCourseToFestivalCourse(saved),
     message: '추천 코스 검토 요청이 접수되었습니다.',
+  });
+}
+
+export async function reviewCenterCourseApi(req: Request, res: Response) {
+  const id = String(req.params.id || req.body?.id || '');
+  const status = parseStatus(req.body?.status);
+  const result = reviewCenterCourse(id, status);
+  if (!result.ok) return res.status(404).json({ success: false, message: result.message });
+  await tryQuery(`UPDATE center_local_courses SET status = $2, updated_at = NOW() WHERE id = $1`, [id, status]);
+  return res.json({
+    success: true,
+    data: result.data,
+    course: centerCourseToFestivalCourse(result.data),
+    message: '코스 검토 상태를 저장했습니다.',
   });
 }
 

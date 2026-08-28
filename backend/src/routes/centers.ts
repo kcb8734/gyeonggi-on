@@ -7,7 +7,7 @@ import {
   listCenterRegions,
   reviewCenterApplication,
 } from '../controllers/centerController';
-import { listCenterCoursesApi, upsertCenterCourseApi, approveCenterCourseApi, courseAuthApi, courseAuthStatusApi, resetCourseAuthApi } from '../controllers/centerCourseController';
+import { listCenterCoursesApi, upsertCenterCourseApi, approveCenterCourseApi, reviewCenterCourseApi, courseAuthApi, courseAuthStatusApi, resetCourseAuthApi } from '../controllers/centerCourseController';
 
 const router = Router();
 router.get('/', listCenterRegions);
@@ -20,6 +20,7 @@ router.post('/course-auth', courseAuthApi);
 router.post('/course-auth/reset', resetCourseAuthApi);
 router.get('/courses', listCenterCoursesApi);
 router.post('/courses', upsertCenterCourseApi);
+router.post('/courses/:id/review', reviewCenterCourseApi);
 router.post('/courses/:id/approve', approveCenterCourseApi);
 router.get('/:region', listCenterRegionDetail);
 export default router;
