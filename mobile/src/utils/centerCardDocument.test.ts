@@ -12,19 +12,22 @@ test('chuncheon slug and print card size', () => {
   assert.equal(CARD_MM.photoH, 25);
 });
 
-test('selected suwon card html includes contact fields', () => {
+test('selected suwon card html matches print spec', () => {
   const suwon = listCenterLocalities('GYEONGGI').find((row) => row.label === '수원시');
   assert.ok(suwon);
   const model = buildCenterCardModel(suwon!);
   assert.ok(model);
   const html = buildCenterCardHtml(model!);
   assert.match(html, /size: 92mm 52mm/);
-  assert.match(html, /padding: 7.2mm 7.5mm 6.2mm 7.5mm/);
+  assert.match(html, /padding: 5\.6mm/);
   assert.match(html, /width: 20mm; height: 25mm/);
   assert.match(html, /kdanji.com\/suwon/);
-  assert.match(html, /온앤온 \+/);
-  assert.match(html, /aria-label="on&amp;on\+"/);
+  assert.match(html, /온앤온\+/);
+  assert.match(html, /class="kv"/);
+  assert.match(html, /data:image\/png/);
+  assert.match(html, /aspect-ratio: 92 \/ 52/);
   assert.match(html, /viewport/);
+  assert.equal(CARD_MM.pad, 5.6);
 });
 
 test('17 regions still summarize', () => {

@@ -57,7 +57,7 @@ export default function CenterCourseForm({
 
   useEffect(() => {
     if (!visible || !row) return;
-    const existing = listCenterCourses(row.label, row.region)[0];
+    const existing = listCenterCourses(row.label, row.region, 'all')[0];
     titleRef.current = existing?.title || `${row.label} 로컬 추천 코스`;
     descRef.current = existing?.description || '';
     imagesRef.current = (existing?.images || []).join('\n');
@@ -100,7 +100,7 @@ export default function CenterCourseForm({
         campingAccommodation: stopAt(3),
       });
       upsertCenterCourse(saved);
-      Alert.alert('등록 완료', `${row.label} 추천 코스가 플랫폼에 반영되었습니다.`);
+      Alert.alert('검토 요청', `${row.label} 추천 코스가 관리자 검토 대기 상태로 접수되었습니다. 승인되면 앱에 등재됩니다.`);
       onClose();
     } catch (err) {
       Alert.alert('등록 실패', err instanceof Error ? err.message : '다시 시도해 주세요.');
@@ -121,7 +121,7 @@ export default function CenterCourseForm({
             <Text style={styles.kicker}>센터장 추천 코스</Text>
             <Text style={styles.title}>{row.regionLabel} {row.label}</Text>
             <Text style={styles.lead}>
-              역사·시장·메인 동선·숙박 4가지 양식으로 입력하면 해당 지역 축제 상세와 홈 화면에 바로 반영됩니다.
+              역사·시장·메인 동선·숙박 4가지 양식으로 입력하면 관리자 검토 후 승인 시 앱에 등재됩니다.
             </Text>
             <Text style={styles.label}>코스 제목</Text>
             <IsolatedImeField key={`title-${tick}`} valueRef={titleRef} placeholder={`${row.label} 하루 코스`} fieldKey={`course-title-${tick}`} ignoreModalLock />
@@ -173,7 +173,7 @@ export default function CenterCourseForm({
               </View>
             ))}
             <TouchableOpacity style={styles.submit} onPress={submit} disabled={saving}>
-              <Text style={styles.submitText}>{saving ? '등록 중...' : '코스 등록 · 즉시 반영'}</Text>
+              <Text style={styles.submitText}>{saving ? '접수 중...' : '코스 등록 · 검토 요청'}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

@@ -104,11 +104,11 @@ test('POST /api/centers/apply then admin card apply', async () => {
   assert.equal(cities.find((row) => row.label === '춘천시')?.director?.website, 'kdanji.com/chuncheon');
 });
 
-test('GET /api/centers/courses returns suwon seed and POST upserts', async () => {
+test('GET /api/centers/courses returns suwon seed and POST stays pending until approve', async () => {
   const listed = await invoke({ method: 'GET', url: '/api/centers/courses?regionId=수원시' });
   assert.equal(listed.status, 200);
-  const rows = (listed.body as { data: Array<{ regionId: string; title: string }> }).data;
-  assert.ok(rows.some((row) => row.regionId === '수원시'));
+  const rows = (listed.body as { data: Array<{ regionId: string; title: string; status?: string }> }).data;
+  assert.ok(rows.some((row) => row.regionId === '수원시' && row.status === 'approved'));
   const created = await invoke({
     method: 'POST',
     url: '/api/centers/courses',
@@ -126,9 +126,63 @@ test('GET /api/centers/courses returns suwon seed and POST upserts', async () =>
     },
   });
   assert.equal(created.status, 200);
-  const saved = created.body as { success: boolean; data: { title: string } };
+  const saved = created.body as { success: boolean; data: { id: string; title: string; status: string } };
   assert.equal(saved.success, true);
   assert.equal(saved.data.title, '강릉 커피 하루 코스');
+  assert.equal(saved.data.status, 'pending');
+  const publicList = await invoke({ method: 'GET', url: '/api/centers/courses?regionId=강릉시' });
+  const publicRows = (publicList.body as { data: Array<{ title: string }> }).data;
+  assert.equal(publicRows.some((row) => row.title === '강릉 커피 하루 코스'), false);
+  const review = await invoke({ method: 'GET', url: '/api/centers/courses?review=1' });
+  const pending = (review.body as { data: Array<{ id: string; title: string }> }).data;
+  assert.ok(pending.some((row) => row.id === saved.data.id));
+  const approved = await invoke({
+    method: 'POST',
+    url: `/api/centers/courses/${saved.data.id}/approve`,
+    body: {},
+  });
+  assert.equal(approved.status, 200);
+  const after = await invoke({ method: 'GET', url: '/api/centers/courses?regionId=강릉시' });
+  const afterRows = (after.body as { data: Array<{ title: string; status: string }> }).data;
+  assert.ok(afterRows.some((row) => row.title === '강릉 커피 하루 코스' && row.status === 'approved'));
+});
+
+test('course auth register login change and admin reset', async () => {
+  const centerId = 'GANGWON:속초시';
+  const missing = await invoke({
+    method: 'POST',
+    url: '/api/centers/course-auth',
+    body: { centerId, mode: 'login', password: 'abcd' },
+  });
+  assert.equal(missing.status, 400);
+  const registered = await invoke({
+    method: 'POST',
+    url: '/api/centers/course-auth',
+    body: { centerId, mode: 'register', password: 'abcd', confirm: 'abcd' },
+  });
+  assert.equal(registered.status, 200);
+  const status = await invoke({ method: 'GET', url: `/api/centers/course-auth?centerId=${encodeURIComponent(centerId)}` });
+  assert.equal((status.body as { hasPassword: boolean }).hasPassword, true);
+  const login = await invoke({
+    method: 'POST',
+    url: '/api/centers/course-auth',
+    body: { centerId, mode: 'login', password: 'abcd' },
+  });
+  assert.equal(login.status, 200);
+  const changed = await invoke({
+    method: 'POST',
+    url: '/api/centers/course-auth',
+    body: { centerId, mode: 'change', currentPassword: 'abcd', nextPassword: 'wxyz', confirm: 'wxyz' },
+  });
+  assert.equal(changed.status, 200);
+  const reset = await invoke({
+    method: 'POST',
+    url: '/api/centers/course-auth/reset',
+    body: { centerId },
+  });
+  assert.equal(reset.status, 200);
+  const after = await invoke({ method: 'GET', url: `/api/centers/course-auth?centerId=${encodeURIComponent(centerId)}` });
+  assert.equal((after.body as { hasPassword: boolean }).hasPassword, false);
 });
 
 test('GET /api/courses/recommend for suwon uses center director course', async () => {

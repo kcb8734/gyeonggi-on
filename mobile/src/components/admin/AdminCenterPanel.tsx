@@ -3,8 +3,9 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ActionButton, StatusBadge } from './AdminWidgets';
 import { METRO_REGIONS } from '../../constants/regions';
 import type { CenterApplicationRecord, CenterLocalityRow } from '../../constants/centerDirectors';
-import { applyCenterBusinessCard, fetchCenterApplications, reviewCenterApplication } from '../../api/centers';
+import { applyCenterBusinessCard, fetchCenterApplications, fetchPendingCenterCourses, publishCenterCourse, resetCenterCoursePassword, reviewCenterApplication } from '../../api/centers';
 import { subscribeCenterApplications } from '../../stores/centerApplyStore';
+import { subscribeCenterCourses, type CenterLocalCourse } from '../../constants/centerCourses';
 import { CenterCardFaces } from '../ui/CenterDirectorCard';
 import CenterCourseForm from '../ui/CenterCourseForm';
 import { buildCenterCardModel } from '../../utils/centerCardDocument';
@@ -51,14 +52,23 @@ export default function AdminCenterPanel() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [courseRow, setCourseRow] = useState<CenterLocalityRow | null>(null);
+  const [pendingCourses, setPendingCourses] = useState<CenterLocalCourse[]>([]);
 
   const load = () => {
     fetchCenterApplications().then(setRows);
+    fetchPendingCenterCourses().then(setPendingCourses);
   };
 
   useEffect(() => {
     load();
-    return subscribeCenterApplications(load);
+    const offApps = subscribeCenterApplications(load);
+    const offCourses = subscribeCenterCourses(() => {
+      fetchPendingCenterCourses().then(setPendingCourses);
+    });
+    return () => {
+      offApps();
+      offCourses();
+    };
   }, []);
 
   const filtered = useMemo(
@@ -138,14 +148,58 @@ export default function AdminCenterPanel() {
               }}
             />
             {row.reviewStatus === 'selected' ? (
-              <ActionButton
-                label="추천 코스 등록"
-                onPress={() => setCourseRow(rowFromApplication(row))}
-              />
+              <>
+                <ActionButton
+                  label="추천 코스 등록"
+                  onPress={() => setCourseRow(rowFromApplication(row))}
+                />
+                <ActionButton
+                  kind="ghost"
+                  label="코스 비밀번호 초기화"
+                  onPress={async () => {
+                    await resetCenterCoursePassword(row.localityKey);
+                    setMessage(`${row.localityLabel} 코스 등록 비밀번호를 초기화했습니다. 센터장이 다시 등록해야 입장할 수 있습니다.`);
+                  }}
+                />
+              </>
             ) : null}
           </View>
         </View>
       ))}
+      {pendingCourses.length ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>신규 코스 검토 · 앱 등재</Text>
+          <Text style={styles.hint}>
+            센터장이 등록한 코스는 바로 앱에 올라가지 않습니다. 내용을 확인한 뒤 승인하면 플랫폼에 업로드되고 홈·축제 상세에 등재됩니다.
+          </Text>
+          {pendingCourses.map((course) => (
+            <View key={course.id} style={styles.reviewBox}>
+              <Text style={styles.name}>{course.title}</Text>
+              <Text style={styles.meta}>{course.metro} · {course.regionId}</Text>
+              {course.description ? <Text style={styles.intro}>{course.description}</Text> : null}
+              <Text style={styles.line}><Text style={styles.key}>역사 </Text>{course.historyCourse.name || '-'}</Text>
+              <Text style={styles.line}><Text style={styles.key}>시장 </Text>{course.marketFoodCourse.name || '-'}</Text>
+              <Text style={styles.line}><Text style={styles.key}>메인 </Text>{course.mainAxis.name || '-'}</Text>
+              <Text style={styles.line}><Text style={styles.key}>숙박 </Text>{course.campingAccommodation.name || '-'}</Text>
+              <View style={styles.actions}>
+                <ActionButton
+                  label="승인 · 플랫폼 등재"
+                  onPress={async () => {
+                    await publishCenterCourse(course.id);
+                    setMessage(`${course.regionId} 코스를 승인하고 앱에 등재했습니다.`);
+                    load();
+                  }}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>신규 코스 검토 · 앱 등재</Text>
+          <Text style={styles.hint}>검토 대기 중인 신규 코스가 없습니다. 센터장이 코스 등록을 제출하면 이곳에 모입니다.</Text>
+        </View>
+      )}
       {previewModel ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>명함 미리보기 · 적용 결과</Text>
@@ -185,5 +239,11 @@ const styles = StyleSheet.create({
   key: { fontWeight: '800', color: '#111827' },
   intro: { fontSize: 13, color: '#4B5563', marginTop: 8, lineHeight: 20 },
   actions: { marginTop: 12, gap: 8 },
+  reviewBox: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
   ok: { marginTop: 4, marginBottom: 12, fontSize: 12, fontWeight: '700', color: '#047857' },
 });

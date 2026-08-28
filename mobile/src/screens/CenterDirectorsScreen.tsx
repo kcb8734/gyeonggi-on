@@ -14,9 +14,11 @@ import type { CenterLocalityRow, CenterRegionSummary } from '../constants/center
 import CenterApplyModal from '../components/ui/CenterApplyModal';
 import CenterDirectorCard from '../components/ui/CenterDirectorCard';
 import CenterCourseForm from '../components/ui/CenterCourseForm';
+import CenterCourseAuthModal from '../components/ui/CenterCourseAuthModal';
 import CenterLocalCourseBoard from '../components/ui/CenterLocalCourseBoard';
 import { subscribeCenterApplications } from '../stores/centerApplyStore';
 import { CENTER_PURPOSE_NOTICE_TITLE, CENTER_PURPOSE_SECTIONS } from '../constants/centerPurposeNotice';
+import { isCourseSessionUnlocked } from '../constants/centerCourseAuth';
 
 const STATUS_COPY = {
   selected: { badge: '선정 완료', color: '#0F766E', bg: '#CCFBF1' },
@@ -37,6 +39,7 @@ export default function CenterDirectorsScreen() {
   const [card, setCard] = useState<CenterLocalityRow | null>(null);
   const [applyRow, setApplyRow] = useState<CenterLocalityRow | null>(null);
   const [courseRow, setCourseRow] = useState<CenterLocalityRow | null>(null);
+  const [authRow, setAuthRow] = useState<CenterLocalityRow | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const reload = () => {
@@ -72,6 +75,14 @@ export default function CenterDirectorsScreen() {
       }
     });
   }, [regionId, route.params?.openCard, route.params?.locality]);
+
+  const openCourse = (row: CenterLocalityRow) => {
+    if (isCourseSessionUnlocked(row.id)) {
+      setCourseRow(row);
+      return;
+    }
+    setAuthRow(row);
+  };
 
   const openLocality = (row: CenterLocalityRow) => {
     if (row.status === 'selected') {
@@ -173,7 +184,7 @@ export default function CenterDirectorsScreen() {
                           <TouchableOpacity style={styles.cardBtn} onPress={() => setCard(row)}>
                             <Text style={styles.cardBtnText}>명함</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={styles.courseBtn} onPress={() => setCourseRow(row)}>
+                          <TouchableOpacity style={styles.courseBtn} onPress={() => openCourse(row)}>
                             <Text style={styles.courseBtnText}>코스 등록</Text>
                           </TouchableOpacity>
                         </View>
@@ -191,6 +202,16 @@ export default function CenterDirectorsScreen() {
         )}
       </ScrollView>
       <CenterDirectorCard visible={Boolean(card)} row={card} onClose={() => setCard(null)} />
+      <CenterCourseAuthModal
+        visible={Boolean(authRow)}
+        row={authRow}
+        onClose={() => setAuthRow(null)}
+        onUnlocked={() => {
+          const next = authRow;
+          setAuthRow(null);
+          if (next) setCourseRow(next);
+        }}
+      />
       <CenterCourseForm visible={Boolean(courseRow)} row={courseRow} onClose={() => setCourseRow(null)} />
       <CenterApplyModal
         visible={Boolean(applyRow)}

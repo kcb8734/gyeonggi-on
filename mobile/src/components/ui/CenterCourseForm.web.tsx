@@ -36,7 +36,7 @@ export default function CenterCourseForm({
 
   useEffect(() => {
     if (!visible || !row || typeof document === 'undefined') return;
-    const existing = listCenterCourses(row.label, row.region)[0];
+    const existing = listCenterCourses(row.label, row.region, 'all')[0];
     const stops = [existing?.historyCourse, existing?.marketFoodCourse, existing?.mainAxis, existing?.campingAccommodation];
     const stopHtml = STOPS.map((item, index) => {
       const stop = stops[index];
@@ -64,7 +64,7 @@ export default function CenterCourseForm({
         <div style="flex:1;overflow:auto;padding:18px 16px 28px;">
           <div style="color:#1D4ED8;font-size:11px;font-weight:800;">센터장 추천 코스</div>
           <div style="font-size:20px;font-weight:800;color:#111827;margin-top:4px;">${escapeHtml(row.regionLabel)} ${escapeHtml(row.label)}</div>
-          <div style="font-size:13px;color:#4B5563;margin:8px 0;">역사·시장·메인 동선·숙박 4가지 양식으로 입력하면 해당 지역 화면에 바로 반영됩니다.</div>
+          <div style="font-size:13px;color:#4B5563;margin:8px 0;">역사·시장·메인 동선·숙박 4가지 양식으로 입력하면 관리자 검토 후 승인 시 앱에 등재됩니다.</div>
           <label style="display:block;font-size:12px;font-weight:800;color:#6B7280;">코스 제목
             <input data-title="1" value="${escapeHtml(existing?.title || `${row.label} 로컬 추천 코스`)}" placeholder="${escapeHtml(row.label)} 하루 코스" style="${field('height:48px')}" />
           </label>
@@ -76,7 +76,7 @@ export default function CenterCourseForm({
           </label>
           ${stopHtml}
           <div data-error="1" style="display:none;margin-top:10px;color:#B91C1C;font-size:13px;font-weight:700;"></div>
-          <button data-submit="1" type="button" style="margin-top:16px;width:100%;background:#1D4ED8;color:#fff;border:0;border-radius:14px;padding:14px;font-weight:800;font-size:16px;cursor:pointer;">코스 등록 · 즉시 반영</button>
+          <button data-submit="1" type="button" style="margin-top:16px;width:100%;background:#1D4ED8;color:#fff;border:0;border-radius:14px;padding:14px;font-weight:800;font-size:16px;cursor:pointer;">코스 등록 · 검토 요청</button>
         </div>
       </div>
     `;
@@ -125,7 +125,7 @@ export default function CenterCourseForm({
         showError(err instanceof Error ? err.message : '다시 시도해 주세요.');
         if (btn) {
           btn.disabled = false;
-          btn.textContent = '코스 등록 · 즉시 반영';
+          btn.textContent = '코스 등록 · 검토 요청';
         }
       }
     });

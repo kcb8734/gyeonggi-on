@@ -28,7 +28,12 @@ import {
   summarizeCenterRegions,
 } from './centerDirectors.js';
 import {
+  approveCenterCourse,
+  courseAuth,
+  hasCoursePassword,
   listCenterCourses,
+  listPendingCenterCourses,
+  resetCoursePassword,
   upsertCenterCourse,
 } from './centerCourses.js';
 import { sendResendEmail } from './resendFrom.js';
@@ -659,21 +664,60 @@ async function handler(req, res) {
       send(res, 200, { success: true, data: listApplications() }, corsHeaders(req));
       return;
     }
+    const courseApprove = path.match(/\/api\/centers\/courses\/([^/?\s]+)\/approve/i);
+    if (courseApprove) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = approveCenterCourse(decodeURIComponent(courseApprove[1]));
+      send(res, result.ok ? 200 : 404, {
+        success: result.ok,
+        data: result.data,
+        message: result.ok ? '승인되어 앱에 등재되었습니다.' : result.message,
+      }, corsHeaders(req));
+      return;
+    }
+    if (/\/api\/centers\/course-auth\/reset/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const result = resetCoursePassword(body.centerId || readQuery(req).centerId);
+      send(res, result.ok ? 200 : 400, {
+        success: result.ok,
+        hasPassword: false,
+        message: result.ok ? '해당 지역 코스 비밀번호를 초기화했습니다.' : result.message,
+      }, corsHeaders(req));
+      return;
+    }
+    if (/\/api\/centers\/course-auth/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      if (method === 'GET') {
+        const query = readQuery(req);
+        send(res, 200, { success: true, hasPassword: hasCoursePassword(query.centerId) }, corsHeaders(req));
+        return;
+      }
+      const result = courseAuth(body);
+      send(res, result.ok ? 200 : 400, {
+        success: result.ok,
+        hasPassword: result.ok ? result.hasPassword : hasCoursePassword(body.centerId),
+        message: result.ok ? '확인되었습니다.' : result.message,
+      }, corsHeaders(req));
+      return;
+    }
     if (/\/api\/centers\/courses/i.test(path)) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       const query = readQuery(req);
+      const review = query.review === '1' || query.review === 'true';
       if (method === 'POST') {
         const result = upsertCenterCourse(body);
         send(res, result.ok ? 200 : 400, {
           success: result.ok,
           data: result.data,
-          message: result.ok ? '추천 코스를 등록했습니다.' : result.message,
+          message: result.ok ? '추천 코스 검토 요청이 접수되었습니다.' : result.message,
         }, corsHeaders(req));
         return;
       }
       send(res, 200, {
         success: true,
-        data: listCenterCourses(query.regionId || query.region || query.city, query.metro),
+        data: review && !query.regionId && !query.region && !query.city && !query.metro
+          ? listPendingCenterCourses()
+          : listCenterCourses(query.regionId || query.region || query.city, query.metro, review),
       }, corsHeaders(req));
       return;
     }

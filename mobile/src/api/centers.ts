@@ -11,12 +11,24 @@ import {
   type CenterReviewStatus,
 } from '../constants/centerDirectors';
 import {
+  approveCenterCourse,
   hydrateCenterCourses,
   listCenterCourses,
+  listPendingCenterCourses,
   upsertCenterCourse,
   type CenterCourseInput,
   type CenterLocalCourse,
 } from '../constants/centerCourses';
+import {
+  changeCoursePassword,
+  hasCoursePassword,
+  lockCourseSession,
+  registerCoursePassword,
+  resetCoursePassword,
+  setCoursePassword,
+  unlockCourseSession,
+  verifyCoursePassword,
+} from '../constants/centerCourseAuth';
 import {
   applyLocalBusinessCard,
   centerOverlay,
@@ -98,14 +110,22 @@ export async function applyCenterBusinessCard(id: string) {
   return local;
 }
 
-export async function fetchCenterCourses(filter: { regionId?: string; metro?: string } = {}): Promise<CenterLocalCourse[]> {
+export async function fetchCenterCourses(filter: { regionId?: string; metro?: string; review?: boolean } = {}): Promise<CenterLocalCourse[]> {
   try {
     const res = await api.get<{ success: boolean; data: CenterLocalCourse[] }>('/api/centers/courses', {
-      params: { regionId: filter.regionId, metro: filter.metro },
+      params: {
+        regionId: filter.regionId,
+        metro: filter.metro,
+        review: filter.review ? 1 : undefined,
+      },
     });
     if (res.data?.data?.length) hydrateCenterCourses(res.data.data);
   } catch {
     // 로컬 코스
+  }
+  if (filter.review) {
+    if (!filter.regionId && !filter.metro) return listPendingCenterCourses();
+    return listCenterCourses(filter.regionId, filter.metro, 'all');
   }
   return listCenterCourses(filter.regionId, filter.metro);
 }
@@ -126,4 +146,82 @@ export async function saveCenterCourse(input: CenterCourseInput): Promise<Center
     }
   }
   return local;
+}
+
+export async function fetchPendingCenterCourses(): Promise<CenterLocalCourse[]> {
+  return fetchCenterCourses({ review: true });
+}
+
+export async function publishCenterCourse(id: string): Promise<CenterLocalCourse | null> {
+  const local = approveCenterCourse(id);
+  try {
+    const res = await api.post<{ success: boolean; data?: CenterLocalCourse; message?: string }>(`/api/centers/courses/${id}/approve`, {});
+    if (res.data?.data) {
+      hydrateCenterCourses([res.data.data]);
+      return res.data.data;
+    }
+  } catch {
+    // 로컬 승인 유지
+  }
+  return local;
+}
+
+export async function fetchCoursePasswordStatus(centerId: string): Promise<boolean> {
+  try {
+    const res = await api.get<{ success: boolean; hasPassword?: boolean }>('/api/centers/course-auth', {
+      params: { centerId },
+    });
+    if (typeof res.data?.hasPassword === 'boolean') return res.data.hasPassword;
+  } catch {
+    // 로컬 비밀번호
+  }
+  return hasCoursePassword(centerId);
+}
+
+export async function submitCourseAuth(input: {
+  centerId: string;
+  mode: 'register' | 'login' | 'change';
+  password?: string;
+  confirm?: string;
+  currentPassword?: string;
+  nextPassword?: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const res = await api.post<{ success: boolean; message?: string }>('/api/centers/course-auth', input);
+    if (res.data?.success) {
+      if (input.mode === 'register' && input.password) setCoursePassword(input.centerId, input.password);
+      if (input.mode === 'change' && input.nextPassword) setCoursePassword(input.centerId, input.nextPassword);
+      if (input.mode === 'login' && input.password) setCoursePassword(input.centerId, input.password);
+      unlockCourseSession(input.centerId);
+      return { ok: true };
+    }
+    if (res.data?.message) return { ok: false, message: res.data.message };
+  } catch (err) {
+    const data = err && typeof err === 'object' && 'response' in err
+      ? (err as { response?: { data?: { message?: string } } }).response?.data
+      : undefined;
+    if (data?.message) return { ok: false, message: data.message };
+    const message = err instanceof Error ? err.message : '';
+    if (message && !/network|timeout|404|failed/i.test(message) && !message.includes('Network')) {
+      return { ok: false, message };
+    }
+  }
+  const local = input.mode === 'register'
+    ? registerCoursePassword(input.centerId, input.password || '', input.confirm || '')
+    : input.mode === 'change'
+      ? changeCoursePassword(input.centerId, input.currentPassword || '', input.nextPassword || '', input.confirm || '')
+      : verifyCoursePassword(input.centerId, input.password || '');
+  if (local.ok) unlockCourseSession(input.centerId);
+  return local;
+}
+
+export async function resetCenterCoursePassword(centerId: string) {
+  resetCoursePassword(centerId);
+  lockCourseSession(centerId);
+  try {
+    await api.post('/api/centers/course-auth/reset', { centerId });
+  } catch {
+    // 로컬 초기화 유지
+  }
+  return { ok: true as const };
 }

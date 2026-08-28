@@ -47,10 +47,16 @@ export default function CenterApplyModal({
           <div style="font-size:13px;color:#6B7280;margin:6px 0 12px;">서류 없이 한 번에 작성하고 바로 접수합니다. 모든 칸에 바로 입력할 수 있습니다.</div>
           <img data-photo-preview="1" alt="" style="display:none;width:80px;height:100px;object-fit:cover;border-radius:14px;margin:0 auto 10px;background:#E5E7EB;" />
           <div data-photo-empty="1" style="width:80px;height:100px;border-radius:14px;background:#E5E7EB;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;color:#6B7280;font-weight:700;font-size:12px;">프로필 사진</div>
-          <label style="display:block;background:#111827;color:#fff;border-radius:12px;padding:11px;text-align:center;font-weight:800;margin-bottom:12px;cursor:pointer;">
-            사진 촬영 · 갤러리 선택
-            <input data-photo="1" type="file" accept="image/*" capture="user" style="display:none" />
-          </label>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <label style="flex:1;background:#111827;color:#fff;border-radius:12px;padding:11px;text-align:center;font-weight:800;cursor:pointer;">
+              사진 촬영
+              <input data-photo-camera="1" type="file" accept="image/*" capture="user" style="display:none" />
+            </label>
+            <label style="flex:1;border:1px solid #D1D5DB;background:#fff;color:#111827;border-radius:12px;padding:11px;text-align:center;font-weight:800;cursor:pointer;">
+              갤러리 선택
+              <input data-photo-gallery="1" type="file" accept="image/*" style="display:none" />
+            </label>
+          </div>
           <div style="display:flex;gap:8px;">
             <label style="flex:1.4;font-size:12px;font-weight:800;color:#6B7280;">이름
               <input data-name="1" value="" placeholder="홍길동" style="display:block;width:100%;margin-top:6px;height:48px;border:1px solid #DDD;border-radius:8px;padding:0 12px;font-size:16px;box-sizing:border-box;" />
@@ -91,12 +97,13 @@ export default function CenterApplyModal({
     };
     const closeBtn = q<HTMLButtonElement>('[data-close]');
     const submitBtn = q<HTMLButtonElement>('[data-submit]');
-    const file = q<HTMLInputElement>('[data-photo]');
+    const camera = q<HTMLInputElement>('[data-photo-camera]');
+    const gallery = q<HTMLInputElement>('[data-photo-gallery]');
     const preview = q<HTMLImageElement>('[data-photo-preview]');
     const empty = q<HTMLDivElement>('[data-photo-empty]');
     closeBtn?.addEventListener('click', () => closeRef.current());
-    file?.addEventListener('change', () => {
-      const picked = file.files?.[0];
+    const onPicked = (input: HTMLInputElement | null) => {
+      const picked = input?.files?.[0];
       if (!picked) return;
       const reader = new FileReader();
       reader.onload = () => {
@@ -110,7 +117,9 @@ export default function CenterApplyModal({
         if (empty) empty.style.display = 'none';
       };
       reader.readAsDataURL(picked);
-    });
+    };
+    camera?.addEventListener('change', () => onPicked(camera));
+    gallery?.addEventListener('change', () => onPicked(gallery));
     submitBtn?.addEventListener('click', async () => {
       const name = q<HTMLInputElement>('[data-name]')?.value.trim() || '';
       const age = q<HTMLInputElement>('[data-age]')?.value.trim() || '';

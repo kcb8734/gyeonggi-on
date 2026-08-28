@@ -7,6 +7,8 @@ export type CenterCourseStop = {
   longitude?: number;
 };
 
+export type CenterCourseStatus = 'pending' | 'approved';
+
 export type CenterLocalCourse = {
   id: string;
   regionId: string;
@@ -19,10 +21,11 @@ export type CenterLocalCourse = {
   marketFoodCourse: CenterCourseStop;
   mainAxis: CenterCourseStop;
   campingAccommodation: CenterCourseStop;
+  status: CenterCourseStatus;
   updatedAt: string;
 };
 
-export type CenterCourseInput = Omit<CenterLocalCourse, 'id' | 'updatedAt'> & { id?: string };
+export type CenterCourseInput = Omit<CenterLocalCourse, 'id' | 'updatedAt'> & { id?: string; status?: CenterCourseStatus };
 
 const COURSES: CenterLocalCourse[] = [
   {
@@ -57,6 +60,7 @@ const COURSES: CenterLocalCourse[] = [
       latitude: 37.283,
       longitude: 127.065,
     },
+    status: 'approved',
     updatedAt: new Date().toISOString(),
   },
 ];
@@ -86,17 +90,27 @@ function sameRegion(left: string, right: string) {
   return Boolean(a && b && (left.includes(b) || right.includes(a) || a === b));
 }
 
-export function listCenterCourses(regionId?: string, metro?: string) {
+export function listCenterCourses(
+  regionId?: string,
+  metro?: string,
+  status: CenterCourseStatus | 'all' = 'approved',
+) {
   return COURSES.filter((item) => {
     if (regionId && !sameRegion(item.regionId, regionId)) return false;
     if (metro && item.metro && item.metro !== metro) return false;
+    if (status !== 'all' && item.status !== status) return false;
     return true;
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function listPendingCenterCourses() {
+  return COURSES.filter((item) => item.status !== 'approved').sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function findCenterCourseForPlace(input: { city?: string; address?: string; title?: string; metro?: string }) {
   const hay = `${input.city || ''} ${input.address || ''} ${input.title || ''}`;
   const ranked = COURSES.filter((item) => {
+    if (item.status !== 'approved') return false;
     if (input.metro && item.metro && item.metro !== input.metro) return false;
     const token = regionToken(item.regionId);
     return hay.includes(item.regionId) || (token.length >= 2 && hay.includes(token));
@@ -136,6 +150,7 @@ export function upsertCenterCourse(input: CenterCourseInput): CenterLocalCourse 
     marketFoodCourse: normalizeStop(input.marketFoodCourse),
     mainAxis: normalizeStop(input.mainAxis),
     campingAccommodation: normalizeStop(input.campingAccommodation),
+    status: 'pending',
     updatedAt: now,
   };
   if (existing) {
@@ -146,6 +161,15 @@ export function upsertCenterCourse(input: CenterCourseInput): CenterLocalCourse 
   COURSES.unshift(next);
   notify();
   return next;
+}
+
+export function approveCenterCourse(id: string): CenterLocalCourse | null {
+  const existing = COURSES.find((item) => item.id === id);
+  if (!existing) return null;
+  existing.status = 'approved';
+  existing.updatedAt = new Date().toISOString();
+  notify();
+  return existing;
 }
 
 function normalizeStop(stop?: CenterCourseStop): CenterCourseStop {
