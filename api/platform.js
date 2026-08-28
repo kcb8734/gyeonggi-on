@@ -294,19 +294,37 @@ function dashboard() {
   };
 }
 
+function csvEscape(value) {
+  const text = String(value ?? '');
+  if (/[",\n]/.test(text)) return '"' + text.replace(/"/g, '""') + '"';
+  return text;
+}
+
 function settlementCsv() {
   const data = dashboard();
+  const couponHeader = '쿠폰코드,축제,상가,발급,사용,회수율,기간,권역,유형';
+  const couponRows = (data.coupons || []).map((row) => [
+    csvEscape(row.id),
+    csvEscape(row.festival),
+    csvEscape(row.store),
+    csvEscape(row.issued),
+    csvEscape(row.used),
+    csvEscape(row.recovery),
+    csvEscape(row.period),
+    csvEscape(row.region),
+    csvEscape(row.couponType),
+  ].join(','));
   const header = '권역,시군,담당자,매칭상가,활성축제,쿠폰,승인';
   const rows = data.matching.map((row) => [
-    row.regionLabel || REGION_LABEL[row.region] || row.region || '',
-    row.city,
-    row.officerName || '미지정',
-    row.stores,
-    row.festivals,
-    row.coupons,
+    csvEscape(row.regionLabel || REGION_LABEL[row.region] || row.region || ''),
+    csvEscape(row.city),
+    csvEscape(row.officerName || '미지정'),
+    csvEscape(row.stores),
+    csvEscape(row.festivals),
+    csvEscape(row.coupons),
     row.approved ? '승인' : '대기',
   ].join(','));
-  return '\uFEFF' + [header, ...rows].join('\n');
+  return '\uFEFF' + [couponHeader, ...couponRows, '', header, ...rows].join('\n');
 }
 
 export {

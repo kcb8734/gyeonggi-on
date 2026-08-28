@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from './src/screens/HomeScreen';
@@ -25,6 +25,7 @@ import { disableSystemFontScaling } from './src/utils/fontScale';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
 import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
+import { StackExitButton } from './src/components/ui/ModalExitButton';
 import { findLocalityByWebSlug } from './src/constants/centerDirectors';
 
 ensureKoreanWebFont();
@@ -72,11 +73,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function StackBack() {
   const navigation = useNavigation();
-  return (
-    <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ paddingHorizontal: 4, paddingVertical: 6 }}>
-      <Text style={{ color: '#111827', fontWeight: '800', fontSize: 15 }}>‹ 나가기</Text>
-    </Pressable>
-  );
+  return <StackExitButton onPress={() => navigation.goBack()} />;
 }
 
 function HomeNavHeader() {

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFeedPosts } from '../stores/feedStore';
+import ModalExitButton from '../components/ui/ModalExitButton';
 
 export default function FeedViewScreen({ postId }: { postId: string }) {
   const navigation = useNavigation<any>();
@@ -30,9 +31,7 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
 
   return (
     <View style={styles.root} onLayout={(event) => setPageH(event.nativeEvent.layout.height)}>
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>‹ 나가기</Text>
-      </TouchableOpacity>
+      <ModalExitButton onPress={() => navigation.goBack()} />
       <ScrollView
         ref={scroller}
         pagingEnabled
@@ -65,17 +64,6 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#111827' },
-  back: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 20,
-    backgroundColor: 'rgba(17,24,39,0.72)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
   emptyText: { color: '#9CA3AF', fontWeight: '700' },
   hero: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },

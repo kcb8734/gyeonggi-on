@@ -2,6 +2,7 @@ import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
 import { findFallbackFestival, REGION_FESTIVAL_FALLBACKS, regionByAreaCode } from '../constants/regionTour';
 import { festivalImageFor } from '../constants/regionMedia';
+import { secureMediaUrl } from '../utils/mediaUrl';
 import type { HomeFestival } from '../types/home';
 import type {
   TourDetail,
@@ -24,7 +25,7 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
     start_date: item.eventStartDate,
     end_date: item.eventEndDate,
     category: item.category,
-    image_url: item.firstImage,
+    image_url: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address),
     is_trending: Boolean(item.firstImage),
     source: 'tour',
     tel: item.tel,
@@ -46,7 +47,7 @@ export function homeFestivalFromDetail(item: TourDetail): HomeFestival {
     start_date: item.eventStartDate,
     end_date: item.eventEndDate,
     category: item.category,
-    image_url: item.firstImage ?? item.images[0]?.originUrl,
+    image_url: secureMediaUrl(item.firstImage ?? item.images[0]?.originUrl),
     is_trending: Boolean(item.firstImage || item.images[0]?.originUrl),
     source: 'tour',
     tel: item.tel,
@@ -67,7 +68,7 @@ function previewFestivals(areaCode?: string): TourFestival[] {
     address: item.location_name ?? '',
     eventStartDate: item.start_date ?? '',
     eventEndDate: item.end_date ?? '',
-    firstImage: item.image_url ?? undefined,
+    firstImage: secureMediaUrl(item.image_url) || festivalImageFor(item.title, item.location_name),
     mapX: item.longitude,
     mapY: item.latitude,
     tel: item.tel,
@@ -93,7 +94,12 @@ export async function fetchTourFestivals(params?: {
         category: params?.category,
       },
     });
-    if (res.data?.data?.length) return res.data.data;
+    if (res.data?.data?.length) {
+      return res.data.data.map((item) => ({
+        ...item,
+        firstImage: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address),
+      }));
+    }
   } catch {
     // 백엔드/TourAPI 미기동 시 미리보기
   }
@@ -165,7 +171,17 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
       timeout: 15000,
       params: { contentTypeId },
     });
-    if (res.data?.data) return res.data.data;
+    if (res.data?.data) {
+      const data = res.data.data;
+      const firstImage = secureMediaUrl(data.firstImage) || festivalImageFor(data.title, data.address);
+      const images = (data.images || [])
+        .map((img) => ({ ...img, originUrl: secureMediaUrl(img.originUrl) }))
+        .filter((img) => img.originUrl);
+      if (firstImage && !images.some((img) => img.originUrl === firstImage)) {
+        images.unshift({ originUrl: firstImage });
+      }
+      return { ...data, firstImage: firstImage || undefined, images };
+    }
   } catch {
     // 미리보기
   }

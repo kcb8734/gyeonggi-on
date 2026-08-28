@@ -33,9 +33,11 @@ test('selected suwon card html matches print spec', () => {
   assert.equal(CARD_MM.pad, 6.4);
   assert.equal(CARD_MM.photoW, 20);
   assert.equal(CARD_MM.photoH, 25);
-  assert.equal(CARD_MM.brandAboveRule, 3);
-  assert.equal(CARD_MM.contactBelowRule, 2);
-  assert.equal(CARD_MM.contactFont, 2.65);
+  assert.equal(CARD_MM.brandAboveRule, 2.15);
+  assert.equal(CARD_MM.contactBelowRule, 0.85);
+  assert.equal(CARD_MM.contactFont, 2.55);
+  assert.equal(CARD_MM.ruleFromBottom, 6.15);
+  assert.equal(CARD_MM.brandLineGap, 0.12);
 });
 
 test('jpeg dpi stamp keeps 9.2cm x 5.2cm print size', () => {

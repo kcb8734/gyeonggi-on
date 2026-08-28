@@ -11,8 +11,8 @@ import CenterCardHtmlFrame from './CenterCardHtmlFrame';
 function ContactLine({ label, value, size }: { label: string; value: string; size: number }) {
   return (
     <View style={styles.kv}>
-      <Text style={[styles.key, { fontSize: size, lineHeight: size + 4, width: Math.round(size * 1.7) }]}>{label}</Text>
-      <Text style={[styles.val, { fontSize: size, lineHeight: size + 4 }]} numberOfLines={1}>{value}</Text>
+      <Text style={[styles.key, { fontSize: size, lineHeight: size + 1, width: Math.round(size * 1.7) }]}>{label}</Text>
+      <Text style={[styles.val, { fontSize: size, lineHeight: size + 1 }]} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
@@ -61,7 +61,7 @@ export function CenterCardFaces({
         <View
           ref={frontRef}
           collapsable={false}
-          style={[styles.card, { width: cardW, height: cardH, padding: pad }]}
+          style={[styles.card, { width: cardW, height: cardH, padding: pad, justifyContent: 'space-between' }]}
         >
           <View style={styles.topRow}>
             <View style={[styles.copyCol, { minHeight: photoH }]}>
@@ -72,8 +72,8 @@ export function CenterCardFaces({
                 <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066), color: CARD_COLORS.title }]} numberOfLines={1}>{model.title}</Text>
               </View>
               <View style={[styles.brandBlock, { paddingBottom: mm(CARD_MM.brandAboveRule) }]}>
-                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand }]}>온앤온+</Text>
-                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.082) }]}>온앤온+</Text>
+                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.072), marginTop: mm(CARD_MM.brandLineGap) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
               </View>
             </View>
             {model.photoUrl ? (
@@ -85,7 +85,7 @@ export function CenterCardFaces({
             )}
           </View>
           <View style={styles.rule} />
-          <View style={[styles.grid, { paddingTop: mm(CARD_MM.contactBelowRule), minHeight: mm(CARD_MM.ruleFromBottom) }]}>
+          <View style={[styles.grid, { paddingTop: mm(CARD_MM.contactBelowRule), height: mm(CARD_MM.ruleFromBottom) }]}>
             <View style={styles.contactRow}>
               <View style={styles.col}>
                 <ContactLine label="M." value={model.phone} size={type} />
@@ -218,6 +218,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
+    flexDirection: 'column',
   },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flex: 1 },
   copyCol: { flex: 1, minWidth: 0, paddingRight: 6, justifyContent: 'flex-start' },
@@ -232,13 +233,13 @@ const styles = StyleSheet.create({
   name: { fontWeight: '800', color: '#111827' },
   bar: { color: '#D1D5DB', fontWeight: '400' },
   title: { color: CARD_COLORS.title, fontWeight: '500', flexShrink: 1 },
-  brandBlock: { marginTop: 'auto' as const, paddingTop: 8 },
+  brandBlock: { marginTop: 'auto' as const, paddingTop: 0 },
   brand: { fontWeight: '800', color: CARD_COLORS.brand },
-  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
+  dedicated: { marginTop: 0, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
   rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 0, marginBottom: 0 },
-  grid: { gap: 4 },
+  grid: { gap: 1, justifyContent: 'flex-start' },
   contactRow: { flexDirection: 'row', gap: 8 },
-  col: { flex: 1, gap: 3 },
+  col: { flex: 1, gap: 0 },
   kv: { flexDirection: 'row', alignItems: 'flex-start' },
   key: { fontWeight: '800', color: '#111827' },
   val: { flex: 1, color: '#111827', fontWeight: '600' },
