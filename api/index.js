@@ -488,18 +488,23 @@ async function getHomeFeed(req, res) {
     const result = await searchFestival2({
       metro: metro,
       areaCode: METRO_AREA[metro],
-      month: query.month || (now.getMonth() + 1),
+      month: query.month,
       year: query.year || now.getFullYear(),
       category: query.category,
+      numOfRows: 200,
     });
     let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
     let source = result.source;
-    if (!festivals.length) {
-      const persisted = await listPersistedFestivals(metro);
-      if (persisted.length) {
-        festivals = persisted;
-        source = 'db';
-      }
+    const persisted = await listPersistedFestivals(metro).catch(() => []);
+    if (persisted.length) {
+      const seen = new Set(festivals.map((item) => String(item.contentId || item.title || '')));
+      persisted.forEach((item) => {
+        const key = String(item.contentId || item.title || '');
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        festivals.push(item);
+      });
+      if (!source || source === 'none') source = 'db';
     }
     send(res, 200, {
       success: true,
@@ -774,7 +779,7 @@ async function handler(req, res) {
       send(res, 200, { success: true, data: updateEngine(body) }, corsHeaders(req));
       return;
     }
-    if (/admin\/settlement\/excel|admin\/settlements?\.csv/i.test(path)) {
+    if (/admin\/settlement\/excel|admin\/settlements?\.csv|admin\/coupons\.csv/i.test(path)) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       sendCsv(res, req, settlementCsv(), '월별정산내역_' + new Date().toISOString().slice(0, 7) + '.csv');
       return;

@@ -79,20 +79,25 @@ export const getHomeFeed = async (req: Request, res: Response) => {
     }));
 
     let festivals = dbFestivals;
-    if (!festivals.length) {
-      try {
-        const now = new Date();
-        const tourFestivals = await searchFestivals({
-          areaCode: preset.code,
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
-        });
-        if (tourFestivals.length) {
-          festivals = tourFestivals.map((item) => toHomeFestival(item, regionalZoneFor(preset.code, metro)));
+    try {
+      const now = new Date();
+      const tourFestivals = await searchFestivals({
+        areaCode: preset.code,
+        year: now.getFullYear(),
+        numOfRows: 200,
+      });
+      if (tourFestivals.length) {
+        const mapped = tourFestivals.map((item) => toHomeFestival(item, regionalZoneFor(preset.code, metro)));
+        const seen = new Set(festivals.map((item) => `${item.contentId}|${item.title}`));
+        for (const item of mapped) {
+          const key = `${item.contentId}|${item.title}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          festivals.push(item);
         }
-      } catch (err) {
-        console.warn('[getHomeFeed] TourAPI fallback to DB festivals:', err);
       }
+    } catch (err) {
+      console.warn('[getHomeFeed] TourAPI merge:', err);
     }
 
     const promotions = promotionResult.rows.map((row) => ({

@@ -36,3 +36,12 @@ test('GYEONGGI fallbacks keep the home list populated', () => {
   const merged = mergeFestivalSources([], [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI);
   assert.ok(merged.some((item) => item.title.includes('수원화성')));
 });
+
+test('17개 권역 축제 폴백이 모두 채워져 있다', () => {
+  const zones = Object.keys(REGION_FESTIVAL_FALLBACKS);
+  assert.ok(zones.length >= 17);
+  for (const zone of zones) {
+    assert.ok((REGION_FESTIVAL_FALLBACKS[zone]?.length ?? 0) >= 3, zone);
+  }
+  assert.ok(REGION_FESTIVAL_FALLBACKS.SEOUL.some((item) => item.title.includes('한강몽땅')));
+});

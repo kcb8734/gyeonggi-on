@@ -16,10 +16,11 @@ export const CARD_MM = {
   photoH: 25,
   pad: 6.4,
   logoH: 6.4,
-  ruleFromBottom: 7.1,
-  brandAboveRule: 3,
-  contactBelowRule: 2,
-  contactFont: 2.65,
+  ruleFromBottom: 6.15,
+  brandAboveRule: 2.15,
+  contactBelowRule: 0.85,
+  contactFont: 2.55,
+  brandLineGap: 0.12,
 };
 export const CARD_PRINT_CM = { width: 9.2, height: 5.2 };
 export const CARD_COLORS = { title: '#585655', brand: '#585656', contact: '#111111' };
@@ -91,7 +92,7 @@ function cardCss(dpi: number) {
       overflow: hidden; position: relative;
     }
     .stage { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: ${u(2.4)}; }
-    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
     .brand-logo { height: ${u(CARD_MM.logoH)}; width: auto; display: block; max-width: ${u(34)}; object-fit: contain; }
     .photo { width: ${u(CARD_MM.photoW)}; height: ${u(CARD_MM.photoH)}; object-fit: cover; border-radius: ${u(3.6)}; background: #d1d5db; flex-shrink: 0; }
     .ph { display: flex; align-items: center; justify-content: center; font-size: ${u(7)}; font-weight: 800; color: #6b7280; }
@@ -99,25 +100,28 @@ function cardCss(dpi: number) {
     .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; font-size: ${u(3.2)}; }
     .title { font-size: ${u(2.55)}; color: ${CARD_COLORS.title}; font-weight: 500; white-space: nowrap; overflow: hidden; }
-    .brand-block { margin-top: auto; padding-top: ${u(2.2)}; padding-bottom: ${u(CARD_MM.brandAboveRule)}; }
-    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; }
-    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; }
+    .brand-block {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding-bottom: ${u(CARD_MM.brandAboveRule)};
+    }
+    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.05; }
+    .center { margin-top: ${u(CARD_MM.brandLineGap)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; line-height: 1.05; white-space: nowrap; overflow: hidden; }
     .rule {
       position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)};
       bottom: ${u(CARD_MM.ruleFromBottom)}; margin: 0; border: 0;
       border-top: ${u(0.25)} solid #d1d5db;
     }
     .grid {
-      flex-shrink: 0;
+      position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)}; bottom: 0;
       height: ${u(CARD_MM.ruleFromBottom)};
       display: grid;
       grid-template-columns: 1fr 1fr;
       column-gap: ${u(2.2)};
-      row-gap: ${u(0.35)};
+      row-gap: ${u(0.1)};
       padding-top: ${u(CARD_MM.contactBelowRule)};
       font-size: ${u(CARD_MM.contactFont)};
       color: ${CARD_COLORS.contact};
-      line-height: 1.15;
+      line-height: 1.05;
     }
     .kv { display: grid; grid-template-columns: ${u(4.8)} 1fr; column-gap: ${u(0.9)}; align-items: center; min-width: 0; }
     .kv.addr { grid-column: 1 / -1; }
@@ -469,7 +473,7 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
 
     ctx.fillStyle = CARD_COLORS.brand;
     ctx.font = font('800', 3.2);
-    ctx.fillText('온앤온+', pad, ruleY - mm(CARD_MM.brandAboveRule + 3.2));
+    ctx.fillText('온앤온+', pad, ruleY - mm(CARD_MM.brandAboveRule + 2.75 + CARD_MM.brandLineGap));
     ctx.font = 'italic 700 ' + mm(2.75) + 'px "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
     ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(CARD_MM.brandAboveRule));
 
@@ -482,7 +486,7 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
 
     const col = (W - pad * 2 - mm(2.2)) / 2;
     const row1 = ruleY + mm(CARD_MM.contactBelowRule + CARD_MM.contactFont);
-    const row2 = row1 + mm(CARD_MM.contactFont + 0.45);
+    const row2 = row1 + mm(CARD_MM.contactFont + 0.12);
     const rows: Array<[string, string, number, number, number]> = [
       ['M.', model.phone, pad, row1, col],
       ['E.', model.email, pad + col + mm(2.2), row1, col],

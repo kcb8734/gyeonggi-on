@@ -11,7 +11,7 @@ import {
 } from '../components/admin/AdminWidgets';
 import AdminCenterPanel from '../components/admin/AdminCenterPanel';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
-import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
+import { fetchSettlementCsv, settlementFilename, triggerCsvDownload, adminExcelCsv } from '../utils/csvDownload';
 import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
 import {
   approveUserPoints,
@@ -361,28 +361,23 @@ export default function AdminScreen() {
 
   const handleDownloadExcel = async () => {
     const filename = settlementFilename();
-    const rows = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
-    const localCsv = [
-      '권역,시군,담당자,매칭상가,활성축제,쿠폰,승인',
-      ...rows.map((row: any) => [
-        row.regionLabel || REGION_LABEL[row.region] || '',
-        row.city,
-        row.officerName || '미지정',
-        row.stores,
-        row.festivals,
-        row.coupons,
-        row.approved ? '승인' : '대기',
-      ].join(',')),
-    ].join('\n');
+    const couponRows = dashboard?.coupons?.length ? dashboard.coupons : FALLBACK_DASHBOARD.coupons;
+    const matchRows = dashboard?.matching?.length ? dashboard.matching : FALLBACK_DASHBOARD.matching;
+    const localCsv = adminExcelCsv({ coupons: couponRows, matching: matchRows });
     try {
-      const csv = await fetchSettlementCsv([
+      const remote = await fetchSettlementCsv([
         '/api/admin/settlement/excel',
         '/api/admin/settlements.csv',
-      ]).catch(() => localCsv);
-      triggerCsvDownload(filename, csv || localCsv);
+        '/api/admin/coupons.csv',
+      ]).catch(() => '');
+      triggerCsvDownload(filename, remote || localCsv);
     } catch {
-      if (typeof window !== 'undefined') {
-        window.alert('엑셀 다운로드 중 오류가 발생했습니다.');
+      try {
+        triggerCsvDownload(filename, localCsv);
+      } catch {
+        if (typeof window !== 'undefined') {
+          window.alert('엑셀 다운로드 중 오류가 발생했습니다.');
+        }
       }
     }
   };

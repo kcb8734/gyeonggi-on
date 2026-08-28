@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import type { HomeFestival, HomePromotion } from '../../types/home';
@@ -14,6 +15,8 @@ import { isFavorite, isScheduled } from '../../stores/appStore';
 import { ddayLabel, formatRange } from '../../utils/date';
 import { formatTel, telHref } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
+import { festivalImageFor } from '../../constants/regionMedia';
+import { secureMediaUrl } from '../../utils/mediaUrl';
 import ModalExitButton from './ModalExitButton';
 
 interface Props {
@@ -40,10 +43,15 @@ export default function FestivalDetailPopup({
   onIssue,
 }: Props) {
   const scrollRef = React.useRef<ScrollView>(null);
+  const { width } = useWindowDimensions();
+  const [heroFailed, setHeroFailed] = React.useState(false);
   React.useEffect(() => {
     setImeModalLock(Boolean(festival));
     return () => setImeModalLock(false);
   }, [festival]);
+  React.useEffect(() => {
+    setHeroFailed(false);
+  }, [festival?.id, festival?.image_url]);
   React.useEffect(() => {
     if (!festival || initialFocus !== 'coupon') return;
     const timer = setTimeout(() => {
@@ -57,6 +65,7 @@ export default function FestivalDetailPopup({
   const inquiry = festival.inquiryTel || festival.tel;
   const callUrl = telHref(inquiry);
   const telLabel = formatTel(inquiry) || inquiry;
+  const heroUri = secureMediaUrl(festival.image_url) || festivalImageFor(festival.title, festival.location_name, festival.metro || festival.regionalZone);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -66,10 +75,19 @@ export default function FestivalDetailPopup({
           <View style={styles.handle} />
           <ModalExitButton onPress={onClose} />
           <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-            {festival.image_url ? (
-              <Image source={{ uri: festival.image_url }} style={styles.hero} />
+            {heroUri && !heroFailed ? (
+              <View style={[styles.hero, { width }]}>
+                <Image
+                  source={{ uri: heroUri }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                  onError={() => setHeroFailed(true)}
+                />
+              </View>
             ) : (
-              <View style={[styles.hero, styles.fallback]} />
+              <View style={[styles.hero, styles.fallback, { width }]}>
+                <Text style={styles.fallbackText}>{festival.title}</Text>
+              </View>
             )}
             <View style={styles.body}>
               <View style={styles.row}>
@@ -170,8 +188,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
   },
-  hero: { width: '100%', height: 170, backgroundColor: '#E5E7EB' },
-  fallback: { backgroundColor: '#CBD5E1' },
+  hero: { width: '100%', height: 180, backgroundColor: '#93C5FD', overflow: 'hidden' },
+  heroImage: { width: '100%', height: '100%' },
+  fallback: { backgroundColor: '#1E6FEA', alignItems: 'center', justifyContent: 'center' },
+  fallbackText: { color: '#fff', fontWeight: '800', fontSize: 16, paddingHorizontal: 20, textAlign: 'center' },
   body: { padding: 16, paddingBottom: 28 },
   row: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   dday: {

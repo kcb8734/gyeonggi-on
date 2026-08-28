@@ -31,6 +31,16 @@ export default function ModalExitButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** 스택 헤더·화면 상단용 원형 `<` `>` 나가기. */
+export function StackExitButton({ onPress }: { onPress: () => void }) {
+  return (
+    <View style={styles.stackWrap}>
+      <CircleChevron mark="<" onPress={onPress} />
+      <CircleChevron mark=">" onPress={onPress} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
@@ -40,6 +50,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  stackWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+    paddingRight: 8,
   },
   btn: {
     width: 36,
