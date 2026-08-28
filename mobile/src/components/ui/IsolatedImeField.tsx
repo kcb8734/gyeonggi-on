@@ -11,6 +11,7 @@ export default function IsolatedImeField({
   multiline = false,
   fieldKey: _fieldKey,
   ignoreModalLock: _ignoreModalLock,
+  secureTextEntry = false,
 }: {
   valueRef: React.MutableRefObject<string>;
   placeholder: string;
@@ -20,6 +21,7 @@ export default function IsolatedImeField({
   multiline?: boolean;
   fieldKey?: string;
   ignoreModalLock?: boolean;
+  secureTextEntry?: boolean;
 }) {
   return (
     <TextInput
@@ -30,6 +32,7 @@ export default function IsolatedImeField({
       multiline={multiline}
       autoCorrect={false}
       autoCapitalize="none"
+      secureTextEntry={Boolean(secureTextEntry)}
       keyboardType={inputMode === 'text' ? 'default' : 'number-pad'}
       onChangeText={(text) => {
         valueRef.current = text;

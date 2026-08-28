@@ -120,6 +120,7 @@ export const PREVIEW_HOME: HomeFeed = {
       longitude: 127.0138,
       gps_confirmed: true,
       tel: '031-228-2800',
+      is_sample: true,
     },
     {
       id: 'dddddddd-dddd-4ddd-8ddd-dddddddd0002',
@@ -144,6 +145,7 @@ export const PREVIEW_HOME: HomeFeed = {
       longitude: 127.117,
       gps_confirmed: true,
       tel: '031-288-0000',
+      is_sample: true,
     },
     {
       id: 'self-funded-preview',
@@ -168,6 +170,7 @@ export const PREVIEW_HOME: HomeFeed = {
       longitude: 127.513,
       gps_confirmed: true,
       tel: '031-582-0174',
+      is_sample: true,
     },
   ],
   popular: [],

@@ -1,4 +1,5 @@
 /** Vercel /api 코스 추천. 권역·도시별 실제 명소 좌표를 쓴다. */
+import { centerCourseToFestivalCourse, findCenterCourseForPlace } from './centerCourses.js';
 const DEFAULTS = {
   history: { name: '수원화성행궁', lat: 37.2819, lng: 127.0139, hint: '조선 후기 성곽과 행궁을 둘러보며 축제 배경을 이해합니다.' },
   market: { name: '수원 영동시장', lat: 37.2786, lng: 127.0168, hint: '전통시장 골목에서 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
@@ -637,6 +638,8 @@ export function recommendCourse(title, city, extra) {
     kind: extra.kind,
     category: extra.category,
   };
+  const center = findCenterCourseForPlace(input);
+  if (center) return centerCourseToFestivalCourse(center);
   const festivalTitle = String(input.title || '').trim();
   const place = resolveCourseCity(input) || '이 지역';
   const placeKind = inferCoursePlaceKind(input);

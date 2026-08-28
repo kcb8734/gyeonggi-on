@@ -15,7 +15,7 @@ interface Props {
 export default function FestivalGridCard({ festival, discountRate, hasCoupon, onPress, onCouponPress }: Props) {
   const dday = ddayLabel(festival.start_date, festival.end_date);
   const imageUrl = festival.image_url || festivalImageFor(festival.title, festival.location_name);
-  const showCoupon = Boolean(hasCoupon || festival.hasCoupon || discountRate);
+  const showCoupon = Boolean(hasCoupon);
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <View>
@@ -35,16 +35,18 @@ export default function FestivalGridCard({ festival, discountRate, hasCoupon, on
           </View>
         ) : null}
         <View style={styles.badgeCol} pointerEvents="box-none">
-          <TouchableOpacity
-            style={styles.couponBadge}
-            activeOpacity={0.85}
-            onPress={(event) => {
-              event.stopPropagation();
-              (onCouponPress ?? onPress)();
-            }}
-          >
-            <Text style={styles.couponText}>{showCoupon ? '🎁 쿠폰 발행' : '쿠폰 발행'}</Text>
-          </TouchableOpacity>
+          {showCoupon ? (
+            <TouchableOpacity
+              style={styles.couponBadge}
+              activeOpacity={0.85}
+              onPress={(event) => {
+                event.stopPropagation();
+                (onCouponPress ?? onPress)();
+              }}
+            >
+              <Text style={styles.couponText}>🎁 쿠폰 발행</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
       <View style={styles.body}>

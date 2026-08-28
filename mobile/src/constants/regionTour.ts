@@ -187,35 +187,36 @@ export function fallbackPromotions(metro: string): HomePromotion[] {
   const zone = normalizeMetroId(metro);
   const official = couponTypeForRegion(zone) === 'OFFICIAL';
   const festivals = REGION_FESTIVAL_FALLBACKS[zone] ?? [];
-  return festivals.map((item, index) => {
-    const hint = shopHint(item.title);
-    const photos = shopPhotosFor(hint.kind);
-    const merchant = official ? 10 : 15;
-    const gov = official ? 10 : 0;
-    return {
-      id: `${official ? 'off' : 'self'}-${zone}-${item.id}`,
-      title: `${item.title} 제휴 할인`,
-      festival_id: item.id,
-      festival_title: item.title,
-      business_name: hint.shop,
-      merchant_discount_rate: merchant,
-      gov_matching_rate: gov,
-      total_discount_rate: merchant + gov,
-      remaining_quantity: 80 - index * 6,
-      funding_type: official ? 'MATCHED' : 'MERCHANT_ONLY',
-      coupon_type: official ? 'OFFICIAL' : 'SELF',
-      metro: zone,
-      municipality_name: item.municipality_name,
-      address: item.location_name,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      main_menu: hint.menu,
-      features: hint.features,
-      exterior_image_url: photos.exterior_image_url,
-      interior_image_url: photos.interior_image_url,
-      gps_confirmed: true,
-    };
-  });
+  const item = festivals[0];
+  if (!item) return [];
+  const hint = shopHint(item.title);
+  const photos = shopPhotosFor(hint.kind);
+  const merchant = official ? 10 : 15;
+  const gov = official ? 10 : 0;
+  return [{
+    id: `${official ? 'off' : 'self'}-${zone}-${item.id}`,
+    title: `${item.title} 제휴 할인`,
+    festival_id: item.id,
+    festival_title: item.title,
+    business_name: hint.shop,
+    merchant_discount_rate: merchant,
+    gov_matching_rate: gov,
+    total_discount_rate: merchant + gov,
+    remaining_quantity: 80,
+    funding_type: official ? 'MATCHED' : 'MERCHANT_ONLY',
+    coupon_type: official ? 'OFFICIAL' : 'SELF',
+    metro: zone,
+    municipality_name: item.municipality_name,
+    address: item.location_name,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    main_menu: hint.menu,
+    features: hint.features,
+    exterior_image_url: photos.exterior_image_url,
+    interior_image_url: photos.interior_image_url,
+    gps_confirmed: true,
+    is_sample: true,
+  }];
 }
 
 export function findFallbackFestival(contentId?: string, title?: string): HomeFestival | undefined {

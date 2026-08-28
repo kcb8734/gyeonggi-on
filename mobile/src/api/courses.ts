@@ -1,5 +1,12 @@
 import { api } from './client';
 import { buildFestivalCourse, shouldRejectRemoteCourse } from '../utils/festivalCourse';
+import {
+  centerCourseToFestivalCourse,
+  findCenterCourseForPlace,
+  hydrateCenterCourses,
+  listCenterCourses,
+  type CenterLocalCourse,
+} from '../constants/centerCourses';
 
 export type CourseItinerary = {
   step: number;
@@ -37,6 +44,19 @@ function looksLikeDefaultSuwon(course: FestivalCourse, input: CourseQuery) {
 
 export async function fetchRecommendedCourse(query: CourseQuery | string = {}): Promise<FestivalCourse | null> {
   const input = typeof query === 'string' ? { title: query } : query;
+  const localCenter = findCenterCourseForPlace(input);
+  if (localCenter) return centerCourseToFestivalCourse(localCenter);
+  try {
+    const listed = await api.get<{ success: boolean; data: CenterLocalCourse[] }>('/api/centers/courses', {
+      params: { regionId: input.city, metro: input.metro },
+    });
+    if (listed.data?.data?.length) hydrateCenterCourses(listed.data.data);
+    const remoteCenter = findCenterCourseForPlace(input)
+      || (input.city ? listCenterCourses(input.city, input.metro)[0] : undefined);
+    if (remoteCenter) return centerCourseToFestivalCourse(remoteCenter);
+  } catch {
+    // 일반 추천 코스
+  }
   const local = buildFestivalCourse(input);
   try {
     const res = await api.get<{ success: boolean; data: FestivalCourse }>('/api/courses/recommend', {

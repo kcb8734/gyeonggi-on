@@ -24,7 +24,7 @@ import {
 import { regionById, withFestivalImage } from '../constants/regionTour';
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
-import { festivalHasCoupon } from '../utils/festivalCoupon';
+import { festivalHasSampleCoupon } from '../utils/festivalCoupon';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -33,6 +33,7 @@ import { TicketCouponCard, ticketFromPromotion } from '../components/ui/TicketCo
 import IsolatedImeField from '../components/ui/IsolatedImeField';
 import FeedRail from '../components/ui/FeedRail';
 import LocalityFilter from '../components/ui/LocalityFilter';
+import CenterLocalCourseBoard from '../components/ui/CenterLocalCourseBoard';
 import MerchantDetailModal from '../components/ui/MerchantDetailModal';
 import {
   addSchedule,
@@ -185,11 +186,7 @@ export default function HomeScreen() {
 
   const relatedPromos = useMemo(() => {
     if (!selected) return [];
-    return promotions.filter((promo) =>
-      promo.festival_id === selected.id
-      || (promo.festival_title && selected.title.includes(promo.festival_title))
-      || (promo.festival_title && promo.festival_title.includes(selected.title.slice(0, 4))),
-    );
+    return promotions.filter((promo) => festivalHasSampleCoupon(selected, [promo]));
   }, [promotions, selected]);
 
   const handleRegion = (id: string) => {
@@ -253,6 +250,7 @@ export default function HomeScreen() {
           })}
         </ScrollView>
         <LocalityFilter metro={metroInfo} value={localityId} onChange={setLocalityId} />
+        <CenterLocalCourseBoard regionId={locality?.label} metro={metro} />
 
         <View style={styles.searchWrap}>
           <IsolatedImeField
@@ -335,23 +333,26 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={styles.grid}>
-            {popular.map((festival) => (
+            {popular.map((festival) => {
+              const sampleCoupon = festivalHasSampleCoupon(festival, promotions);
+              return (
               <FestivalGridCard
                 key={festival.id}
                 festival={festival}
-                discountRate={cardDiscount(festival)}
-                hasCoupon={festivalHasCoupon(festival, promotions) || Boolean(cardDiscount(festival))}
+                discountRate={sampleCoupon ? cardDiscount(festival) : undefined}
+                hasCoupon={sampleCoupon}
                 onPress={() => openFestival(festival)}
                 onCouponPress={() => openFestival(festival, 'coupon')}
               />
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
 
       <FestivalDetailPopup
         festival={selected}
-        promotions={relatedPromos.length ? relatedPromos : promotions.slice(0, 2)}
+        promotions={relatedPromos}
         issuingId={issuingId}
         initialFocus={popupFocus}
         onClose={() => setSelected(null)}

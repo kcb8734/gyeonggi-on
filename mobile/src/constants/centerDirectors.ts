@@ -119,6 +119,12 @@ export function localityWebSlug(label: string) {
   return SLUG_OVERRIDES[short] || romanizeHangul(short).toLowerCase().replace(/[^a-z0-9]+/g, '') || 'center';
 }
 
+export function findLocalityByWebSlug(slug: string): CenterLocalityRow | null {
+  const needle = String(slug || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+  if (!needle) return null;
+  return listCenterLocalities().find((row) => localityWebSlug(row.label) === needle) ?? null;
+}
+
 export function dedicatedCenterName(region: string, label: string) {
   const gov = GOV_NAME[normalizeMetroId(region)] || '';
   return `${gov} ${shortLocalityName(label)} 전담센터`.trim();
