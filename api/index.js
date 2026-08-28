@@ -40,6 +40,7 @@ import { sendResendEmail } from './resendFrom.js';
 import {
   getTourDetail2,
   metroRegions,
+  fallbackTourFestivals,
   searchFestival2,
   searchNearby2,
   toHomeFestival,
@@ -313,6 +314,10 @@ async function listFestivalsLive(req, res) {
   } catch (err) {
     console.error('[api] searchFestival2', err && err.message ? err.message : err);
     const persisted = await listPersistedFestivals(metroKey).catch(() => []);
+    const builtin = fallbackTourFestivals({ metro: metroKey, areaCode: METRO_AREA[metroKey] })
+      .map((item) => homeFromTour(item, metroKey, METRO_AREA[metroKey]))
+      .filter(Boolean);
+    const festivals = persisted.length ? persisted : builtin;
     send(res, 200, {
       success: true,
       metro: metroKey,
@@ -320,11 +325,11 @@ async function listFestivalsLive(req, res) {
       areaCode: METRO_AREA[metroKey] || '31',
       moiCode: MOI_CODE_BY_METRO[metroKey] || '41',
       regionLabel: REGION_LABEL[metroKey] || '경기온',
-      count: persisted.length,
-      source: persisted.length ? 'db' : 'none',
-      festivals: persisted,
-      data: persisted,
-      message: persisted.length ? '저장된 TourAPI 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
+      count: festivals.length,
+      source: persisted.length ? 'db' : (festivals.length ? 'fallback' : 'none'),
+      festivals: festivals,
+      data: festivals,
+      message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
     }, headers);
   }
 }

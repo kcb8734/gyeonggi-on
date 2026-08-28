@@ -21,12 +21,14 @@ import LoginScreen from './src/screens/LoginScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import CenterDirectorsScreen from './src/screens/CenterDirectorsScreen';
 import { ensureKoreanWebFont } from './src/utils/koreanFont';
+import { disableSystemFontScaling } from './src/utils/fontScale';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
 import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
 import { findLocalityByWebSlug } from './src/constants/centerDirectors';
 
 ensureKoreanWebFont();
+disableSystemFontScaling();
 installImeGuard();
 
 const DEV_MERCHANT_ID = '22222222-2222-4222-8222-222222222222';

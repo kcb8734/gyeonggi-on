@@ -37,3 +37,13 @@ test('local preview keeps metro and 127.0.0.1', () => {
   assert.ok(urls.includes('http://127.0.0.1:4000/api/merchants/verify'));
   assert.ok(!urls.includes('https://www.kdanji.com/api/merchants/verify'));
 });
+
+test('native AAB without window still hits canonical verify URL', () => {
+  const urls = verifyMerchantUrls({
+    hostname: '',
+    origin: '',
+    apiBaseUrl: 'https://www.kdanji.com',
+    isDev: false,
+  });
+  assert.ok(urls.includes('https://www.kdanji.com/api/merchants/verify'));
+});

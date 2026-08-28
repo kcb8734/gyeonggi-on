@@ -1,6 +1,6 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
-import { findFallbackFestival } from '../constants/regionTour';
+import { findFallbackFestival, REGION_FESTIVAL_FALLBACKS, regionByAreaCode } from '../constants/regionTour';
 import { festivalImageFor } from '../constants/regionMedia';
 import type { HomeFestival } from '../types/home';
 import type {
@@ -55,8 +55,12 @@ export function homeFestivalFromDetail(item: TourDetail): HomeFestival {
   };
 }
 
-function previewFestivals(): TourFestival[] {
-  return PREVIEW_HOME.festivals.map((item) => ({
+function previewFestivals(areaCode?: string): TourFestival[] {
+  const region = regionByAreaCode(areaCode);
+  const rows = (REGION_FESTIVAL_FALLBACKS[region.id]?.length
+    ? REGION_FESTIVAL_FALLBACKS[region.id]
+    : PREVIEW_HOME.festivals);
+  return rows.map((item) => ({
     contentId: item.contentId ?? item.id,
     contentTypeId: '15',
     title: item.title,
@@ -93,7 +97,7 @@ export async function fetchTourFestivals(params?: {
   } catch {
     // 백엔드/TourAPI 미기동 시 미리보기
   }
-  return previewFestivals().filter((item) => {
+  return previewFestivals(params?.areaCode).filter((item) => {
     if (params?.category && item.category !== params.category) return false;
     if (!params?.month) return true;
     const start = item.eventStartDate.replace(/\D/g, '');

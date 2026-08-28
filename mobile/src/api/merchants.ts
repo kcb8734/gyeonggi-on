@@ -94,10 +94,8 @@ export function verifyMerchantUrls(options?: {
   if (!local && origin && hostname && hostname !== 'kdanji.com') {
     urls.push(`${origin}/api/merchants/verify`);
   }
+  if (apiBase) urls.push(`${apiBase}/api/merchants/verify`);
   if (!local) urls.push(CANONICAL_VERIFY);
-  if (apiBase && !apiBase.includes('kdanji.com') && !apiBase.includes('127.0.0.1')) {
-    urls.push(`${apiBase}/api/merchants/verify`);
-  }
   if (local || isDev) urls.push(LOCAL_VERIFY);
 
   return urls.filter((url, index, list) => url && list.indexOf(url) === index);
@@ -113,6 +111,18 @@ export async function verifyMerchant(params: {
     business_number: params.businessNumber,
     business_name: params.businessName,
   };
+
+  try {
+    const res = await api.post<MerchantVerifyResult>('/api/merchants/verify', payload, {
+      timeout: 20000,
+      validateStatus: (status) => status < 500,
+    });
+    if (res.data && typeof res.data === 'object' && 'success' in res.data) {
+      return res.data;
+    }
+  } catch {
+    // 앱 번들에서 axios baseURL 이 비면 아래 URL 목록으로 재시도
+  }
 
   const urls = verifyMerchantUrls();
   let lastMessage = '국세청 상태조회에 실패했습니다.';

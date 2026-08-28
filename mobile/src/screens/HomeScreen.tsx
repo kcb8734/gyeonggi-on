@@ -79,11 +79,10 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    const now = new Date();
     Promise.all([
       fetchHomeFeed(metro),
       metro === 'GYEONGGI' ? fetchListedFestivals() : Promise.resolve([]),
-      fetchTourFestivals({ areaCode: selectedPreset.code, month: now.getMonth() + 1, year: now.getFullYear() }),
+      fetchTourFestivals({ areaCode: selectedPreset.code }),
     ]).then(([feed, listed, tourFestivals]) => {
       const extra = app.localPromotions.filter((item) =>
         (!item.metro || item.metro === metro)
@@ -100,7 +99,7 @@ export default function HomeScreen() {
         listed,
         tourFestivals.map(homeFestivalFromTour),
         feed.festivals,
-        metro === 'GYEONGGI' ? PREVIEW_HOME.festivals : (REGION_FESTIVAL_FALLBACKS[metro] ?? []),
+        metro === 'GYEONGGI' ? [...PREVIEW_HOME.festivals, ...(REGION_FESTIVAL_FALLBACKS.GYEONGGI ?? [])] : (REGION_FESTIVAL_FALLBACKS[metro] ?? []),
       );
       const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
       setFestivals([...extras, ...incoming].map((item) => withFestivalImage(item, metro)));

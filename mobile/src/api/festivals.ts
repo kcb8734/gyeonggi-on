@@ -11,7 +11,7 @@ export async function fetchListedFestivals(): Promise<HomeFestival[]> {
   } catch {
     // 미리보기 폴백
   }
-  return [];
+  return PREVIEW_HOME.festivals;
 }
 
 export async function fetchNearbyFestivals(params?: {
