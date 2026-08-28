@@ -179,6 +179,136 @@ const BY_CITY: Record<string, Partial<Record<LandmarkKind, Landmark>>> = {
     market: { name: '양주골시장', lat: 37.7850, lng: 127.0460, hint: '양주 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
     camp: { name: '장흥캠핑장', lat: 37.7300, lng: 126.9500, hint: '장흥 계곡 옆에서 숙박합니다.' },
   },
+  안산: {
+    history: { name: '성호기념관 · 별망성', lat: 37.2997, lng: 126.8370, hint: '이익 선생 유적과 별망성을 먼저 둘러보고 축제장으로 이어집니다.' },
+    market: { name: '안산 중앙시장', lat: 37.3215, lng: 126.8308, hint: '중앙시장 먹거리 골목을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '화랑유원지 캠핑장', lat: 37.3263, lng: 126.8145, hint: '화랑유원지 인근에서 하룻밤 머물며 일정을 잇습니다.' },
+  },
+  여주: {
+    history: { name: '세종대왕릉 · 신륵사', lat: 37.3100, lng: 127.6050, hint: '영릉과 남한강 신륵사를 먼저 걷고 축제장으로 갑니다.' },
+    market: { name: '여주 세종시장', lat: 37.2983, lng: 127.6374, hint: '세종시장 쌀밥·도자기 골목을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '금은모래 캠핑장', lat: 37.2975, lng: 127.6550, hint: '남한강 금은모래 캠핑장에서 숙박합니다.' },
+  },
+  부천: {
+    history: { name: '부천한옥마을 · 활박물관', lat: 37.5038, lng: 126.7909, hint: '한옥마을과 활박물관에서 부천의 이야기를 먼저 만납니다.' },
+    market: { name: '역곡남부시장', lat: 37.4865, lng: 126.8115, hint: '역곡 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '원미산 가족캠핑장', lat: 37.5005, lng: 126.7920, hint: '원미산 인근에서 하룻밤 머물며 축제를 잇습니다.' },
+  },
+  성남: {
+    history: { name: '성남향교 · 남한산성 남문', lat: 37.4418, lng: 127.1378, hint: '성남향교와 남한산성 남문을 먼저 둘러봅니다.' },
+    market: { name: '모란시장', lat: 37.4326, lng: 127.1295, hint: '모란시장 먹거리 골목을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '율동공원 캠핑장', lat: 37.4128, lng: 127.1482, hint: '율동공원 호숫가에서 숙박합니다.' },
+  },
+  의정부: {
+    history: { name: '망월사 · 의정부 직동공원', lat: 37.7434, lng: 127.0573, hint: '망월사와 직동공원을 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '의정부 제일시장', lat: 37.7393, lng: 127.0475, hint: '제일시장 부대찌개 골목을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '수락산 캠핑·숙박', lat: 37.6978, lng: 127.0812, hint: '수락산 자락에서 하룻밤 머뭅니다.' },
+  },
+  안양: {
+    history: { name: '삼막사 · 안양박물관', lat: 37.4190, lng: 126.9460, hint: '삼성산 삼막사와 안양박물관을 먼저 둘러봅니다.' },
+    market: { name: '안양중앙시장', lat: 37.3945, lng: 126.9568, hint: '중앙시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '안양대공원 캠핑장', lat: 37.4040, lng: 126.9760, hint: '안양대공원 인근에서 숙박합니다.' },
+  },
+  광명: {
+    history: { name: '광명동굴', lat: 37.4395, lng: 126.8570, hint: '광명동굴의 갱도와 역사를 먼저 둘러봅니다.' },
+    market: { name: '광명시장', lat: 37.4795, lng: 126.8545, hint: '광명시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '광명동굴 인근 숙박', lat: 37.4370, lng: 126.8540, hint: '동굴 인근에서 하룻밤 머뭅니다.' },
+  },
+  평택: {
+    history: { name: '평택호 관광단지 · 평택향교', lat: 36.9695, lng: 127.0718, hint: '평택호와 향교를 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '통복시장', lat: 36.9922, lng: 127.0874, hint: '통복시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '평택호 캠핑장', lat: 36.9650, lng: 127.0750, hint: '평택호 물가에서 숙박합니다.' },
+  },
+  동두천: {
+    history: { name: '소요산', lat: 37.9400, lng: 127.0610, hint: '소요산 자락을 먼저 걷고 축제장으로 내려갑니다.' },
+    market: { name: '동두천 중앙시장', lat: 37.9030, lng: 127.0600, hint: '중앙시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '소요산 캠핑장', lat: 37.9430, lng: 127.0540, hint: '소요산 계곡 옆에서 숙박합니다.' },
+  },
+  고양: {
+    history: { name: '서오릉', lat: 37.6278, lng: 126.8985, hint: '조선 왕릉 서오릉을 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '일산시장', lat: 37.6628, lng: 126.7722, hint: '일산시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '행주산성 한강 캠핑장', lat: 37.5970, lng: 126.8265, hint: '한강 행주 나루에서 하룻밤 머뭅니다.' },
+  },
+  과천: {
+    history: { name: '국립현대미술관 과천 · 서울대공원', lat: 37.4320, lng: 127.0200, hint: '과천 미술관과 대공원을 먼저 둘러봅니다.' },
+    market: { name: '과천시장', lat: 37.4290, lng: 126.9960, hint: '과천시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '서울대공원 인근 숙박', lat: 37.4360, lng: 127.0160, hint: '대공원 인근에서 숙박합니다.' },
+  },
+  구리: {
+    history: { name: '동구릉', lat: 37.6180, lng: 127.1410, hint: '조선 왕릉 동구릉을 먼저 둘러봅니다.' },
+    market: { name: '구리전통시장', lat: 37.6030, lng: 127.1430, hint: '구리 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '한강 구리 캠핑장', lat: 37.5940, lng: 127.1300, hint: '한강 구리 나들목에서 숙박합니다.' },
+  },
+  오산: {
+    history: { name: '독산성 · 세마대지', lat: 37.1650, lng: 127.0170, hint: '독산성과 세마대지를 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '오산시장', lat: 37.1460, lng: 127.0690, hint: '오산시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '물향기수목원 캠핑장', lat: 37.1660, lng: 127.0470, hint: '물향기수목원 인근에서 숙박합니다.' },
+  },
+  시흥: {
+    history: { name: '시흥 관곡지 · 연꽃테마파크', lat: 37.4040, lng: 126.8110, hint: '연꽃 연못과 관곡지를 먼저 둘러봅니다.' },
+    market: { name: '신천시장', lat: 37.4430, lng: 126.7870, hint: '신천시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '시흥갯골 캠핑장', lat: 37.3890, lng: 126.7860, hint: '갯골생태공원 옆에서 하룻밤 머뭅니다.' },
+  },
+  군포: {
+    history: { name: '수리산 · 군포 시민공원', lat: 37.3570, lng: 126.9180, hint: '수리산 숲길과 시민공원을 먼저 둘러봅니다.' },
+    market: { name: '산본시장', lat: 37.3580, lng: 126.9310, hint: '산본시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '수리산 산림욕장 캠핑', lat: 37.3500, lng: 126.9150, hint: '수리산 자락에서 숙박합니다.' },
+  },
+  의왕: {
+    history: { name: '왕송호수 · 레솔레파크', lat: 37.3100, lng: 126.9480, hint: '왕송호수와 레일파크를 먼저 둘러봅니다.' },
+    market: { name: '고천시장', lat: 37.3450, lng: 126.9730, hint: '고천시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '왕송호수 캠핑장', lat: 37.3080, lng: 126.9500, hint: '왕송호수 물가에서 숙박합니다.' },
+  },
+  하남: {
+    history: { name: '이성산성 · 미사경정공원', lat: 37.5390, lng: 127.2140, hint: '하남 이성산성과 미사 한강을 먼저 둘러봅니다.' },
+    market: { name: '덕풍시장', lat: 37.5390, lng: 127.2050, hint: '덕풍시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '미사한강 캠핑장', lat: 37.5630, lng: 127.1920, hint: '미사 한강변에서 하룻밤 머뭅니다.' },
+  },
+  이천: {
+    history: { name: '설봉산성 · 영월암', lat: 37.2810, lng: 127.4270, hint: '설봉산 산성과 영월암을 먼저 둘러봅니다.' },
+    market: { name: '이천 중앙시장', lat: 37.2760, lng: 127.4430, hint: '쌀밥·도자기 골목을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '설봉공원 캠핑장', lat: 37.2770, lng: 127.4250, hint: '설봉공원 호숫가에서 숙박합니다.' },
+  },
+  안성: {
+    history: { name: '안성맞춤박물관 · 죽주산성', lat: 37.0100, lng: 127.2790, hint: '안성맞춤 유물과 죽주산성을 먼저 둘러봅니다.' },
+    market: { name: '안성맞춤시장', lat: 37.0070, lng: 127.2730, hint: '안성시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '안성맞춤랜드 캠핑장', lat: 37.0100, lng: 127.2800, hint: '맞춤랜드 인근에서 숙박합니다.' },
+  },
+  김포: {
+    history: { name: '문수산성', lat: 37.6440, lng: 126.6870, hint: '김포 문수산성을 먼저 걷고 축제장으로 갑니다.' },
+    market: { name: '김포 사우시장', lat: 37.6200, lng: 126.7190, hint: '사우시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '대명항 캠핑장', lat: 37.6420, lng: 126.5890, hint: '대명포구 옆에서 하룻밤 머뭅니다.' },
+  },
+  포천: {
+    history: { name: '포천아트밸리', lat: 37.8990, lng: 127.2150, hint: '천주호와 아트밸리 조각공원을 먼저 둘러봅니다.' },
+    market: { name: '포천 전통시장', lat: 37.8950, lng: 127.2000, hint: '포천 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '포천아트밸리 캠핑장', lat: 37.9000, lng: 127.2180, hint: '아트밸리 호숫가에서 숙박합니다.' },
+  },
+  연천: {
+    history: { name: '전곡리 선사유적지', lat: 38.0120, lng: 127.0630, hint: '한탄강 선사 유적을 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '전곡시장', lat: 38.0240, lng: 127.0680, hint: '전곡시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '한탄강 캠핑장', lat: 38.0140, lng: 127.0780, hint: '한탄강 협곡 옆에서 숙박합니다.' },
+  },
+  양평: {
+    history: { name: '두물머리 · 세미원', lat: 37.5320, lng: 127.3100, hint: '남한강·북한강이 만나는 두물머리를 먼저 둘러봅니다.' },
+    market: { name: '양평 전통시장', lat: 37.4910, lng: 127.4900, hint: '양평 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '양평 물소리길 캠핑장', lat: 37.4880, lng: 127.4920, hint: '남한강 물소리길 옆에서 숙박합니다.' },
+  },
+  울산: {
+    history: { name: '대왕암 · 반구대 암각화', lat: 35.4920, lng: 129.4400, hint: '울산 대왕암과 선사 암각화를 먼저 둘러봅니다.' },
+    market: { name: '울산 수산시장', lat: 35.5540, lng: 129.3200, hint: '수산시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '진하해수욕장 캠핑장', lat: 35.3860, lng: 129.3450, hint: '진하 해변에서 하룻밤 머뭅니다.' },
+  },
+  세종: {
+    history: { name: '세종 호수공원 · 국립세종수목원', lat: 36.4970, lng: 127.2700, hint: '호수공원과 수목원을 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '조치원 전통시장', lat: 36.6020, lng: 127.2960, hint: '조치원 시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '금강 세종 캠핑장', lat: 36.4800, lng: 127.2600, hint: '금강변에서 숙박합니다.' },
+  },
+  천안: {
+    history: { name: '독립기념관', lat: 36.7830, lng: 127.2250, hint: '독립기념관을 먼저 둘러보고 축제장으로 갑니다.' },
+    market: { name: '천안 중앙시장', lat: 36.8060, lng: 127.1520, hint: '중앙시장 먹거리를 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
+    camp: { name: '태조산 캠핑장', lat: 36.8370, lng: 127.1840, hint: '태조산 자락에서 숙박합니다.' },
+  },
   고성강원: {
     history: { name: '화진포 · 건봉사', lat: 38.4800, lng: 128.4400, hint: '화진포 호수와 건봉사를 먼저 둘러봅니다.' },
     market: { name: '거진시장', lat: 38.4500, lng: 128.4600, hint: '거진 시장 해산물을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.' },
@@ -224,16 +354,21 @@ const CITY_ALIASES: Array<{ token: string; city: string }> = [
   { token: '칠십리', city: '서귀포' },
   { token: '유채', city: '제주' },
   { token: '화성문화', city: '수원' },
-  { token: '야행', city: '수원' },
+  { token: '수원야행', city: '수원' },
   { token: '자라섬', city: '가평' },
   { token: '민속촌', city: '용인' },
   { token: '김치축제', city: '광주광역시' },
   { token: '무등산', city: '광주광역시' },
   { token: '양림', city: '광주광역시' },
+  { token: '단원구', city: '안산' },
+  { token: '상록구', city: '안산' },
+  { token: '원미구', city: '부천' },
+  { token: '소사구', city: '부천' },
+  { token: '오정구', city: '부천' },
 ];
 
-const REGION_DEFAULT_CITY: Record<string, string> = {
-  GYEONGGI: '수원',
+/** 시·군이 안 잡힐 때만 쓰는 단일 광역시 기본값. 경기도 전체를 수원으로 두지 않는다. */
+const SINGLE_CITY_METRO_DEFAULT: Record<string, string> = {
   SEOUL: '서울',
   INCHEON: '인천',
   BUSAN: '부산',
@@ -242,18 +377,25 @@ const REGION_DEFAULT_CITY: Record<string, string> = {
   DAEJEON: '대전',
   ULSAN: '울산',
   SEJONG: '세종',
-  GANGWON: '춘천',
-  CHUNGBUK: '청주',
-  CHUNGNAM: '천안',
-  JEONBUK: '전주',
-  JEONNAM: '여수',
-  GYEONGBUK: '경주',
-  GYEONGNAM: '진주',
   JEJU: '제주',
-  CHUNGCHEONG: '청주',
-  JEOLLA: '전주',
-  GYEONGSANG: '경주',
 };
+
+const METRO_ADDRESS_TOKENS: Array<{ token: string; city: string }> = [
+  { token: '서울특별시', city: '서울' },
+  { token: '부산광역시', city: '부산' },
+  { token: '대구광역시', city: '대구' },
+  { token: '인천광역시', city: '인천' },
+  { token: '광주광역시', city: '광주광역시' },
+  { token: '대전광역시', city: '대전' },
+  { token: '울산광역시', city: '울산' },
+  { token: '세종특별자치시', city: '세종' },
+  { token: '제주특별자치도', city: '제주' },
+];
+
+const PROVINCE_STEMS = new Set(['경기', '강원', '충청', '전라', '경상', '충북', '충남', '전북', '전남', '경북', '경남']);
+
+/** 축제 GPS 기준으로 같은 시·군 동선으로 볼 최대 거리(km). */
+export const LOCAL_COURSE_MAX_KM = 24;
 
 export const COUPON_COMING_SOON = 'On&On+ 쿠폰은 추후 준비 중입니다.';
 
@@ -348,16 +490,71 @@ function resolveHomonymCity(text: string, ctx: CityContext = {}) {
   return '';
 }
 
-export function resolveCourseCity(input: CityContext) {
-  const hay = `${input.city || ''} ${input.address || ''} ${input.title || ''}`;
-  const homonym = resolveHomonymCity(hay, input);
-  if (homonym && BY_CITY[homonym]) return homonym;
-  const fromLandmarks = cityKey(hay, input);
-  if (fromLandmarks) return fromLandmarks;
-  const alias = CITY_ALIASES.find((item) => hay.includes(item.token));
-  if (alias) return alias.city;
-  if (input.metro && REGION_DEFAULT_CITY[input.metro]) return REGION_DEFAULT_CITY[input.metro];
-  return '수원';
+function hasGps(ctx: CityContext = {}) {
+  const lat = Number(ctx.latitude);
+  const lng = Number(ctx.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+}
+
+export function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+const SYNTH_OFFSET: Record<LandmarkKind, [number, number]> = {
+  history: [0.011, -0.007],
+  market: [0.003, 0.009],
+  camp: [-0.010, 0.005],
+};
+
+export function syntheticLandmark(kind: LandmarkKind, label: string, lat: number, lng: number): Landmark {
+  const city = String(label || '이 지역').trim() || '이 지역';
+  const [dLat, dLng] = SYNTH_OFFSET[kind];
+  const names: Record<LandmarkKind, string> = {
+    history: `${city} 역사·문화 체험`,
+    market: `${city} 전통시장`,
+    camp: `${city} 캠핑장·숙박`,
+  };
+  const hints: Record<LandmarkKind, string> = {
+    history: `${city}의 대표 역사·문화 장소를 둘러본 뒤 축제장으로 이어집니다.`,
+    market: `${city} 전통시장과 먹거리 골목을 즐깁니다. On&On+ 쿠폰은 추후 준비 중입니다.`,
+    camp: `${city} 인근 캠핑장 또는 숙박 시설에서 하루를 머뭅니다.`,
+  };
+  return { name: names[kind], lat: lat + dLat, lng: lng + dLng, hint: hints[kind] };
+}
+
+function extractMunicipality(text: string, ctx: CityContext = {}) {
+  const homonym = resolveHomonymCity(text, ctx);
+  if (homonym) return homonym;
+  const metroHit = METRO_ADDRESS_TOKENS.find((item) => text.includes(item.token));
+  if (metroHit) {
+    if (metroHit.city === '광주광역시' && /경기도.{0,10}광주|경기광주/.test(text) && !/광주광역시/.test(text)) {
+      return '광주시';
+    }
+    return metroHit.city;
+  }
+  if (/(?:^|[^가-힣])서울(?:시|특별시|[^가-힣]|$)/.test(text)) return '서울';
+
+  const re = /([가-힣]{2,5})(시|군)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    const stem = match[1];
+    const after = text[match.index + match[0].length] || '';
+    if (after === '장') continue;
+    if (PROVINCE_STEMS.has(stem)) continue;
+    if (stem === '세종' && /세종대왕|영릉/.test(text) && !/세종특별|세종시/.test(text)) continue;
+    if (stem === '광주') {
+      return resolveHomonymCity(text, ctx) || (ctx.metro === 'GYEONGGI' ? '광주시' : '광주광역시');
+    }
+    if (stem === '고성') return resolveHomonymCity(text, ctx) || stem;
+    return stem;
+  }
+  return '';
 }
 
 function cityKey(raw?: string, ctx: CityContext = {}) {
@@ -370,9 +567,46 @@ function cityKey(raw?: string, ctx: CityContext = {}) {
     const longerHit = keys.some((other) => other !== key && other.includes(key) && text.includes(other));
     if (longerHit) return false;
     if (key === '양주' && text.includes('남양주') && !text.replace(/남양주/g, '').includes('양주')) return false;
+    if (key === '세종' && /세종대왕|영릉/.test(text) && !/세종특별자치시|세종시/.test(text)) return false;
+    if (key === '여수' && text.includes('여주') && !text.replace(/여주/g, '').includes('여수')) return false;
+    if (key === '화성' && /수원화성|화성행궁/.test(text) && !/화성시/.test(text)) return false;
+    if (key === '인천' && /강화군|강화도/.test(text) && !/인천광역시|중구|미추홀|연수|남동|부평|계양|서구/.test(text)) {
+      return false;
+    }
     return true;
   });
   return hit ?? '';
+}
+
+export function resolveCourseCity(input: CityContext) {
+  const hay = `${input.city || ''} ${input.address || ''} ${input.title || ''}`;
+  const extracted = extractMunicipality(hay, input);
+  if (extracted) return extracted;
+  const fromLandmarks = cityKey(hay, input);
+  if (fromLandmarks) return fromLandmarks;
+  const alias = CITY_ALIASES.find((item) => hay.includes(item.token));
+  if (alias) return alias.city;
+  if (input.metro && SINGLE_CITY_METRO_DEFAULT[input.metro]) return SINGLE_CITY_METRO_DEFAULT[input.metro];
+  return '';
+}
+
+function keepInMunicipality(landmark: Landmark, kind: LandmarkKind, city: string, extra: CityContext = {}): Landmark {
+  const label = city || '이 지역';
+  const foreignDefault = Boolean(city) && city !== '수원' && /수원화성|화성행궁|영동시장|광교호수/.test(landmark.name);
+  if (!hasGps(extra)) {
+    if (!foreignDefault) return landmark;
+    return {
+      name: kind === 'history' ? `${label} 역사·문화 체험` : kind === 'market' ? `${label} 전통시장` : `${label} 캠핑장·숙박`,
+      lat: 0,
+      lng: 0,
+      hint: `${label} 안에서 코스를 이습니다.`,
+    };
+  }
+  const originLat = Number(extra.latitude);
+  const originLng = Number(extra.longitude);
+  const tooFar = kmBetween(originLat, originLng, landmark.lat, landmark.lng) > LOCAL_COURSE_MAX_KM;
+  if (foreignDefault || tooFar) return syntheticLandmark(kind, label, originLat, originLng);
+  return landmark;
 }
 
 export function landmarkFor(
@@ -382,7 +616,22 @@ export function landmarkFor(
   title?: string,
   extra?: CityContext,
 ): Landmark {
-  if (city && BY_CITY[city]?.[kind]) return BY_CITY[city][kind] as Landmark;
-  const key = cityKey(`${city || ''} ${address || ''} ${title || ''}`, extra);
-  return BY_CITY[key]?.[kind] ?? DEFAULTS[kind];
+  const ctx = extra || {};
+  const label = city || extractMunicipality(`${city || ''} ${address || ''} ${title || ''}`, ctx) || '이 지역';
+  if (city && BY_CITY[city]?.[kind]) {
+    return keepInMunicipality(BY_CITY[city][kind] as Landmark, kind, label, ctx);
+  }
+  const key = cityKey(`${city || ''} ${address || ''} ${title || ''}`, ctx);
+  const catalog = BY_CITY[key]?.[kind];
+  if (catalog) return keepInMunicipality(catalog, kind, label || key, ctx);
+  if (hasGps(ctx)) return syntheticLandmark(kind, label, Number(ctx.latitude), Number(ctx.longitude));
+  if (label === '수원' || key === '수원' || !label || label === '이 지역') {
+    return DEFAULTS[kind];
+  }
+  return {
+    name: kind === 'history' ? `${label} 역사·문화 체험` : kind === 'market' ? `${label} 전통시장` : `${label} 캠핑장·숙박`,
+    lat: 0,
+    lng: 0,
+    hint: `${label} 안에서 코스를 이습니다.`,
+  };
 }

@@ -76,7 +76,7 @@ export function buildFestivalCourse(input: {
   category?: string;
 }): FestivalCourse {
   const title = String(input.title || '').trim();
-  const city = resolveCourseCity(input);
+  const city = resolveCourseCity(input) || '이 지역';
   const placeKind = inferCoursePlaceKind({
     contentTypeId: input.contentTypeId,
     kind: input.kind,

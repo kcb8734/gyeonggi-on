@@ -75,7 +75,7 @@ export default function FestivalDetailPopup({
               <View style={styles.row}>
                 <Text style={styles.dday}>{ddayLabel(festival.start_date, festival.end_date)}</Text>
                 {festival.category ? <Text style={styles.cat}>{festival.category}</Text> : null}
-                <Text style={styles.tourChip}>TourAPI 4.0 자동수집</Text>
+                <Text style={styles.couponChip}>쿠폰 발행</Text>
               </View>
               <Text style={styles.title}>{festival.title}</Text>
               <Text style={styles.meta}>{formatRange(festival.start_date, festival.end_date)}</Text>
@@ -184,9 +184,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  tourChip: {
-    backgroundColor: '#DBEAFE',
-    color: '#1D4ED8',
+  couponChip: {
+    backgroundColor: '#FFEDD5',
+    color: '#C2410C',
     fontSize: 11,
     fontWeight: '800',
     paddingHorizontal: 8,
