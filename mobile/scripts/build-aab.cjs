@@ -143,6 +143,15 @@ function ensureAndroidSdk() {
   return home;
 }
 
+function ensureSplashColor() {
+  const file = path.join(root, 'android', 'app', 'src', 'main', 'res', 'values', 'colors.xml');
+  if (!fs.existsSync(file)) return;
+  let xml = fs.readFileSync(file, 'utf8');
+  if (xml.includes('splashscreen_background')) return;
+  xml = xml.replace('</resources>', '  <color name="splashscreen_background">#111827</color>\n</resources>');
+  fs.writeFileSync(file, xml);
+}
+
 function writeLocalProperties(sdk) {
   const file = path.join(root, 'android', 'local.properties');
   fs.writeFileSync(file, `sdk.dir=${sdk.replace(/\\/g, '\\\\')}\n`);
@@ -153,36 +162,24 @@ function applyReleaseSigning(signing) {
   if (!fs.existsSync(gradle)) fail('android/app/build.gradle 이 없습니다. prebuild가 실패했을 수 있습니다.');
   let source = fs.readFileSync(gradle, 'utf8');
   const storeFile = signing.storeFile.replace(/\\/g, '/');
-  const block = `
-def onandonKeystorePropertiesFile = rootProject.file("app/keystore.properties")
-def onandonKeystoreProperties = new Properties()
-if (onandonKeystorePropertiesFile.exists()) {
-    onandonKeystorePropertiesFile.withInputStream { onandonKeystoreProperties.load(it) }
-}
-`;
-  if (!source.includes('onandonKeystoreProperties')) {
-    source = source.replace(/android\s*\{/, `${block}\nandroid {`);
-  }
-  if (!source.includes('signingConfig signingConfigs.release')) {
-    source = source.replace(
-      /buildTypes\s*\{[\s\S]*?release\s*\{/,
-      (match) => `${match}\n            signingConfig signingConfigs.release`,
-    );
-  }
-  if (!source.includes('signingConfigs')) {
-    source = source.replace(
-      /android\s*\{/,
-      `android {
-    signingConfigs {
-        release {
-            storeFile file(onandonKeystoreProperties['storeFile'] ?: "${storeFile}")
-            storePassword onandonKeystoreProperties['storePassword'] ?: "${signing.storePassword}"
-            keyAlias onandonKeystoreProperties['keyAlias'] ?: "${signing.keyAlias}"
-            keyPassword onandonKeystoreProperties['keyPassword'] ?: "${signing.keyPassword}"
+  const releaseBlock = `        release {
+            storeFile file("${storeFile}")
+            storePassword "${signing.storePassword}"
+            keyAlias "${signing.keyAlias}"
+            keyPassword "${signing.keyPassword}"
         }
-    }`,
+`;
+  if (!source.includes('keyAlias "' + signing.keyAlias + '"') && !source.includes("props['keyAlias']")) {
+    source = source.replace(
+      /signingConfigs \{\s*debug \{/,
+      `signingConfigs {\n${releaseBlock}        debug {`,
     );
   }
+  source = source.replace(
+    /(buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?)signingConfig signingConfigs\.debug/,
+    '$1signingConfig signingConfigs.release',
+  );
+  source = source.replace(/signingConfig signingConfigs\.release\s*\n\s*\/\/ Caution[\s\S]*?signingConfig signingConfigs\.debug/, 'signingConfig signingConfigs.release');
   fs.writeFileSync(gradle, source);
   fs.writeFileSync(path.join(root, 'android', 'app', 'keystore.properties'), [
     `storeFile=${storeFile}`,
@@ -200,13 +197,15 @@ function main() {
   log(`[build:aab] ANDROID_HOME=${sdk}`);
   log(`[build:aab] keystore=${signing.storeFile}`);
 
-  run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '--clean'], root, {
+  run('npx', ['expo', 'prebuild', '--platform', 'android', '--clean'], root, {
     ANDROID_HOME: sdk,
     ANDROID_SDK_ROOT: sdk,
     EXPO_NO_TELEMETRY: '1',
+    CI: '1',
   });
   writeLocalProperties(sdk);
   applyReleaseSigning(signing);
+  ensureSplashColor();
 
   const gradlew = path.join(root, 'android', 'gradlew');
   fs.chmodSync(gradlew, 0o755);

@@ -1,8 +1,6 @@
 const { withAppBuildGradle } = require('@expo/config-plugins');
 
-const SIGNING_SNIPPET = `
-    signingConfigs {
-        release {
+const RELEASE_SIGNING = `        release {
             def propsFile = rootProject.file("app/keystore.properties")
             def props = new Properties()
             if (propsFile.exists()) {
@@ -13,22 +11,22 @@ const SIGNING_SNIPPET = `
                 keyPassword props['keyPassword']
             }
         }
-    }
 `;
 
 module.exports = function withAndroidReleaseSigning(config) {
   return withAppBuildGradle(config, (mod) => {
     if (mod.modResults.language !== 'groovy') return mod;
     let contents = mod.modResults.contents;
-    if (!contents.includes('signingConfigs')) {
-      contents = contents.replace(/android\s*\{/, (match) => `${match}\n${SIGNING_SNIPPET}`);
-    }
-    if (!contents.includes('signingConfig signingConfigs.release')) {
+    if (!contents.includes('propsFile = rootProject.file("app/keystore.properties")')) {
       contents = contents.replace(
-        /release\s*\{/,
-        (match) => `${match}\n            signingConfig signingConfigs.release`,
+        /signingConfigs \{\s*debug \{/,
+        `signingConfigs {\n${RELEASE_SIGNING}        debug {`,
       );
     }
+    contents = contents.replace(
+      /(buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?)signingConfig signingConfigs\.debug/,
+      '$1signingConfig signingConfigs.release',
+    );
     mod.modResults.contents = contents;
     return mod;
   });
