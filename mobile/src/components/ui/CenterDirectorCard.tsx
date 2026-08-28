@@ -34,7 +34,16 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
         <Text style={styles.sideLabel}>전면 · 9.2cm × 5.2cm</Text>
         <View style={[styles.card, { width: cardW, height: cardH, padding: pad }]}>
           <View style={styles.topRow}>
-            <OnAndOnPlusLogo height={logoH} />
+            <View style={styles.copyCol}>
+              <OnAndOnPlusLogo height={logoH} />
+              <View style={[styles.who, { marginTop: Math.round(cardH * 0.04) }]}>
+                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.118) }]}>{model.name}</Text>
+                <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.09) }]}>|</Text>
+                <Text style={[styles.title, { fontSize: Math.round(cardH * 0.072) }]} numberOfLines={1}>{model.title}</Text>
+              </View>
+              <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.088), marginTop: 4 }]}>온앤온+</Text>
+              <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.07) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+            </View>
             {model.photoUrl ? (
               <Image source={{ uri: model.photoUrl }} style={[styles.photo, { width: photoW, height: photoH }]} />
             ) : (
@@ -43,13 +52,6 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
               </View>
             )}
           </View>
-          <View style={[styles.who, { marginTop: Math.round(cardH * 0.055) }]}>
-            <Text style={[styles.name, { fontSize: Math.round(cardH * 0.118) }]}>{model.name}</Text>
-            <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.09) }]}>|</Text>
-            <Text style={[styles.title, { fontSize: Math.round(cardH * 0.072) }]} numberOfLines={1}>{model.title}</Text>
-          </View>
-          <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.088), marginTop: 4 }]}>온앤온+</Text>
-          <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.07) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
           <View style={styles.rule} />
           <View style={styles.grid}>
             <View style={styles.col}>
@@ -159,7 +161,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     overflow: 'hidden',
   },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  copyCol: { flex: 1, minWidth: 0, paddingRight: 6 },
   photo: {
     borderRadius: 14,
     backgroundColor: '#D1D5DB',

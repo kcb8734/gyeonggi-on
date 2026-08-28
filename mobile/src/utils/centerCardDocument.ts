@@ -84,10 +84,11 @@ export function buildCenterCardHtml(model: CenterCardModel) {
       position: relative; overflow: hidden; page-break-after: always;
     }
     .brand-logo { height: 6.4mm; width: auto; display: block; max-width: 34mm; object-fit: contain; }
-    .front-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 4mm; }
+    .front-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 3mm; }
+    .front-copy { flex: 1; min-width: 0; }
     .photo { width: 20mm; height: 25mm; object-fit: cover; border-radius: 3.6mm; background: #d1d5db; flex-shrink: 0; }
     .ph { display: flex; align-items: center; justify-content: center; font-size: 16pt; font-weight: 800; color: #6b7280; }
-    .who { margin-top: 3mm; display: flex; align-items: baseline; gap: 2mm; flex-wrap: nowrap; }
+    .who { margin-top: 2.4mm; display: flex; align-items: baseline; gap: 2mm; flex-wrap: nowrap; }
     .name { font-size: 13.5pt; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; }
     .title { font-size: 8.4pt; color: #6b7280; font-weight: 500; }
@@ -132,16 +133,18 @@ export function buildCenterCardHtml(model: CenterCardModel) {
   <div class="wrap">
   <section class="page">
     <div class="front-top">
-      ${logoHtml()}
+      <div class="front-copy">
+        ${logoHtml()}
+        <div class="who">
+          <span class="name">${escapeHtml(model.name)}</span>
+          <span class="bar">|</span>
+          <span class="title">${escapeHtml(model.title)}</span>
+        </div>
+        <div class="brand">온앤온+</div>
+        <div class="center">${escapeHtml(model.dedicatedCenter)}</div>
+      </div>
       ${photo}
     </div>
-    <div class="who">
-      <span class="name">${escapeHtml(model.name)}</span>
-      <span class="bar">|</span>
-      <span class="title">${escapeHtml(model.title)}</span>
-    </div>
-    <div class="brand">온앤온+</div>
-    <div class="center">${escapeHtml(model.dedicatedCenter)}</div>
     <hr class="rule" />
     <div class="grid">
       ${kv('M.', model.phone)}
