@@ -167,6 +167,8 @@ function startsOnPrivacy() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   return window.location.pathname.replace(/\/+$/, '') === '/privacy';
 }
+
+function startsOnAdmin() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   return window.location.pathname.replace(/\/+$/, '') === '/admin';
 }
