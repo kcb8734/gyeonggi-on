@@ -36,16 +36,16 @@ function applySdk36ToGradlePropertiesText(text) {
 function applySdk36ToProjectBuildGradle(contents) {
   return contents
     .replace(
-      /compileSdkVersion\s*=\s*Integer\.parseInt\([^)]+\)/,
-      `compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '${COMPILE_SDK}')`
+      /^([ \t]*)compileSdkVersion\s*=.*$/m,
+      `$1compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '${COMPILE_SDK}')`
     )
     .replace(
-      /targetSdkVersion\s*=\s*Integer\.parseInt\([^)]+\)/,
-      `targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '${TARGET_SDK}')`
+      /^([ \t]*)targetSdkVersion\s*=.*$/m,
+      `$1targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '${TARGET_SDK}')`
     )
     .replace(
-      /buildToolsVersion\s*=\s*findProperty\([^)]+\)\s*\?:?\s*'[^']*'/,
-      `buildToolsVersion = findProperty('android.buildToolsVersion') ?: '${BUILD_TOOLS}'`
+      /^([ \t]*)buildToolsVersion\s*=.*$/m,
+      `$1buildToolsVersion = findProperty('android.buildToolsVersion') ?: '${BUILD_TOOLS}'`
     );
 }
 

@@ -33,13 +33,24 @@ test('gradle.properties fallbacks become 36', () => {
 
 test('project build.gradle default SDK versions become 36', () => {
   const next = plugin.applySdk36ToProjectBuildGradle(`
-    compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '34')
-    targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
-    buildToolsVersion = findProperty('android.buildToolsVersion') ?: '34.0.0'
+        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '34')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
+        buildToolsVersion = findProperty('android.buildToolsVersion') ?: '34.0.0'
   `);
-  assert.match(next, /compileSdkVersion'\) \?: '36'/);
-  assert.match(next, /targetSdkVersion'\) \?: '36'/);
-  assert.match(next, /buildToolsVersion'\) \?: '36\.0\.0'/);
+  assert.match(next, /compileSdkVersion = Integer\.parseInt\(findProperty\('android\.compileSdkVersion'\) \?: '36'\)\s*$/m);
+  assert.match(next, /targetSdkVersion = Integer\.parseInt\(findProperty\('android\.targetSdkVersion'\) \?: '36'\)\s*$/m);
+  assert.match(next, /buildToolsVersion = findProperty\('android\.buildToolsVersion'\) \?: '36\.0\.0'\s*$/m);
+  assert.doesNotMatch(next, /\?: '34'/);
+});
+
+test('project build.gradle leftover nested parseInt is rewritten cleanly', () => {
+  const next = plugin.applySdk36ToProjectBuildGradle(
+    "        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '36') ?: '34')\n",
+  );
+  assert.equal(
+    next,
+    "        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '36')\n",
+  );
 });
 
 test('app build.gradle literal SDK versions become 36', () => {

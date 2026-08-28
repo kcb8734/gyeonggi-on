@@ -198,6 +198,22 @@ function writeLocalProperties(sdk) {
   fs.writeFileSync(file, `sdk.dir=${sdk.replace(/\\/g, '\\\\')}\n`);
 }
 
+function restoreExpoStartScripts() {
+  const file = path.join(root, 'package.json');
+  if (!fs.existsSync(file)) return;
+  const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+  let changed = false;
+  if (pkg.scripts?.android === 'expo run:android') {
+    pkg.scripts.android = 'expo start --android';
+    changed = true;
+  }
+  if (pkg.scripts?.ios === 'expo run:ios') {
+    pkg.scripts.ios = 'expo start --ios';
+    changed = true;
+  }
+  if (changed) fs.writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
 function applyReleaseSigning(signing) {
   const gradle = path.join(root, 'android', 'app', 'build.gradle');
   if (!fs.existsSync(gradle)) fail('android/app/build.gradle 이 없습니다. prebuild가 실패했을 수 있습니다.');
@@ -248,6 +264,7 @@ function main() {
   applyReleaseSigning(signing);
   ensureSplashColor();
   ensureSdk36Gradle();
+  restoreExpoStartScripts();
 
   const gradlew = path.join(root, 'android', 'gradlew');
   fs.chmodSync(gradlew, 0o755);
