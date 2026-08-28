@@ -21,10 +21,12 @@ import {
   getLocalities,
   localityMatches,
 } from '../constants/regions';
-import { regionById, withFestivalImage } from '../constants/regionTour';
+import { PREVIEW_HOME } from '../api/previewHome';
+import { REGION_FESTIVAL_FALLBACKS, regionById, withFestivalImage } from '../constants/regionTour';
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalHasSampleCoupon } from '../utils/festivalCoupon';
+import { mergeFestivalSources } from '../utils/festivalFeed';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -94,12 +96,15 @@ export default function HomeScreen() {
         total_discount_rate: item.total_discount_rate
           ?? ((item.merchant_discount_rate ?? 0) + (item.gov_matching_rate ?? 0)),
       }))]);
-      const incoming = listed.length
-        ? listed
-        : (tourFestivals.length ? tourFestivals.map(homeFestivalFromTour) : feed.festivals);
+      const incoming = mergeFestivalSources(
+        listed,
+        tourFestivals.map(homeFestivalFromTour),
+        feed.festivals,
+        metro === 'GYEONGGI' ? PREVIEW_HOME.festivals : (REGION_FESTIVAL_FALLBACKS[metro] ?? []),
+      );
       const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
       setFestivals([...extras, ...incoming].map((item) => withFestivalImage(item, metro)));
-      if (!feed.available) setToast(feed.message ?? COMING_SOON_MESSAGE);
+      if (!feed.available && incoming.length === 0) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
   }, [metro, selectedPreset.code, app.localPromotions, app.localFestivals]);
 

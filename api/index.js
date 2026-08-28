@@ -45,7 +45,7 @@ import {
   toHomeFestival,
   tourServiceKey,
 } from './tourLive.js';
-import { persistTourFestivals } from './festivalDbSync.js';
+import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -288,7 +288,15 @@ async function listFestivalsLive(req, res) {
       year: query.year,
       category: query.category,
     });
-    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    let source = result.source;
+    if (!festivals.length) {
+      const persisted = await listPersistedFestivals(result.metro);
+      if (persisted.length) {
+        festivals = persisted;
+        source = 'db';
+      }
+    }
     send(res, 200, {
       success: true,
       metro: result.metro,
@@ -297,13 +305,14 @@ async function listFestivalsLive(req, res) {
       moiCode: MOI_CODE_BY_METRO[result.metro] || result.lDongRegnCd,
       regionLabel: result.regionLabel,
       count: festivals.length,
-      source: result.source,
+      source: source,
       festivals: festivals,
       data: festivals,
       message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
     }, headers);
   } catch (err) {
     console.error('[api] searchFestival2', err && err.message ? err.message : err);
+    const persisted = await listPersistedFestivals(metroKey).catch(() => []);
     send(res, 200, {
       success: true,
       metro: metroKey,
@@ -311,11 +320,11 @@ async function listFestivalsLive(req, res) {
       areaCode: METRO_AREA[metroKey] || '31',
       moiCode: MOI_CODE_BY_METRO[metroKey] || '41',
       regionLabel: REGION_LABEL[metroKey] || '경기온',
-      count: 0,
-      source: 'none',
-      festivals: [],
-      data: [],
-      message: 'TourAPI 목록이 비어 있습니다.',
+      count: persisted.length,
+      source: persisted.length ? 'db' : 'none',
+      festivals: persisted,
+      data: persisted,
+      message: persisted.length ? '저장된 TourAPI 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
     }, headers);
   }
 }
@@ -478,7 +487,15 @@ async function getHomeFeed(req, res) {
       year: query.year || now.getFullYear(),
       category: query.category,
     });
-    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    let source = result.source;
+    if (!festivals.length) {
+      const persisted = await listPersistedFestivals(metro);
+      if (persisted.length) {
+        festivals = persisted;
+        source = 'db';
+      }
+    }
     send(res, 200, {
       success: true,
       available: festivals.length > 0,
@@ -488,20 +505,22 @@ async function getHomeFeed(req, res) {
       festivals: festivals.map((item) => Object.assign({}, item, { hasCoupon: Boolean(item && item.hasCoupon) })),
       promotions: [],
       popular: festivals.map((item) => Object.assign({}, item, { hasCoupon: Boolean(item && item.hasCoupon) })),
-      source: result.source,
+      source: source,
     }, headers);
   } catch (err) {
     console.error('[api] /api/home', err && err.message ? err.message : err);
+    const persisted = await listPersistedFestivals(metro).catch(() => []);
     send(res, 200, {
       success: true,
-      available: false,
+      available: persisted.length > 0,
       metro: metro,
       regionalZone: metro,
       regions: metroRegions(),
-      festivals: [],
+      festivals: persisted,
       promotions: [],
-      popular: [],
-      message: 'TourAPI 목록이 비어 있습니다.',
+      popular: persisted,
+      source: persisted.length ? 'db' : 'none',
+      message: persisted.length ? '저장된 TourAPI 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
     }, headers);
   }
 }

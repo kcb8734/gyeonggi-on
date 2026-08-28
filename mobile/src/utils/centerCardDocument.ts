@@ -9,8 +9,21 @@ import {
 import { ONANDON_LOGO_DATA_URI, ONANDON_LOGO_RATIO } from '../assets/onandonLogoData';
 import { dataUrlToBytes } from './pdfJpeg';
 
-export const CARD_MM = { width: 92, height: 52, photoW: 20, photoH: 25, pad: 6.4, logoH: 6.4 };
-const PRINT_DPI = 400;
+export const CARD_MM = {
+  width: 92,
+  height: 52,
+  photoW: 20,
+  photoH: 25,
+  pad: 6.4,
+  logoH: 6.4,
+  ruleFromBottom: 7.1,
+  brandAboveRule: 3,
+  contactBelowRule: 2,
+  contactFont: 2.65,
+};
+export const CARD_PRINT_CM = { width: 9.2, height: 5.2 };
+export const CARD_COLORS = { title: '#585655', brand: '#585656', contact: '#111111' };
+export const PRINT_DPI = 400;
 const PREVIEW_DPI = 96;
 
 export interface CenterCardModel {
@@ -85,22 +98,29 @@ function cardCss(dpi: number) {
     .who { margin-top: ${u(5.2)}; display: flex; align-items: baseline; gap: ${u(1.8)}; flex-wrap: nowrap; }
     .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; font-size: ${u(3.2)}; }
-    .title { font-size: ${u(2.55)}; color: #6b7280; font-weight: 500; white-space: nowrap; overflow: hidden; }
-    .brand-block { margin-top: auto; padding-top: ${u(2.2)}; padding-bottom: ${u(0.35)}; }
-    .brand { font-size: ${u(3.2)}; font-weight: 800; color: #111; line-height: 1.15; }
-    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; }
-    .rule { flex-shrink: 0; margin: ${u(0.45)} 0 ${u(0.7)}; border: 0; border-top: ${u(0.25)} solid #d1d5db; }
+    .title { font-size: ${u(2.55)}; color: ${CARD_COLORS.title}; font-weight: 500; white-space: nowrap; overflow: hidden; }
+    .brand-block { margin-top: auto; padding-top: ${u(2.2)}; padding-bottom: ${u(CARD_MM.brandAboveRule)}; }
+    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; }
+    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; }
+    .rule {
+      position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)};
+      bottom: ${u(CARD_MM.ruleFromBottom)}; margin: 0; border: 0;
+      border-top: ${u(0.25)} solid #d1d5db;
+    }
     .grid {
       flex-shrink: 0;
+      height: ${u(CARD_MM.ruleFromBottom)};
       display: grid;
       grid-template-columns: 1fr 1fr;
       column-gap: ${u(2.2)};
-      row-gap: ${u(0.45)};
-      font-size: ${u(2.3)};
-      color: #111;
-      line-height: 1.2;
+      row-gap: ${u(0.35)};
+      padding-top: ${u(CARD_MM.contactBelowRule)};
+      font-size: ${u(CARD_MM.contactFont)};
+      color: ${CARD_COLORS.contact};
+      line-height: 1.15;
     }
     .kv { display: grid; grid-template-columns: ${u(4.8)} 1fr; column-gap: ${u(0.9)}; align-items: center; min-width: 0; }
+    .kv.addr { grid-column: 1 / -1; }
     .k { font-weight: 800; white-space: nowrap; }
     .v { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; word-break: keep-all; overflow-wrap: normal; }
     .back { display: flex; height: 100%; gap: ${u(3)}; align-items: stretch; }
@@ -116,8 +136,9 @@ function logoHtml() {
   return `<img class="brand-logo" src="${ONANDON_LOGO_DATA_URI}" alt="on&amp;on+" />`;
 }
 
-function kv(label: string, value: string) {
-  return `<div class="kv"><span class="k">${escapeHtml(label)}</span><span class="v">${escapeHtml(value)}</span></div>`;
+function kv(label: string, value: string, extraClass = '') {
+  const cls = extraClass ? `kv ${extraClass}` : 'kv';
+  return `<div class="${cls}"><span class="k">${escapeHtml(label)}</span><span class="v">${escapeHtml(value)}</span></div>`;
 }
 
 function photoHtml(model: CenterCardModel) {
@@ -151,8 +172,7 @@ function frontMarkup(model: CenterCardModel) {
     <div class="grid">
       ${kv('M.', model.phone)}
       ${kv('E.', model.email)}
-      ${kv('A.', model.address)}
-      ${kv('W.', model.website)}
+      ${kv('A.', model.address, 'addr')}
     </div>
   </div>`;
 }
@@ -236,13 +256,40 @@ function jpegFromCanvas(canvas: HTMLCanvasElement) {
   }
 }
 
+export function setJpegDpi(bytes: Uint8Array, dpi = PRINT_DPI): Uint8Array {
+  const out = bytes.slice();
+  for (let i = 0; i < out.length - 12; i += 1) {
+    if (out[i] === 0x4A && out[i + 1] === 0x46 && out[i + 2] === 0x49 && out[i + 3] === 0x46 && out[i + 4] === 0) {
+      out[i + 7] = 1;
+      out[i + 8] = (dpi >> 8) & 0xff;
+      out[i + 9] = dpi & 0xff;
+      out[i + 10] = (dpi >> 8) & 0xff;
+      out[i + 11] = dpi & 0xff;
+      break;
+    }
+  }
+  return out;
+}
+
+function bytesToDataUrl(bytes: Uint8Array, mime: string) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return `data:${mime};base64,${btoa(binary)}`;
+}
+
 function downloadDataUrl(filename: string, dataUrl: string) {
   if (typeof document === 'undefined' || !dataUrl) return false;
+  const stamped = dataUrl.startsWith('data:image/jpeg')
+    ? bytesToDataUrl(setJpegDpi(dataUrlToBytes(dataUrl), PRINT_DPI), 'image/jpeg')
+    : dataUrl;
   try {
-    downloadBlob(filename, dataUrlToBytes(dataUrl), 'image/jpeg');
+    downloadBlob(filename, dataUrlToBytes(stamped), 'image/jpeg');
   } catch {
     const link = document.createElement('a');
-    link.href = dataUrl;
+    link.href = stamped;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
@@ -406,7 +453,7 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     }
     ctx.restore();
 
-    const ruleY = H - pad - mm(7.1);
+    const ruleY = H - pad - mm(CARD_MM.ruleFromBottom);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#111111';
     ctx.font = font('800', 3.53);
@@ -416,15 +463,15 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     ctx.fillStyle = '#c5c5c5';
     ctx.font = font('400', 3.2);
     ctx.fillText('|', pad + nameW + mm(1.6), nameY);
-    ctx.fillStyle = '#6b7280';
+    ctx.fillStyle = CARD_COLORS.title;
     ctx.font = font('500', 2.55);
     ctx.fillText(model.title, pad + nameW + mm(4.2), nameY);
 
-    ctx.fillStyle = '#111111';
+    ctx.fillStyle = CARD_COLORS.brand;
     ctx.font = font('800', 3.2);
-    ctx.fillText('온앤온+', pad, ruleY - mm(3.5));
+    ctx.fillText('온앤온+', pad, ruleY - mm(CARD_MM.brandAboveRule + 3.2));
     ctx.font = 'italic 700 ' + mm(2.75) + 'px "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
-    ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(0.7));
+    ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(CARD_MM.brandAboveRule));
 
     ctx.strokeStyle = '#d1d5db';
     ctx.lineWidth = Math.max(1, mm(0.25));
@@ -434,23 +481,22 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     ctx.stroke();
 
     const col = (W - pad * 2 - mm(2.2)) / 2;
-    const row1 = ruleY + mm(2.15);
-    const row2 = row1 + mm(2.75);
-    const rows: Array<[string, string, number, number]> = [
-      ['M.', model.phone, pad, row1],
-      ['E.', model.email, pad + col + mm(2.2), row1],
-      ['A.', model.address, pad, row2],
-      ['W.', model.website, pad + col + mm(2.2), row2],
+    const row1 = ruleY + mm(CARD_MM.contactBelowRule + CARD_MM.contactFont);
+    const row2 = row1 + mm(CARD_MM.contactFont + 0.45);
+    const rows: Array<[string, string, number, number, number]> = [
+      ['M.', model.phone, pad, row1, col],
+      ['E.', model.email, pad + col + mm(2.2), row1, col],
+      ['A.', model.address, pad, row2, W - pad * 2],
     ];
     const labelW = mm(4.8);
-    rows.forEach(([label, value, x, rowY]) => {
-      ctx.fillStyle = '#111111';
-      ctx.font = font('800', 2.3);
+    rows.forEach(([label, value, x, rowY, maxW]) => {
+      ctx.fillStyle = CARD_COLORS.contact;
+      ctx.font = font('800', CARD_MM.contactFont);
       ctx.fillText(label, x, rowY);
-      ctx.font = font('600', 2.3);
+      ctx.font = font('600', CARD_MM.contactFont);
       ctx.save();
       ctx.beginPath();
-      ctx.rect(x + labelW, rowY - mm(2.1), col - labelW - mm(0.4), mm(3));
+      ctx.rect(x + labelW, rowY - mm(2.3), maxW - labelW - mm(0.4), mm(3.2));
       ctx.clip();
       ctx.fillText(value, x + labelW, rowY);
       ctx.restore();
@@ -489,7 +535,7 @@ async function cardAssets(model: CenterCardModel) {
 
 export async function downloadCenterCardFace(model: CenterCardModel, side: 'front' | 'back') {
   if (typeof document === 'undefined') return false;
-  const stem = `온앤온플러스_명함_${model.name}_${model.localityLabel}`;
+  const stem = `온앤온플러스_명함_${model.name}_${model.localityLabel}_92x52mm`;
   const label = side === 'front' ? '전면' : '후면';
   const { width, height } = cardPixelSize(PRINT_DPI);
   const assets = await cardAssets(model);

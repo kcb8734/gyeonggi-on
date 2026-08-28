@@ -159,3 +159,49 @@ export async function persistTourFestivals(items) {
     client.release();
   }
 }
+
+export function rowToHomeFestival(row, metro = 'GYEONGGI') {
+  const contentId = String(row && (row.tour_content_id || row.contentId || row.id) || '');
+  return {
+    id: contentId ? 'tour-' + contentId : String(row && row.title || ''),
+    contentId: contentId || String(row && row.title || ''),
+    contentTypeId: '15',
+    title: row && row.title,
+    location_name: row && row.location_name,
+    latitude: Number(row && row.latitude) || 0,
+    longitude: Number(row && row.longitude) || 0,
+    start_date: row && row.start_date,
+    end_date: row && row.end_date,
+    municipality_name: (row && row.municipality_name) || null,
+    description: (row && row.description) || null,
+    category: (row && row.category) || '문화/예술',
+    image_url: (row && row.image_url) || null,
+    is_trending: Boolean(row && row.is_trending),
+    source: (row && row.source) || 'tour',
+    tel: (row && row.tel) || null,
+    regionalZone: metro,
+    metro: metro,
+  };
+}
+
+export async function listPersistedFestivals(metro = 'GYEONGGI') {
+  const db = getPool();
+  if (!db) return [];
+  try {
+    const result = await db.query(
+      `SELECT
+         f.title, f.location_name, f.latitude, f.longitude,
+         f.start_date, f.end_date, f.description, f.category, f.image_url,
+         f.is_trending, f.tour_content_id, f.tel, f.source,
+         mu.name AS municipality_name
+       FROM festivals f
+       LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       ORDER BY f.is_trending DESC, f.start_date ASC
+       LIMIT 80`,
+    );
+    return (result.rows || []).map((row) => rowToHomeFestival(row, metro));
+  } catch (err) {
+    console.error('[festival-db-list]', err && err.message ? err.message : err);
+    return [];
+  }
+}

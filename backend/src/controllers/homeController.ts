@@ -30,7 +30,6 @@ export const getHomeFeed = async (req: Request, res: Response) => {
        FROM festivals f
        JOIN municipalities mu ON mu.id = f.municipality_id
        WHERE COALESCE(mu.metro_region, 'GYEONGGI') = ANY($1::text[])
-         AND f.end_date >= CURRENT_DATE
          AND f.latitude IS NOT NULL
        ORDER BY f.is_trending DESC, f.start_date ASC`,
       [matchIds],
@@ -79,9 +78,8 @@ export const getHomeFeed = async (req: Request, res: Response) => {
       moiCode: preset.moiCode,
     }));
 
-    const synced = dbFestivals.filter((item) => item.source === 'tour');
-    let festivals = synced.length ? synced : dbFestivals;
-    if (!synced.length) {
+    let festivals = dbFestivals;
+    if (!festivals.length) {
       try {
         const now = new Date();
         const tourFestivals = await searchFestivals({

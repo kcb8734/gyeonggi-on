@@ -7,7 +7,7 @@ import type { HomeFeed } from '../types/home';
 export async function fetchHomeFeed(metro: string, category?: string): Promise<HomeFeed> {
   try {
     const res = await api.get<HomeFeed>('/api/home', { params: { metro, category } });
-    if (res.data?.festivals) {
+    if (res.data?.festivals?.length) {
       const promotions = res.data.promotions?.length ? res.data.promotions : fallbackPromotions(metro);
       const festivals = res.data.festivals.map((item) => withFestivalImage(item, metro));
       return {

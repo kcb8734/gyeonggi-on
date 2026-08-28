@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { municipalityFromAddress, municipalityRegionCode, persistTourFestivals } from './festivalDbSync.js';
+import { listPersistedFestivals, municipalityFromAddress, municipalityRegionCode, persistTourFestivals } from './festivalDbSync.js';
 
 test('municipalityFromAddress maps Gyeonggi cities', () => {
   assert.equal(municipalityFromAddress('경기도 수원시 팔달구 정조로 825'), '수원시');
@@ -18,5 +18,7 @@ test('persistTourFestivals is a no-op without DATABASE_URL', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.upserted, 0);
   assert.match(result.message, /DATABASE_URL/);
+  const listed = await listPersistedFestivals();
+  assert.deepEqual(listed, []);
   if (prev !== undefined) process.env.DATABASE_URL = prev;
 });
