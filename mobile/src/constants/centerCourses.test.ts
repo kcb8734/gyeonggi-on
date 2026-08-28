@@ -6,6 +6,7 @@ import {
   findCenterCourseForPlace,
   listCenterCourses,
   listPendingCenterCourses,
+  reviewCenterCourse,
   upsertCenterCourse,
 } from './centerCourses';
 
@@ -53,6 +54,13 @@ test('신규 코스는 승인 전까지 공개 목록에 오르지 않는다', (
   assert.equal(again.id, saved.id);
   assert.equal(again.status, 'pending');
   assert.equal(listCenterCourses('춘천시', undefined, 'all')[0].title, '춘천 호수 개정 코스');
+
+  const revised = reviewCenterCourse(saved.id, 'revision');
+  assert.equal(revised?.status, 'revision');
+  assert.equal(listCenterCourses('춘천시').length, 0);
+  const rejected = reviewCenterCourse(saved.id, 'rejected');
+  assert.equal(rejected?.status, 'rejected');
+  assert.equal(findCenterCourseForPlace({ city: '춘천시', title: '춘천마임축제' }), null);
 
   const approved = approveCenterCourse(saved.id);
   assert.equal(approved?.status, 'approved');

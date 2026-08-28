@@ -7,7 +7,7 @@ export type CenterCourseStop = {
   longitude?: number;
 };
 
-export type CenterCourseStatus = 'pending' | 'approved';
+export type CenterCourseStatus = 'pending' | 'approved' | 'revision' | 'rejected';
 
 export type CenterLocalCourse = {
   id: string;
@@ -107,6 +107,19 @@ export function listPendingCenterCourses() {
   return COURSES.filter((item) => item.status !== 'approved').sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
+export function listAllCenterCourses() {
+  return listCenterCourses(undefined, undefined, 'all');
+}
+
+export function reviewCenterCourse(id: string, status: CenterCourseStatus): CenterLocalCourse | null {
+  const existing = COURSES.find((item) => item.id === id);
+  if (!existing) return null;
+  existing.status = status;
+  existing.updatedAt = new Date().toISOString();
+  notify();
+  return existing;
+}
+
 export function findCenterCourseForPlace(input: { city?: string; address?: string; title?: string; metro?: string }) {
   const hay = `${input.city || ''} ${input.address || ''} ${input.title || ''}`;
   const ranked = COURSES.filter((item) => {
@@ -164,12 +177,7 @@ export function upsertCenterCourse(input: CenterCourseInput): CenterLocalCourse 
 }
 
 export function approveCenterCourse(id: string): CenterLocalCourse | null {
-  const existing = COURSES.find((item) => item.id === id);
-  if (!existing) return null;
-  existing.status = 'approved';
-  existing.updatedAt = new Date().toISOString();
-  notify();
-  return existing;
+  return reviewCenterCourse(id, 'approved');
 }
 
 function normalizeStop(stop?: CenterCourseStop): CenterCourseStop {

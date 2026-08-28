@@ -14,6 +14,7 @@ import { useSelectedRegionPreset } from '../stores/regionStore';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import { PREVIEW_HOME } from '../api/previewHome';
 import { festivalImageFor } from '../constants/regionMedia';
+import { cityFromAddress, getFeedPayoutMode, recordUserPoints, subscribeFeedPayout } from '../stores/feedPayoutStore';
 
 const PRESETS = [
   'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=600&q=80',
@@ -54,6 +55,9 @@ export default function FeedUploadScreen() {
   const [festivalId, setFestivalId] = useState('');
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [gpsLabel, setGpsLabel] = useState('위치 확인 중...');
+  const [payoutTick, setPayoutTick] = useState(0);
+
+  useEffect(() => subscribeFeedPayout(() => setPayoutTick((n) => n + 1)), []);
 
   useEffect(() => {
     const fallback = (region.id === 'GYEONGGI' ? PREVIEW_HOME.festivals : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []))
@@ -111,6 +115,38 @@ export default function FeedUploadScreen() {
       return;
     }
 
+    const city = cityFromAddress(region.id, `${festival.address || ''} ${festival.title || ''} ${festival.eventPlace || ''}`);
+    const payoutMode = getFeedPayoutMode({ metro: region.id, city, festivalId: festival.contentId });
+    const user = getAuthUser();
+
+    if (payoutMode === 'blocked') {
+      addFeedPost({
+        caption,
+        festival: festival.title,
+        festivalId: festival.contentId,
+        metro: region.id,
+        imageUrl,
+        author: user?.nickname,
+        rewarded: false,
+        pointsAwarded: 0,
+        badge: '지자체 1:1 매칭 피드',
+      });
+      recordUserPoints({
+        userId: user?.id,
+        userName: user?.nickname || '게스트',
+        festival: festival.title,
+        city,
+        regionalZone: region.id,
+        regionLabel: region.label,
+        amountWon: 0,
+        points: 0,
+        status: 'BLOCKED',
+      });
+      Alert.alert('피드 등록', '피드는 등록되었습니다. 이 행사 지자체는 지역화폐 협의가 되어 있지 않아 포인트가 지급되지 않습니다.');
+      navigation.goBack();
+      return;
+    }
+
     let rewarded = true;
     let pointsAwarded = 1000;
     let badge: '지자체 지원 리워드 지급완료' | '지자체 1:1 매칭 피드' = '지자체 지원 리워드 지급완료';
@@ -155,6 +191,17 @@ export default function FeedUploadScreen() {
       pointsAwarded,
       badge,
     });
+    recordUserPoints({
+      userId: getAuthUser()?.id,
+      userName: getAuthUser()?.nickname || '게스트',
+      festival: festival.title,
+      city,
+      regionalZone: region.id,
+      regionLabel: region.label,
+      amountWon: pointsAwarded,
+      points: pointsAwarded,
+      status: 'PENDING',
+    });
     Alert.alert(
       rewarded ? '리워드 지급 완료' : '피드 등록',
       rewarded
@@ -174,6 +221,27 @@ export default function FeedUploadScreen() {
         <Text style={styles.bannerTitle}>축제 현장 피드 작성 시 지자체 매칭 포인트(또는 지역화폐 쿠폰) 즉시 적립!</Text>
         <Text style={styles.bannerBody}>피드 1건당 1,000P · 같은 축제는 하루 1회만 지급됩니다.</Text>
       </View>
+
+      {(() => {
+        const selected = festivals.find((item) => item.contentId === festivalId);
+        if (!selected) return null;
+        const city = cityFromAddress(region.id, `${selected.address || ''} ${selected.title || ''} ${selected.eventPlace || ''}`);
+        const mode = getFeedPayoutMode({ metro: region.id, city, festivalId: selected.contentId });
+        void payoutTick;
+        const blocked = mode === 'blocked';
+        return (
+          <View style={[styles.payoutNotice, blocked && styles.payoutNoticeBlocked]}>
+            <Text style={[styles.payoutTitle, blocked && styles.payoutTitleBlocked]}>
+              {blocked ? '지역화폐 지급 불가' : '지역화폐 지급 안내'}
+            </Text>
+            <Text style={[styles.payoutBody, blocked && styles.payoutBodyBlocked]}>
+              {blocked
+                ? `${city || selected.title} 지자체와 지역화폐 협의가 되어 있지 않아 이 행사 피드는 포인트가 지급되지 않습니다.`
+                : `${city || selected.title} 행사 피드를 등록하면 지역화폐 1,000P가 적립됩니다. 적립 내역은 마이페이지와 관리자 포인트 현황에서 확인할 수 있습니다.`}
+            </Text>
+          </View>
+        );
+      })()}
 
       <Text style={styles.title}>축제 피드 올리기</Text>
       <Text style={styles.lead}>GPS 위치 인증과 축제 태그가 있어야 보상이 지급됩니다.</Text>
@@ -233,7 +301,16 @@ export default function FeedUploadScreen() {
         multiline
       />
       <TouchableOpacity style={styles.submit} onPress={submit}>
-        <Text style={styles.submitText}>피드 올리고 1,000P 받기</Text>
+        <Text style={styles.submitText}>
+          {(() => {
+            const selected = festivals.find((item) => item.contentId === festivalId);
+            if (!selected) return '피드 올리고 1,000P 받기';
+            const city = cityFromAddress(region.id, `${selected.address || ''} ${selected.title || ''} ${selected.eventPlace || ''}`);
+            return getFeedPayoutMode({ metro: region.id, city, festivalId: selected.contentId }) === 'blocked'
+              ? '피드 올리기 (지급 불가)'
+              : '피드 올리고 1,000P 받기';
+          })()}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -250,6 +327,22 @@ const styles = StyleSheet.create({
   bannerKicker: { color: '#FDE68A', fontSize: 11, fontWeight: '800' },
   bannerTitle: { color: '#fff', fontSize: 15, fontWeight: '800', marginTop: 6, lineHeight: 22 },
   bannerBody: { color: '#D1D5DB', fontSize: 12, marginTop: 6 },
+  payoutNotice: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  payoutNoticeBlocked: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  payoutTitle: { fontSize: 13, fontWeight: '800', color: '#9A3412' },
+  payoutTitleBlocked: { color: '#991B1B' },
+  payoutBody: { fontSize: 12, fontWeight: '600', color: '#9A3412', marginTop: 6, lineHeight: 18 },
+  payoutBodyBlocked: { color: '#991B1B' },
   title: { fontSize: 22, fontWeight: '800' },
   lead: { fontSize: 13, color: '#6B7280', marginTop: 6, marginBottom: 14 },
   preview: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#E5E7EB' },

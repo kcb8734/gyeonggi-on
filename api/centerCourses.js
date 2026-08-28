@@ -139,6 +139,20 @@ export function listPendingCenterCourses() {
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
+export function reviewCenterCourse(id, status) {
+  const allowed = { pending: 1, approved: 1, revision: 1, rejected: 1 };
+  const existing = COURSES.find((item) => item.id === id);
+  if (!existing) return { ok: false, message: '코스를 찾을 수 없습니다.' };
+  if (!allowed[status]) return { ok: false, message: '검토 상태를 확인할 수 없습니다.' };
+  existing.status = status;
+  existing.updatedAt = new Date().toISOString();
+  return { ok: true, data: existing };
+}
+
+export function approveCenterCourse(id) {
+  return reviewCenterCourse(id, 'approved');
+}
+
 export function findCenterCourseForPlace(input) {
   input = input || {};
   const hay = `${input.city || ''} ${input.address || ''} ${input.title || ''}`;
@@ -182,14 +196,6 @@ export function upsertCenterCourse(input) {
   }
   COURSES.unshift(next);
   return { ok: true, data: next };
-}
-
-export function approveCenterCourse(id) {
-  const existing = COURSES.find((item) => item.id === id);
-  if (!existing) return { ok: false, message: '코스를 찾을 수 없습니다.' };
-  existing.status = 'approved';
-  existing.updatedAt = new Date().toISOString();
-  return { ok: true, data: existing };
 }
 
 export function centerCourseToFestivalCourse(course) {

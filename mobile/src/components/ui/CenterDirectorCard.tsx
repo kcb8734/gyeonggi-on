@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type { CenterDirectorProfile, CenterLocalityRow } from '../../constants/centerDirectors';
-import { CARD_MM, buildCenterCardModel, downloadCenterCard, type CenterCardModel } from '../../utils/centerCardDocument';
+import { CARD_MM, buildCenterCardModel, downloadCenterCardFace, type CenterCardModel } from '../../utils/centerCardDocument';
 import ModalExitButton from './ModalExitButton';
 import OnAndOnPlusLogo from './OnAndOnPlusLogo';
 
@@ -34,15 +34,17 @@ export function CenterCardFaces({ model }: { model: CenterCardModel }) {
         <Text style={styles.sideLabel}>전면 · 9.2cm × 5.2cm</Text>
         <View style={[styles.card, { width: cardW, height: cardH, padding: pad }]}>
           <View style={styles.topRow}>
-            <View style={styles.copyCol}>
+            <View style={[styles.copyCol, { minHeight: photoH }]}>
               <OnAndOnPlusLogo height={logoH} />
-              <View style={[styles.who, { marginTop: Math.round(cardH * 0.04) }]}>
-                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.118) }]}>{model.name}</Text>
-                <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.09) }]}>|</Text>
-                <Text style={[styles.title, { fontSize: Math.round(cardH * 0.072) }]} numberOfLines={1}>{model.title}</Text>
+              <View style={[styles.who, { marginTop: Math.round(cardH * 0.08) }]}>
+                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.098) }]}>{model.name}</Text>
+                <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.078) }]}>|</Text>
+                <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066) }]} numberOfLines={1}>{model.title}</Text>
               </View>
-              <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.088), marginTop: 4 }]}>온앤온+</Text>
-              <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.07) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+              <View style={styles.brandBlock}>
+                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078) }]}>온앤온+</Text>
+                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+              </View>
             </View>
             {model.photoUrl ? (
               <Image source={{ uri: model.photoUrl }} style={[styles.photo, { width: photoW, height: photoH }]} />
@@ -99,7 +101,7 @@ export default function CenterDirectorCard({
 }) {
   const { width } = useWindowDimensions();
   const model = row ? buildCenterCardModel(row, director) : null;
-  const [busy, setBusy] = React.useState(false);
+  const [busy, setBusy] = React.useState<'front' | 'back' | null>(null);
   if (!visible || !row || !model) return null;
   const compact = width < 640;
   return (
@@ -112,20 +114,36 @@ export default function CenterDirectorCard({
             <Text style={styles.kicker}>온앤온+ 공식 디지털 명함</Text>
             <Text style={styles.panelTitle}>{row.regionLabel} {row.label} 센터장</Text>
             <CenterCardFaces model={model} />
-            <TouchableOpacity
-              style={styles.download}
-              disabled={busy}
-              onPress={async () => {
-                setBusy(true);
-                try {
-                  await downloadCenterCard(model);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              <Text style={styles.downloadText}>{busy ? 'JPEG 저장 중...' : '명함 전·후면 JPEG 다운로드 · 인쇄 (9.2×5.2cm, 400dpi)'}</Text>
-            </TouchableOpacity>
+            <View style={styles.downloadRow}>
+              <TouchableOpacity
+                style={styles.download}
+                disabled={Boolean(busy)}
+                onPress={async () => {
+                  setBusy('front');
+                  try {
+                    await downloadCenterCardFace(model, 'front');
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                <Text style={styles.downloadText}>{busy === 'front' ? '전면 저장 중...' : '전면 JPEG 다운로드'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.download}
+                disabled={Boolean(busy)}
+                onPress={async () => {
+                  setBusy('back');
+                  try {
+                    await downloadCenterCardFace(model, 'back');
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                <Text style={styles.downloadText}>{busy === 'back' ? '후면 저장 중...' : '후면 JPEG 다운로드'}</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -162,7 +180,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
-  copyCol: { flex: 1, minWidth: 0, paddingRight: 6 },
+  copyCol: { flex: 1, minWidth: 0, paddingRight: 6, justifyContent: 'flex-start' },
   photo: {
     borderRadius: 14,
     backgroundColor: '#D1D5DB',
@@ -174,9 +192,10 @@ const styles = StyleSheet.create({
   name: { fontWeight: '800', color: '#111827' },
   bar: { color: '#D1D5DB', fontWeight: '400' },
   title: { color: '#6B7280', fontWeight: '500', flexShrink: 1 },
+  brandBlock: { marginTop: 'auto' as const, paddingTop: 8 },
   brand: { fontWeight: '800', color: '#111827' },
-  dedicated: { marginTop: 3, fontStyle: 'italic', fontWeight: '700', color: '#111827' },
-  rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 10, marginBottom: 8 },
+  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: '#111827' },
+  rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 6, marginBottom: 8 },
   grid: { flexDirection: 'row', gap: 12 },
   col: { flex: 1, gap: 6 },
   kv: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -186,8 +205,8 @@ const styles = StyleSheet.create({
   slogan: { fontWeight: '800', color: '#374151' },
   qrCol: { alignItems: 'center' },
   url: { marginTop: 6, fontSize: 10, color: '#111827', textAlign: 'center' },
+  downloadRow: { marginTop: 14, gap: 8 },
   download: {
-    marginTop: 14,
     backgroundColor: '#111827',
     borderRadius: 12,
     paddingVertical: 13,

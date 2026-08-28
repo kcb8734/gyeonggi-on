@@ -21,7 +21,7 @@ export type CenterCourseStop = {
   longitude?: number;
 };
 
-export type CenterCourseStatus = 'pending' | 'approved';
+export type CenterCourseStatus = 'pending' | 'approved' | 'revision' | 'rejected';
 
 export type CenterLocalCourse = {
   id: string;
@@ -171,9 +171,15 @@ export function upsertCenterCourse(input: CenterCourseInput): { ok: true; data: 
 }
 
 export function approveCenterCourse(id: string): { ok: true; data: CenterLocalCourse } | { ok: false; message: string } {
+  return reviewCenterCourse(id, 'approved');
+}
+
+export function reviewCenterCourse(id: string, status: CenterCourseStatus): { ok: true; data: CenterLocalCourse } | { ok: false; message: string } {
+  const allowed: CenterCourseStatus[] = ['pending', 'approved', 'revision', 'rejected'];
   const existing = COURSES.find((item) => item.id === id);
   if (!existing) return { ok: false, message: '코스를 찾을 수 없습니다.' };
-  existing.status = 'approved';
+  if (!allowed.includes(status)) return { ok: false, message: '검토 상태를 확인할 수 없습니다.' };
+  existing.status = status;
   existing.updatedAt = new Date().toISOString();
   return { ok: true, data: existing };
 }

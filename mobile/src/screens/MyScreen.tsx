@@ -3,7 +3,7 @@ import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { useNavigation } from '@react-navigation/native';
 import FestivalRegisterModal from '../components/ui/FestivalRegisterModal';
 import ProfileEditModal from '../components/ui/ProfileEditModal';
-import { syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
+import { forgetFestival, syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
 import { clearAuthSession, useAuthUser } from '../stores/authStore';
 import { logoutFestivalManager, useManagerState } from '../stores/managerStore';
 import { deleteMyFeedPost, useMyFeedPosts } from '../stores/feedStore';
@@ -190,6 +190,13 @@ export default function MyScreen() {
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowMeta}>{item.location_name}</Text>
             </View>
+            <TouchableOpacity
+              onPress={() => forgetFestival(item.id)}
+              accessibilityRole="button"
+              accessibilityLabel="최근 본 축제 삭제"
+            >
+              <Text style={styles.deleteText}>삭제</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         ))
       )}

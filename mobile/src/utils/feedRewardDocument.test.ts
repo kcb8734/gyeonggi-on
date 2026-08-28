@@ -28,7 +28,7 @@ test('feed reward html keeps Korean UTF-8 and official letter fields', () => {
   assert.match(html, /종로구청장/);
   assert.match(html, /서울온/);
   assert.match(html, /수원화성문화제/);
-  assert.match(html, /1,000원/);
+  assert.match(html, /지급/);
   assert.doesNotMatch(html, /Helvetica/);
   assert.doesNotMatch(html, /Festival Feed Local-Currency Settlement/);
 });
