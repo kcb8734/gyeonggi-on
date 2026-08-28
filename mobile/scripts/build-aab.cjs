@@ -18,6 +18,14 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const {
+  BUILD_TOOLS,
+  COMPILE_SDK,
+  TARGET_SDK,
+  applySdk36ToAppBuildGradle,
+  applySdk36ToGradlePropertiesText,
+  applySdk36ToProjectBuildGradle,
+} = require('../plugins/withAndroidSdk36');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -103,19 +111,24 @@ function sdkHome() {
   return process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || path.join(os.homedir(), 'Android', 'Sdk');
 }
 
-function ensureAndroidSdk() {
-  const home = sdkHome();
-  const sdkmanager = [
+function findSdkManager(home) {
+  return [
     path.join(home, 'cmdline-tools', 'latest', 'bin', 'sdkmanager'),
     path.join(home, 'tools', 'bin', 'sdkmanager'),
   ].find((file) => fs.existsSync(file));
-  const platform = path.join(home, 'platforms', 'android-34');
-  if (sdkmanager && fs.existsSync(platform)) {
-    process.env.ANDROID_HOME = home;
-    process.env.ANDROID_SDK_ROOT = home;
-    return home;
-  }
-  log(`[build:aab] Android SDK를 준비합니다: ${home}`);
+}
+
+function androidSdk36Ready(home) {
+  return (
+    fs.existsSync(path.join(home, 'platforms', `android-${COMPILE_SDK}`)) &&
+    fs.existsSync(path.join(home, 'build-tools', BUILD_TOOLS))
+  );
+}
+
+function ensureSdkManager(home) {
+  const existing = findSdkManager(home);
+  if (existing) return existing;
+  log(`[build:aab] Android cmdline-tools를 준비합니다: ${home}`);
   fs.mkdirSync(path.join(home, 'cmdline-tools'), { recursive: true });
   const zip = path.join(os.tmpdir(), 'android-cmdline-tools.zip');
   const url = 'https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip';
@@ -126,8 +139,17 @@ function ensureAndroidSdk() {
   if (fs.existsSync(unpacked) && !fs.existsSync(latest)) fs.renameSync(unpacked, latest);
   const manager = path.join(latest, 'bin', 'sdkmanager');
   if (!fs.existsSync(manager)) fail(`sdkmanager 를 찾을 수 없습니다: ${manager}`);
+  return manager;
+}
+
+function ensureAndroidSdk() {
+  const home = sdkHome();
   process.env.ANDROID_HOME = home;
   process.env.ANDROID_SDK_ROOT = home;
+  if (androidSdk36Ready(home)) return home;
+
+  log(`[build:aab] Android SDK ${COMPILE_SDK} / build-tools ${BUILD_TOOLS} 를 준비합니다: ${home}`);
+  const manager = ensureSdkManager(home);
   const licenses = spawnSync('bash', ['-lc', `yes | "${manager}" --sdk_root="${home}" --licenses`], {
     cwd: root,
     stdio: 'inherit',
@@ -136,11 +158,30 @@ function ensureAndroidSdk() {
   if (licenses.status !== 0) log('[build:aab] 라이선스 수락에서 경고가 있었습니다. 패키지 설치를 계속합니다.');
   run(manager, [
     '--sdk_root=' + home,
-    'platforms;android-34',
-    'build-tools;34.0.0',
+    `platforms;android-${COMPILE_SDK}`,
+    `build-tools;${BUILD_TOOLS}`,
     'platform-tools',
   ], root);
+  if (!androidSdk36Ready(home)) {
+    fail(`Android SDK ${COMPILE_SDK} 설치에 실패했습니다: ${path.join(home, 'platforms', `android-${COMPILE_SDK}`)}`);
+  }
   return home;
+}
+
+function ensureSdk36Gradle() {
+  const propsFile = path.join(root, 'android', 'gradle.properties');
+  const projectGradle = path.join(root, 'android', 'build.gradle');
+  const appGradle = path.join(root, 'android', 'app', 'build.gradle');
+  if (fs.existsSync(propsFile)) {
+    fs.writeFileSync(propsFile, applySdk36ToGradlePropertiesText(fs.readFileSync(propsFile, 'utf8')));
+  }
+  if (fs.existsSync(projectGradle)) {
+    fs.writeFileSync(projectGradle, applySdk36ToProjectBuildGradle(fs.readFileSync(projectGradle, 'utf8')));
+  }
+  if (fs.existsSync(appGradle)) {
+    fs.writeFileSync(appGradle, applySdk36ToAppBuildGradle(fs.readFileSync(appGradle, 'utf8')));
+  }
+  log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} buildToolsVersion=${BUILD_TOOLS}`);
 }
 
 function ensureSplashColor() {
@@ -206,6 +247,7 @@ function main() {
   writeLocalProperties(sdk);
   applyReleaseSigning(signing);
   ensureSplashColor();
+  ensureSdk36Gradle();
 
   const gradlew = path.join(root, 'android', 'gradlew');
   fs.chmodSync(gradlew, 0o755);

@@ -23,6 +23,8 @@
     "android": {
       "package": "kr.gyeonggion.app",
       "versionCode": 1,
+      "compileSdkVersion": 36,
+      "targetSdkVersion": 36,
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "config": {
         "googleMaps": {
@@ -31,6 +33,7 @@
       }
     },
     "plugins": [
+      "./plugins/withAndroidSdk36",
       "./plugins/withAndroidReleaseSigning",
       [
         "expo-location",

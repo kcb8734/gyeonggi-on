@@ -1,0 +1,91 @@
+const {
+  withAppBuildGradle,
+  withGradleProperties,
+  withProjectBuildGradle,
+} = require('@expo/config-plugins');
+
+const COMPILE_SDK = 36;
+const TARGET_SDK = 36;
+const BUILD_TOOLS = '36.0.0';
+
+function setGradleProperty(properties, key, value) {
+  const index = properties.findIndex((item) => item.type === 'property' && item.key === key);
+  if (index >= 0) {
+    properties[index].value = String(value);
+    return;
+  }
+  properties.push({ type: 'property', key, value: String(value) });
+}
+
+function upsertPropertyLine(text, key, value) {
+  const line = `${key}=${value}`;
+  const pattern = new RegExp(`^${key.replace(/\./g, '\\.')}=.*$`, 'm');
+  if (pattern.test(text)) return text.replace(pattern, line);
+  const trimmed = text.replace(/\s*$/, '');
+  return `${trimmed}\n${line}\n`;
+}
+
+function applySdk36ToGradlePropertiesText(text) {
+  let next = text;
+  next = upsertPropertyLine(next, 'android.compileSdkVersion', COMPILE_SDK);
+  next = upsertPropertyLine(next, 'android.targetSdkVersion', TARGET_SDK);
+  next = upsertPropertyLine(next, 'android.buildToolsVersion', BUILD_TOOLS);
+  return next;
+}
+
+function applySdk36ToProjectBuildGradle(contents) {
+  return contents
+    .replace(
+      /compileSdkVersion\s*=\s*Integer\.parseInt\([^)]+\)/,
+      `compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '${COMPILE_SDK}')`
+    )
+    .replace(
+      /targetSdkVersion\s*=\s*Integer\.parseInt\([^)]+\)/,
+      `targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '${TARGET_SDK}')`
+    )
+    .replace(
+      /buildToolsVersion\s*=\s*findProperty\([^)]+\)\s*\?:?\s*'[^']*'/,
+      `buildToolsVersion = findProperty('android.buildToolsVersion') ?: '${BUILD_TOOLS}'`
+    );
+}
+
+function applySdk36ToAppBuildGradle(contents) {
+  return contents
+    .replace(/compileSdk(?:Version)?\s+\d+/, `compileSdk ${COMPILE_SDK}`)
+    .replace(/targetSdk(?:Version)?\s+\d+/, `targetSdkVersion ${TARGET_SDK}`);
+}
+
+function withAndroidSdk36(config) {
+  config.android = config.android || {};
+  config.android.compileSdkVersion = COMPILE_SDK;
+  config.android.targetSdkVersion = TARGET_SDK;
+
+  config = withGradleProperties(config, (cfg) => {
+    setGradleProperty(cfg.modResults, 'android.compileSdkVersion', COMPILE_SDK);
+    setGradleProperty(cfg.modResults, 'android.targetSdkVersion', TARGET_SDK);
+    setGradleProperty(cfg.modResults, 'android.buildToolsVersion', BUILD_TOOLS);
+    return cfg;
+  });
+
+  config = withProjectBuildGradle(config, (cfg) => {
+    if (cfg.modResults.language !== 'groovy') return cfg;
+    cfg.modResults.contents = applySdk36ToProjectBuildGradle(cfg.modResults.contents);
+    return cfg;
+  });
+
+  config = withAppBuildGradle(config, (cfg) => {
+    if (cfg.modResults.language !== 'groovy') return cfg;
+    cfg.modResults.contents = applySdk36ToAppBuildGradle(cfg.modResults.contents);
+    return cfg;
+  });
+
+  return config;
+}
+
+module.exports = withAndroidSdk36;
+module.exports.COMPILE_SDK = COMPILE_SDK;
+module.exports.TARGET_SDK = TARGET_SDK;
+module.exports.BUILD_TOOLS = BUILD_TOOLS;
+module.exports.applySdk36ToGradlePropertiesText = applySdk36ToGradlePropertiesText;
+module.exports.applySdk36ToProjectBuildGradle = applySdk36ToProjectBuildGradle;
+module.exports.applySdk36ToAppBuildGradle = applySdk36ToAppBuildGradle;
