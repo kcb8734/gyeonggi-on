@@ -3,7 +3,7 @@
     "name": "온앤온+",
     "slug": "gyeonggi-on",
     "scheme": "onandon",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "kr.gyeonggion.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "compileSdkVersion": 36,
       "targetSdkVersion": 36,
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
