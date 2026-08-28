@@ -14,6 +14,7 @@ import type {
 } from '../types/tour';
 
 export function homeFestivalFromTour(item: TourFestival): HomeFestival {
+  const zone = regionByAreaCode(item.areaCode).id;
   return {
     id: `tour-${item.contentId}`,
     contentId: item.contentId,
@@ -25,13 +26,15 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
     start_date: item.eventStartDate,
     end_date: item.eventEndDate,
     category: item.category,
-    image_url: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address),
+    image_url: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address, zone),
     is_trending: Boolean(item.firstImage),
     source: 'tour',
     tel: item.tel,
     description: item.overview,
     fee: item.fee,
     hasCoupon: false,
+    metro: zone,
+    regionalZone: zone,
   };
 }
 
@@ -68,13 +71,14 @@ function previewFestivals(areaCode?: string): TourFestival[] {
     address: item.location_name ?? '',
     eventStartDate: item.start_date ?? '',
     eventEndDate: item.end_date ?? '',
-    firstImage: secureMediaUrl(item.image_url) || festivalImageFor(item.title, item.location_name),
+    firstImage: secureMediaUrl(item.image_url) || festivalImageFor(item.title, item.location_name, region.id),
     mapX: item.longitude,
     mapY: item.latitude,
     tel: item.tel,
     category: (item.category as TourFestival['category']) ?? '문화/예술',
     overview: item.description ?? `${item.title} 상세 개요`,
     fee: item.fee ?? '현장 문의',
+    areaCode: region.code,
   }));
 }
 

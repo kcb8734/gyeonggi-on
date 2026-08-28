@@ -66,6 +66,11 @@ export default function FestivalDetailScreen({
   const [detail, setDetail] = useState<TourDetail | null>(null);
   const [course, setCourse] = useState<FestivalCourse | null>(null);
   const [guideFocus, setGuideFocus] = useState<'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박' | null>(null);
+  const [heroFailed, setHeroFailed] = useState(false);
+
+  useEffect(() => {
+    setHeroFailed(false);
+  }, [contentId, fallbackImageUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,21 +184,22 @@ export default function FestivalDetailScreen({
     .filter((img) => img.originUrl);
   const heroSlides = slides.length ? slides : [{ originUrl: fallbackHero }];
 
+  const heroUri = heroSlides[0]?.originUrl || fallbackHero;
+
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 36 }}>
-      {heroSlides.length ? (
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-          {heroSlides.map((img) => (
-            <Image
-              key={img.originUrl}
-              source={{ uri: img.originUrl }}
-              style={[styles.hero, { width }]}
-            />
-          ))}
-        </ScrollView>
+      {heroUri && !heroFailed ? (
+        <View style={[styles.hero, { width }]}>
+          <Image
+            source={{ uri: heroUri }}
+            style={styles.heroImage}
+            resizeMode="cover"
+            onError={() => setHeroFailed(true)}
+          />
+        </View>
       ) : (
         <View style={[styles.hero, styles.heroFallback, { width }]}>
-          <Text style={styles.heroFallbackText}>대표 이미지 준비 중</Text>
+          <Text style={styles.heroFallbackText}>{detail.title || '대표 이미지 준비 중'}</Text>
         </View>
       )}
 
@@ -320,9 +326,10 @@ export default function FestivalDetailScreen({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6' },
-  hero: { width: 360, height: 220, backgroundColor: '#E5E7EB' },
-  heroFallback: { width: '100%', alignItems: 'center', justifyContent: 'center' },
-  heroFallbackText: { color: '#6B7280', fontWeight: '700' },
+  hero: { width: 360, height: 220, backgroundColor: '#93C5FD', overflow: 'hidden' },
+  heroImage: { width: '100%', height: '100%' },
+  heroFallback: { width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1E6FEA' },
+  heroFallbackText: { color: '#fff', fontWeight: '800', fontSize: 16, paddingHorizontal: 24, textAlign: 'center' },
   body: { padding: 16, gap: 10 },
   source: { fontSize: 11, fontWeight: '800', color: '#2563EB' },
   tag: {

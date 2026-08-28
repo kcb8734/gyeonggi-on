@@ -92,7 +92,7 @@ function cardCss(dpi: number) {
       overflow: hidden; position: relative;
     }
     .stage { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: ${u(2.4)}; }
-    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
     .brand-logo { height: ${u(CARD_MM.logoH)}; width: auto; display: block; max-width: ${u(34)}; object-fit: contain; }
     .photo { width: ${u(CARD_MM.photoW)}; height: ${u(CARD_MM.photoH)}; object-fit: cover; border-radius: ${u(3.6)}; background: #d1d5db; flex-shrink: 0; }
     .ph { display: flex; align-items: center; justify-content: center; font-size: ${u(7)}; font-weight: 800; color: #6b7280; }
@@ -100,7 +100,10 @@ function cardCss(dpi: number) {
     .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; font-size: ${u(3.2)}; }
     .title { font-size: ${u(2.55)}; color: ${CARD_COLORS.title}; font-weight: 500; white-space: nowrap; overflow: hidden; }
-    .brand-block { margin-top: auto; padding-top: 0; padding-bottom: ${u(CARD_MM.brandAboveRule)}; }
+    .brand-block {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding-bottom: ${u(CARD_MM.brandAboveRule)};
+    }
     .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.05; }
     .center { margin-top: ${u(CARD_MM.brandLineGap)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; line-height: 1.05; white-space: nowrap; overflow: hidden; }
     .rule {
@@ -109,7 +112,7 @@ function cardCss(dpi: number) {
       border-top: ${u(0.25)} solid #d1d5db;
     }
     .grid {
-      flex-shrink: 0;
+      position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)}; bottom: 0;
       height: ${u(CARD_MM.ruleFromBottom)};
       display: grid;
       grid-template-columns: 1fr 1fr;
