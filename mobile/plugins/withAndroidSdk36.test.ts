@@ -62,3 +62,10 @@ test('app build.gradle literal SDK versions become 36', () => {
   assert.match(next, /compileSdk 36/);
   assert.match(next, /targetSdkVersion 36/);
 });
+
+test('expo-modules-core requestedPermissions call is made null-safe', () => {
+  const next = plugin.applyExpoModulesCoreSdk36Patch(
+    '        return requestedPermissions.contains(permission)\n',
+  );
+  assert.equal(next, '        return requestedPermissions?.contains(permission) ?: false\n');
+});

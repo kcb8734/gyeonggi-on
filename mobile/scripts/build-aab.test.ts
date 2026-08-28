@@ -20,6 +20,7 @@ test('build:aab installs Android SDK 36 instead of 34', () => {
   assert.match(source, /build-tools;\$\{BUILD_TOOLS\}/);
   assert.match(source, /ensureSdk36Gradle/);
   assert.match(source, /restoreExpoStartScripts/);
+  assert.match(source, /patchExpoModulesCoreForCompileSdk36/);
   assert.doesNotMatch(source, /platforms;android-34/);
   assert.doesNotMatch(source, /build-tools;34\.0\.0/);
 });

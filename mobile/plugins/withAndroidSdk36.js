@@ -1,8 +1,11 @@
 const {
   withAppBuildGradle,
+  withDangerousMod,
   withGradleProperties,
   withProjectBuildGradle,
 } = require('@expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
 
 const COMPILE_SDK = 36;
 const TARGET_SDK = 36;
@@ -56,6 +59,28 @@ function applySdk36ToAppBuildGradle(contents) {
     .replace(/targetSdk(?:Version)?\s+\d+/, `targetSdkVersion ${TARGET_SDK}`);
 }
 
+function applyExpoModulesCoreSdk36Patch(source) {
+  return source.replace(
+    'return requestedPermissions.contains(permission)',
+    'return requestedPermissions?.contains(permission) ?: false',
+  );
+}
+
+function patchExpoModulesCoreForCompileSdk36(projectRoot) {
+  const file = path.join(
+    projectRoot,
+    'node_modules',
+    'expo-modules-core',
+    'android/src/main/java/expo/modules/adapters/react/permissions/PermissionsService.kt',
+  );
+  if (!fs.existsSync(file)) return false;
+  const source = fs.readFileSync(file, 'utf8');
+  const next = applyExpoModulesCoreSdk36Patch(source);
+  if (next === source) return false;
+  fs.writeFileSync(file, next);
+  return true;
+}
+
 function withAndroidSdk36(config) {
   config.android = config.android || {};
   config.android.compileSdkVersion = COMPILE_SDK;
@@ -81,6 +106,14 @@ function withAndroidSdk36(config) {
     return cfg;
   });
 
+  config = withDangerousMod(config, [
+    'android',
+    (cfg) => {
+      patchExpoModulesCoreForCompileSdk36(cfg.modRequest.projectRoot);
+      return cfg;
+    },
+  ]);
+
   return config;
 }
 
@@ -91,3 +124,5 @@ module.exports.BUILD_TOOLS = BUILD_TOOLS;
 module.exports.applySdk36ToGradlePropertiesText = applySdk36ToGradlePropertiesText;
 module.exports.applySdk36ToProjectBuildGradle = applySdk36ToProjectBuildGradle;
 module.exports.applySdk36ToAppBuildGradle = applySdk36ToAppBuildGradle;
+module.exports.applyExpoModulesCoreSdk36Patch = applyExpoModulesCoreSdk36Patch;
+module.exports.patchExpoModulesCoreForCompileSdk36 = patchExpoModulesCoreForCompileSdk36;

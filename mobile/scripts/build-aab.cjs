@@ -25,6 +25,7 @@ const {
   applySdk36ToAppBuildGradle,
   applySdk36ToGradlePropertiesText,
   applySdk36ToProjectBuildGradle,
+  patchExpoModulesCoreForCompileSdk36,
 } = require('../plugins/withAndroidSdk36');
 
 const root = path.resolve(__dirname, '..');
@@ -182,6 +183,9 @@ function ensureSdk36Gradle() {
     fs.writeFileSync(appGradle, applySdk36ToAppBuildGradle(fs.readFileSync(appGradle, 'utf8')));
   }
   log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} buildToolsVersion=${BUILD_TOOLS}`);
+  if (patchExpoModulesCoreForCompileSdk36(root)) {
+    log('[build:aab] expo-modules-core PermissionsService.kt 를 compileSdk 36에 맞게 패치했습니다.');
+  }
 }
 
 function ensureSplashColor() {
