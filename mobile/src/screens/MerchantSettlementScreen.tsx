@@ -3,7 +3,8 @@ import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity,
 import { fetchMerchantSettlement, type MerchantSettlement } from '../api/merchants';
 import { fetchOfficialPreview, sendOfficialSettlement, type OfficialPreview } from '../api/settlementOfficial';
 import QrCouponScanner from '../components/ui/QrCouponScanner';
-import ModalExitButton from '../components/ui/ModalExitButton';
+import ModalExitButton, { StackExitButton } from '../components/ui/ModalExitButton';
+import { useNavigation } from '@react-navigation/native';
 import { addLocalPromotion, settlePromotion, useAppState } from '../stores/appStore';
 import type { ScannedCoupon } from '../api/couponScan';
 import type { HomePromotion } from '../types/home';
@@ -63,6 +64,7 @@ function OfficialPreviewFrame({ html }: { html: string }) {
 }
 
 export default function MerchantSettlementScreen() {
+  const navigation = useNavigation();
   const [data, setData] = useState<MerchantSettlement | null>(null);
   const [official, setOfficial] = useState<OfficialPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -126,6 +128,9 @@ export default function MerchantSettlementScreen() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <View style={{ alignSelf: 'flex-start', marginBottom: 12 }}>
+        <StackExitButton onPress={() => navigation.goBack()} />
+      </View>
       <Text style={styles.kicker}>사장님 정산</Text>
       <Text style={styles.title}>지자체 제출용 공문 정산</Text>
       <View style={styles.stats}>
