@@ -33,10 +33,11 @@ test('build:aab logs versionName and versionCode from app.json', () => {
   assert.match(source, /readAabIdentity/);
   assert.match(source, /assertAabIdentity/);
   assert.match(source, /ensureAppVersion/);
+  assert.match(source, /ensureLauncherIcons/);
   assert.match(source, /onandon-\$\{versionName\}-vc\$\{versionCode\}\.aab/);
   assert.match(source, /rootAab/);
-  assert.equal(appJson.expo.version, '1.0.5');
-  assert.equal(appJson.expo.android.versionCode, 6);
+  assert.equal(appJson.expo.version, '1.0.6');
+  assert.equal(appJson.expo.android.versionCode, 7);
   assert.equal(appJson.expo.icon, './assets/icon.png');
   assert.equal(appJson.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
   assert.ok(appJson.expo.android.permissions.includes('INTERNET'));

@@ -9,4 +9,7 @@ test('TourAPI http 이미지를 https로 올린다', () => {
   );
   assert.equal(secureMediaUrl('https://example.com/a.jpg'), 'https://example.com/a.jpg');
   assert.equal(secureMediaUrl(''), '');
+  assert.equal(secureMediaUrl('null'), '');
+  assert.equal(secureMediaUrl('  undefined  '), '');
+  assert.equal(secureMediaUrl('-'), '');
 });

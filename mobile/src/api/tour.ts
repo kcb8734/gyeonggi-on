@@ -50,7 +50,7 @@ export function homeFestivalFromDetail(item: TourDetail): HomeFestival {
     start_date: item.eventStartDate,
     end_date: item.eventEndDate,
     category: item.category,
-    image_url: secureMediaUrl(item.firstImage ?? item.images[0]?.originUrl),
+    image_url: secureMediaUrl(item.firstImage ?? item.images[0]?.originUrl) || festivalImageFor(item.title, item.address),
     is_trending: Boolean(item.firstImage || item.images[0]?.originUrl),
     source: 'tour',
     tel: item.tel,
@@ -101,7 +101,7 @@ export async function fetchTourFestivals(params?: {
     if (res.data?.data?.length) {
       return res.data.data.map((item) => ({
         ...item,
-        firstImage: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address),
+        firstImage: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address, regionByAreaCode(item.areaCode).id),
       }));
     }
   } catch {

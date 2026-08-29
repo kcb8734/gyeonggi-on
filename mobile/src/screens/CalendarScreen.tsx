@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 import { useNavigation } from '@react-navigation/native';
 import { fetchTourFestivals, homeFestivalFromTour } from '../api/tour';
 import type { HomeFestival } from '../types/home';
@@ -32,12 +33,12 @@ export default function CalendarScreen() {
   const region = useSelectedRegionPreset();
 
   useEffect(() => {
-    fetchTourFestivals({ areaCode: region.code, month, year }).then((items) => {
+    fetchTourFestivals({ areaCode: region.code, year }).then((items) => {
       const mapped = items.map(homeFestivalFromTour);
       const incoming = mapped.length ? mapped : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []);
       setFestivals(incoming.map((item) => withFestivalImage(item, region.id)));
     });
-  }, [month, year, region.code, region.id]);
+  }, [year, region.code, region.id]);
 
   const cells = useMemo(() => monthCells(year, month), [year, month]);
   const colored = useMemo(
@@ -134,11 +135,7 @@ export default function CalendarScreen() {
         dayFestivals.map((festival) => (
           <TouchableOpacity key={`day-${festival.id}`} style={styles.card} onPress={() => openFestival(festival)}>
             <View style={[styles.accent, { backgroundColor: festival.color }]} />
-            {festival.image_url ? (
-              <Image source={{ uri: festival.image_url }} style={styles.thumb} />
-            ) : (
-              <View style={[styles.thumb, styles.fallback]} />
-            )}
+            <SafeFestivalImage uri={festival.image_url} title={festival.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>{festival.title}</Text>
               <Text style={styles.meta}>{festival.start_date} ~ {festival.end_date}</Text>

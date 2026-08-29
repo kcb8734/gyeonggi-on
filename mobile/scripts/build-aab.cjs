@@ -28,6 +28,7 @@ const {
   patchExpoModulesCoreForCompileSdk36,
   patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
+const { copyLauncherIcons } = require('../plugins/withAndroidLauncherIcon');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -228,6 +229,14 @@ function ensureSdk36Gradle() {
   }
 }
 
+function ensureLauncherIcons() {
+  const copied = copyLauncherIcons(root);
+  if (!copied) {
+    fail('첨부 6 런처 mipmap을 android/app/src/main/res 에 복사하지 못했습니다.');
+  }
+  log(`[build:aab] launcher icons copied=${copied}`);
+}
+
 function ensureSplashColor() {
   const file = path.join(root, 'android', 'app', 'src', 'main', 'res', 'values', 'colors.xml');
   if (!fs.existsSync(file)) return;
@@ -325,6 +334,7 @@ function main() {
   writeLocalProperties(sdk);
   applyReleaseSigning(signing);
   ensureSplashColor();
+  ensureLauncherIcons();
   ensureSdk36Gradle();
   ensureAppVersion(versionName, versionCode);
   restoreExpoStartScripts();
@@ -355,7 +365,7 @@ function main() {
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
-  log('주의: 저장소 루트의 예전 app-release.aab(versionCode 5 이하)를 올리지 마세요. 방금 빌드한 파일의 versionCode 6을 확인하세요.');
+  log(`주의: 저장소 루트의 예전 app-release.aab를 올리지 마세요. 방금 빌드한 onandon-${versionName}-vc${versionCode}.aab 를 확인하세요.`);
 }
 
 main();

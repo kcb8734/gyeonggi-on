@@ -33,11 +33,11 @@ test('selected suwon card html matches print spec', () => {
   assert.equal(CARD_MM.pad, 6.4);
   assert.equal(CARD_MM.photoW, 20);
   assert.equal(CARD_MM.photoH, 25);
-  assert.equal(CARD_MM.brandAboveRule, 2.15);
-  assert.equal(CARD_MM.contactBelowRule, 0.85);
+  assert.equal(CARD_MM.nameToBrand, 5);
+  assert.equal(CARD_MM.brandAboveRule, 1);
+  assert.equal(CARD_MM.contactBelowRule, 1);
   assert.equal(CARD_MM.contactFont, 2.55);
-  assert.equal(CARD_MM.ruleFromBottom, 6.15);
-  assert.equal(CARD_MM.brandLineGap, 0.12);
+  assert.equal(CARD_MM.brandLineGap, 1);
 });
 
 test('jpeg dpi stamp keeps 9.2cm x 5.2cm print size', () => {
@@ -69,7 +69,7 @@ test('front face document uses flex layout and nowrap contact values', () => {
   assert.match(html, /class="kv addr"/);
   assert.match(html, />A\.</);
   assert.doesNotMatch(html, />W\.</);
-  assert.match(html, /position: absolute/);
+  assert.match(html, /margin-top:/);
   assert.doesNotMatch(html, /max-width: 640px/);
 });
 

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackExitButton } from '../components/ui/ModalExitButton';
 
 const NOTICES = [
   { id: '1', title: '2026년 8월 온앤온+(on&on+) 축제 쿠폰 오픈', body: '수원·용인·가평 축제와 제휴 상가 할인이 앱에서 바로 발급됩니다.' },
@@ -8,10 +10,14 @@ const NOTICES = [
 ];
 
 export default function SupportScreen({ topic }: { topic?: 'notice' | 'help' | 'privacy' }) {
+  const navigation = useNavigation();
   const isHelp = topic === 'help';
   const isPrivacy = topic === 'privacy';
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ padding: 16 }}>
+      <View style={{ alignSelf: 'flex-start', marginBottom: 12 }}>
+        <StackExitButton onPress={() => navigation.goBack()} />
+      </View>
       <Text style={styles.title}>{isPrivacy ? '개인정보처리방침' : isHelp ? '고객센터' : '공지사항'}</Text>
       {isPrivacy ? (
         <View>

@@ -1,6 +1,7 @@
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalImageFor, shopPhotosFor } from './regionMedia';
 import { METRO_REGIONS, normalizeMetroId } from './regions';
+import { secureMediaUrl } from '../utils/mediaUrl';
 
 export type CouponKind = 'OFFICIAL' | 'SELF';
 
@@ -283,6 +284,6 @@ export function withFestivalImage(festival: HomeFestival, metro?: string): HomeF
     ...festival,
     regionalZone: festival.regionalZone ?? zone,
     metro: festival.metro ?? zone,
-    image_url: festival.image_url || festivalImageFor(festival.title, festival.location_name, zone),
+    image_url: secureMediaUrl(festival.image_url) || festivalImageFor(festival.title, festival.location_name, zone),
   };
 }
