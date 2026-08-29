@@ -61,19 +61,19 @@ export function CenterCardFaces({
         <View
           ref={frontRef}
           collapsable={false}
-          style={[styles.card, { width: cardW, height: cardH, padding: pad, justifyContent: 'space-between' }]}
+          style={[styles.card, { width: cardW, height: cardH, padding: pad, justifyContent: 'flex-start' }]}
         >
           <View style={styles.topRow}>
-            <View style={[styles.copyCol, { minHeight: photoH }]}>
+            <View style={styles.copyCol}>
               <OnAndOnPlusLogo height={logoH} />
               <View style={[styles.who, { marginTop: Math.round(cardH * 0.1) }]}>
-                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.088) }]}>{model.name}</Text>
+                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.088), lineHeight: Math.round(cardH * 0.088) }]}>{model.name}</Text>
                 <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.078) }]}>|</Text>
                 <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066), color: CARD_COLORS.title }]} numberOfLines={1}>{model.title}</Text>
               </View>
-              <View style={[styles.brandBlock, { paddingBottom: mm(CARD_MM.brandAboveRule) }]}>
-                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.082) }]}>온앤온+</Text>
-                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.072), marginTop: mm(CARD_MM.brandLineGap) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+              <View style={[styles.brandBlock, { marginTop: mm(CARD_MM.nameToBrand) }]}>
+                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.078) }]}>온앤온+</Text>
+                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.068), marginTop: mm(CARD_MM.brandLineGap) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
               </View>
             </View>
             {model.photoUrl ? (
@@ -84,8 +84,8 @@ export function CenterCardFaces({
               </View>
             )}
           </View>
-          <View style={styles.rule} />
-          <View style={[styles.grid, { paddingTop: mm(CARD_MM.contactBelowRule), height: mm(CARD_MM.ruleFromBottom) }]}>
+          <View style={[styles.rule, { marginTop: mm(CARD_MM.brandAboveRule) }]} />
+          <View style={[styles.grid, { paddingTop: mm(CARD_MM.contactBelowRule) }]}>
             <View style={styles.contactRow}>
               <View style={styles.col}>
                 <ContactLine label="M." value={model.phone} size={type} />
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     flexDirection: 'column',
   },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flex: 1 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   copyCol: { flex: 1, minWidth: 0, paddingRight: 6, justifyContent: 'flex-start' },
   photo: {
     borderRadius: 14,
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   name: { fontWeight: '800', color: '#111827' },
   bar: { color: '#D1D5DB', fontWeight: '400' },
   title: { color: CARD_COLORS.title, fontWeight: '500', flexShrink: 1 },
-  brandBlock: { marginTop: 'auto' as const, paddingTop: 0 },
+  brandBlock: { marginTop: 0, paddingTop: 0 },
   brand: { fontWeight: '800', color: CARD_COLORS.brand },
   dedicated: { marginTop: 0, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
   rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 0, marginBottom: 0 },

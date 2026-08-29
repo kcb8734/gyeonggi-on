@@ -218,6 +218,8 @@ export default function App() {
                     : route.params?.contentTypeId === '14' || route.params?.kind === 'culture'
                       ? '문화시설 상세'
                       : '행사 상세',
+                headerBackVisible: false,
+                headerLeft: () => <StackBack />,
               })}
             >
               {({ route }) => (
@@ -236,13 +238,15 @@ export default function App() {
                 />
               )}
             </Stack.Screen>
-            <Stack.Screen name="MerchantSettlement" options={{ title: '정산 현황' }} component={MerchantSettlementScreen} />
+            <Stack.Screen name="MerchantSettlement" options={{ title: '정산 현황', headerBackVisible: false, headerLeft: () => <StackBack /> }} component={MerchantSettlementScreen} />
             <Stack.Screen options={({ route }) => ({
               title: route.params?.topic === 'help'
                 ? '고객센터'
                 : route.params?.topic === 'privacy'
                   ? '개인정보처리방침'
                   : '공지사항',
+              headerBackVisible: false,
+              headerLeft: () => <StackBack />,
             })} name="Support" initialParams={startsOnPrivacy() ? { topic: 'privacy' } : undefined}>
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>

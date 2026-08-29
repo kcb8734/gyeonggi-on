@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 import FestivalRegisterModal from '../components/ui/FestivalRegisterModal';
 import ProfileEditModal from '../components/ui/ProfileEditModal';
 import { forgetFestival, syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
@@ -185,7 +186,7 @@ export default function MyScreen() {
               title: item.title,
             })}
           >
-            {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.thumb} /> : <View style={styles.thumb} />}
+            <SafeFestivalImage uri={item.image_url} title={item.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowMeta}>{item.location_name}</Text>
@@ -217,7 +218,7 @@ export default function MyScreen() {
               title: item.title,
             })}
           >
-            {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.thumb} /> : <View style={styles.thumb} />}
+            <SafeFestivalImage uri={item.image_url} title={item.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowMeta}>{item.location_name}</Text>

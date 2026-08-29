@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Image,
   Linking,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 import CourseGuideModal from '../components/ui/CourseGuideModal';
 import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { findFallbackFestival } from '../constants/regionTour';
@@ -66,12 +66,6 @@ export default function FestivalDetailScreen({
   const [detail, setDetail] = useState<TourDetail | null>(null);
   const [course, setCourse] = useState<FestivalCourse | null>(null);
   const [guideFocus, setGuideFocus] = useState<'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박' | null>(null);
-  const [heroFailed, setHeroFailed] = useState(false);
-
-  useEffect(() => {
-    setHeroFailed(false);
-  }, [contentId, fallbackImageUrl]);
-
   useEffect(() => {
     let cancelled = false;
     const seed = {
@@ -188,20 +182,9 @@ export default function FestivalDetailScreen({
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 36 }}>
-      {heroUri && !heroFailed ? (
-        <View style={[styles.hero, { width }]}>
-          <Image
-            source={{ uri: heroUri }}
-            style={styles.heroImage}
-            resizeMode="cover"
-            onError={() => setHeroFailed(true)}
-          />
-        </View>
-      ) : (
-        <View style={[styles.hero, styles.heroFallback, { width }]}>
-          <Text style={styles.heroFallbackText}>{detail.title || '대표 이미지 준비 중'}</Text>
-        </View>
-      )}
+      <View style={[styles.hero, { width }]}>
+        <SafeFestivalImage uri={heroUri} title={detail.title || '대표 이미지 준비 중'} style={styles.heroImage} />
+      </View>
 
       <View style={styles.body}>
         <Text style={styles.source}>한국관광공사 TourAPI 4.0</Text>

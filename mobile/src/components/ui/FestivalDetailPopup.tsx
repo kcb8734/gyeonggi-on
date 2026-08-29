@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Image,
   Linking,
   Modal,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import SafeFestivalImage from './SafeFestivalImage';
 import type { HomeFestival, HomePromotion } from '../../types/home';
 import { isFavorite, isScheduled } from '../../stores/appStore';
 import { ddayLabel, formatRange } from '../../utils/date';
@@ -44,14 +44,10 @@ export default function FestivalDetailPopup({
 }: Props) {
   const scrollRef = React.useRef<ScrollView>(null);
   const { width } = useWindowDimensions();
-  const [heroFailed, setHeroFailed] = React.useState(false);
   React.useEffect(() => {
     setImeModalLock(Boolean(festival));
     return () => setImeModalLock(false);
   }, [festival]);
-  React.useEffect(() => {
-    setHeroFailed(false);
-  }, [festival?.id, festival?.image_url]);
   React.useEffect(() => {
     if (!festival || initialFocus !== 'coupon') return;
     const timer = setTimeout(() => {
@@ -75,20 +71,9 @@ export default function FestivalDetailPopup({
           <View style={styles.handle} />
           <ModalExitButton onPress={onClose} />
           <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-            {heroUri && !heroFailed ? (
-              <View style={[styles.hero, { width }]}>
-                <Image
-                  source={{ uri: heroUri }}
-                  style={styles.heroImage}
-                  resizeMode="cover"
-                  onError={() => setHeroFailed(true)}
-                />
-              </View>
-            ) : (
-              <View style={[styles.hero, styles.fallback, { width }]}>
-                <Text style={styles.fallbackText}>{festival.title}</Text>
-              </View>
-            )}
+            <View style={[styles.hero, { width }]}>
+              <SafeFestivalImage uri={heroUri} title={festival.title} style={styles.heroImage} />
+            </View>
             <View style={styles.body}>
               <View style={styles.row}>
                 <Text style={styles.dday}>{ddayLabel(festival.start_date, festival.end_date)}</Text>
