@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { isJongnoCenter, JONGNO_DIRECTOR_PHOTO } from '../../assets/jongnoDirectorPhoto';
 import type { CenterDirectorProfile, CenterLocalityRow } from '../../constants/centerDirectors';
 import { CARD_COLORS, CARD_MM, CARD_PRINT_CM, buildCenterCardFaceDocument, buildCenterCardModel, type CenterCardModel } from '../../utils/centerCardDocument';
 import { shareCenterCardFace } from '../../utils/centerCardShare';
@@ -76,7 +77,9 @@ export function CenterCardFaces({
                 <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand, lineHeight: Math.round(cardH * 0.068), marginTop: mm(CARD_MM.brandLineGap) }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
               </View>
             </View>
-            {model.photoUrl ? (
+            {isJongnoCenter(model) ? (
+              <Image source={JONGNO_DIRECTOR_PHOTO} style={[styles.photo, { width: photoW, height: photoH }]} />
+            ) : model.photoUrl ? (
               <Image source={{ uri: model.photoUrl }} style={[styles.photo, { width: photoW, height: photoH }]} />
             ) : (
               <View style={[styles.photo, { width: photoW, height: photoH }]}>

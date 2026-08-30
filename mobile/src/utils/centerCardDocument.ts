@@ -1,3 +1,4 @@
+import { isJongnoCenter, jongnoDirectorPhotoUri } from '../assets/jongnoDirectorPhoto';
 import {
   dedicatedCenterName,
   directorTitleFor,
@@ -50,7 +51,7 @@ export function buildCenterCardModel(row: CenterLocalityRow, director?: CenterDi
     name: profile.name,
     title: profile.title || directorTitleFor(row.regionLabel, row.label),
     dedicatedCenter: dedicatedCenterName(row.region, row.label),
-    photoUrl: profile.photoUrl,
+    photoUrl: profile.photoUrl || (isJongnoCenter(row) ? jongnoDirectorPhotoUri() : undefined),
     phone: profile.phone,
     email: profile.email,
     address: profile.address || `${row.regionLabel.replace(/온$/, '')} ${row.label}`,
@@ -144,8 +145,9 @@ function kv(label: string, value: string, extraClass = '') {
 }
 
 function photoHtml(model: CenterCardModel) {
-  return model.photoUrl
-    ? `<img class="photo" src="${escapeHtml(model.photoUrl)}" alt="" />`
+  const src = model.photoUrl || (isJongnoCenter(model) ? jongnoDirectorPhotoUri() : '');
+  return src
+    ? `<img class="photo" src="${escapeHtml(src)}" alt="" />`
     : `<div class="photo ph">${escapeHtml(model.name.slice(0, 1))}</div>`;
 }
 

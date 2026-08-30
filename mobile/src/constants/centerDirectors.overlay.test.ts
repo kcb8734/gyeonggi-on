@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { overlayLocalities, overlayRegions, type CenterLocalityRow, type CenterRegionSummary } from './centerDirectors';
+import { listCenterLocalities, overlayLocalities, overlayRegions, type CenterLocalityRow, type CenterRegionSummary } from './centerDirectors';
 
 const suwon: CenterLocalityRow = {
   id: 'GYEONGGI:수원시',
@@ -50,4 +50,18 @@ test('region summary follows overlay instead of keeping selected max', () => {
   assert.ok(gyeonggi);
   assert.equal(gyeonggi!.selected, 2);
   assert.ok((gyeonggi!.recruiting ?? 0) >= 26);
+});
+
+test('API 종로 센터장에 사진이 없어도 목업 사진을 유지한다', () => {
+  const seed = listCenterLocalities('SEOUL').find((row) => row.label === '종로구');
+  assert.ok(seed?.director);
+  const rows = overlayLocalities([{
+    ...seed!,
+    director: { ...seed!.director!, photoUrl: undefined },
+  }], {
+    directors: {
+      'SEOUL:종로구': { ...seed!.director!, photoUrl: undefined },
+    },
+  });
+  assert.match(String(rows[0].director?.photoUrl || ''), /data:image\/jpeg|jongno-director/);
 });

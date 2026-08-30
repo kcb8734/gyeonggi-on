@@ -71,7 +71,13 @@ export default function FestivalDetailPopup({
           <ModalExitButton onPress={onClose} />
           <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
             <View style={[styles.hero, { width }]}>
-              <SafeFestivalImage uri={heroUri} title={festival.title} style={styles.heroImage} />
+              <SafeFestivalImage
+                uri={heroUri}
+                title={festival.title}
+                location={festival.location_name}
+                metro={festival.metro || festival.regionalZone}
+                style={styles.heroImage}
+              />
             </View>
             <View style={styles.body}>
               <View style={styles.row}>

@@ -23,9 +23,8 @@ import {
   subscribeFeedPayout,
   type FeedPayoutMode,
 } from '../stores/feedPayoutStore';
+import { API_BASE_URL } from '../config';
 
-const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
-const ADMIN_PASSWORD = 'admin1234';
 const REGION_LABEL: Record<string, string> = Object.fromEntries(
   METRO_REGIONS.map((region) => [region.id, region.label]),
 );
@@ -225,8 +224,8 @@ function formatWhen(value?: string) {
 }
 
 export default function AdminScreen() {
-  const [email, setEmail] = useState(ADMIN_EMAIL);
-  const [password, setPassword] = useState(ADMIN_PASSWORD);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState('');
   const [menu, setMenu] = useState<Menu>('dash');
@@ -289,8 +288,13 @@ export default function AdminScreen() {
 
   const handleLogin = async () => {
     setError('');
+    if (!email.trim() || !password) {
+      setError('이메일과 비밀번호를 입력해 주세요.');
+      return;
+    }
     try {
-      const res = await fetch('/api/admin/login', {
+      const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/admin/login` : '/api/admin/login';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -299,14 +303,10 @@ export default function AdminScreen() {
         setAuthed(true);
         return;
       }
+      setError('관리자 계정 정보가 올바르지 않습니다.');
     } catch {
-      // 서버 미연결 시 기본 계정으로 안내 화면만 연다
+      setError('관리자 서버에 연결하지 못했습니다.');
     }
-    if (email.trim() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      setAuthed(true);
-      return;
-    }
-    setError('관리자 계정 정보가 올바르지 않습니다.');
   };
 
   const handleSync = async () => {
@@ -386,18 +386,31 @@ export default function AdminScreen() {
     return (
       <ScrollView style={styles.root} contentContainerStyle={styles.body}>
         <Text style={styles.kicker}>온앤온+ 관리자</Text>
-        <Text style={styles.title}>관리자 페이지 접속</Text>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>접속 방법</Text>
-          <Text style={styles.p}>1. 주소창에 https://www.kdanji.com/admin 을 입력합니다.</Text>
-          <Text style={styles.p}>2. 마이페이지 맨 아래 「관리자 페이지」를 눌러도 같습니다.</Text>
-          <Text style={styles.p}>3. 기본 계정은 {ADMIN_EMAIL} / {ADMIN_PASSWORD} 입니다.</Text>
-          <Text style={styles.p}>4. 로컬에서 Vite 관리자를 쓸 때는 admin 폴더에서 npm run dev 후 http://localhost:5173/admin/login 입니다.</Text>
-        </View>
+        <Text style={styles.title}>관리자 로그인</Text>
         <Text style={styles.label}>이메일</Text>
-        <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" />
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          textContentType="username"
+          importantForAutofill="no"
+          keyboardType="email-address"
+        />
         <Text style={styles.label}>비밀번호</Text>
-        <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          textContentType="password"
+          importantForAutofill="no"
+        />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <ActionButton label="관리자 로그인" onPress={handleLogin} />
       </ScrollView>

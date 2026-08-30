@@ -198,7 +198,13 @@ export default function FestivalDetailScreen({
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 36 }}>
       <View style={[styles.hero, { width }]}>
-        <SafeFestivalImage uri={heroUri} title={detail.title || '대표 이미지 준비 중'} style={styles.heroImage} />
+        <SafeFestivalImage
+          uri={heroUri}
+          title={detail.title || '대표 이미지 준비 중'}
+          location={fallbackAddress || detail.address}
+          metro={fallbackMetro}
+          style={styles.heroImage}
+        />
       </View>
 
       <View style={styles.body}>
