@@ -1,5 +1,5 @@
 import type { ImageSourcePropType } from 'react-native';
-import { resolveFallbackKey } from './regionalFallbackKeys';
+import { regionalFallbackUri, resolveFallbackKey } from './regionalFallbackKeys';
 
 function loadFallbacks(): Record<string, ImageSourcePropType> {
   try {
@@ -44,7 +44,9 @@ export function regionalFallbackSource(
   title?: string | null,
 ) {
   const key = resolveFallbackKey(location, metro, title);
-  return regionalFallbackImages[key] || regionalFallbackImages.default || { uri: `asset://festival-fallback/${key}` };
+  return regionalFallbackImages[key]
+    || regionalFallbackImages.default
+    || { uri: regionalFallbackUri(location, metro, title) };
 }
 
 export { regionalFallbackUri, resolveFallbackKey } from './regionalFallbackKeys';

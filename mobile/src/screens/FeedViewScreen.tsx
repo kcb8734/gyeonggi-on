@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#111827' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
   emptyText: { color: '#9CA3AF', fontWeight: '700' },
-  hero: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  hero: { ...StyleSheet.absoluteFillObject },
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(17,24,39,0.28)',

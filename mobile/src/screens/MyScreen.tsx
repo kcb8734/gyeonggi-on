@@ -107,7 +107,13 @@ export default function MyScreen() {
               style={styles.vaultRow}
               onPress={() => navigation.navigate('FeedView', { postId: post.id })}
             >
-              <Image source={{ uri: post.imageUrl }} style={styles.thumb} />
+              <SafeFestivalImage
+                uri={post.imageUrl}
+                title={post.festival}
+                location={post.festival}
+                metro={post.metro}
+                style={styles.thumb}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle} numberOfLines={2}>{post.caption}</Text>
                 <Text style={styles.rowMeta}>{post.festival ?? '축제'} · {post.createdAt}</Text>

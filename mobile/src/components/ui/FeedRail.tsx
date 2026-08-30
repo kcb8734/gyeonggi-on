@@ -47,8 +47,15 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#111827',
+    position: 'relative',
   },
-  image: { width: '100%', height: '100%' },
+  image: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 148,
+    height: 248,
+  },
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(17,24,39,0.28)',
