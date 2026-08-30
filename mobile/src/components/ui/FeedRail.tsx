@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFeedPosts } from '../../stores/feedStore';
+import SafeFestivalImage from './SafeFestivalImage';
 
 export default function FeedRail({ onPress, metro }: { onPress?: (postId: string) => void; metro?: string }) {
   const posts = useFeedPosts(metro);
@@ -14,7 +15,13 @@ export default function FeedRail({ onPress, metro }: { onPress?: (postId: string
           activeOpacity={0.9}
           onPress={() => onPress?.(post.id)}
         >
-          <Image source={{ uri: post.imageUrl }} style={styles.image} />
+          <SafeFestivalImage
+            uri={post.imageUrl}
+            title={post.festival}
+            location={post.festival}
+            metro={post.metro || metro}
+            style={styles.image}
+          />
           <View style={styles.scrim} />
           <View style={styles.meta}>
             {post.festival ? <Text style={styles.fest} numberOfLines={1}>{post.festival}</Text> : null}

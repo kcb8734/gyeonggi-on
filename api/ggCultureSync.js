@@ -1,4 +1,5 @@
 import { persistTourFestivals, listFestivalCategoryCounts, writeTourSyncLog } from './festivalDbSync.js';
+import { fetchXml } from './openApiFetch.js';
 import { countCategories, parseGgCultureXml, toPersistableFestival } from './ggCultureXml.js';
 
 export const GG_CULTURE_API_NAME = 'GGCULTUREVENTSTUS';
@@ -25,23 +26,37 @@ function buildPageUrl(key, page, size) {
 export async function fetchGgCulturePage(page = 1, size = 1000, fetchImpl = fetch) {
   const key = ggCultureApiKey();
   if (!key) {
+    console.error('[GGCULTUREVENTSTUS] skip', { code: 'NO_KEY', hasKey: false, page, size });
     return { ok: false, code: 'NO_KEY', message: 'GG_CULTURE_API_KEY가 없습니다.', total: 0, rows: [] };
   }
-  const res = await fetchImpl(buildPageUrl(key, page, size), {
-    headers: { Accept: 'application/xml,text/xml,*/*' },
-  });
-  const xml = await res.text();
-  const parsed = parseGgCultureXml(xml);
-  if (!res.ok && parsed.ok) {
-    return { ok: false, code: String(res.status), message: `HTTP ${res.status}`, total: 0, rows: [] };
+  try {
+    const got = await fetchXml(buildPageUrl(key, page, size), fetchImpl, {
+      label: 'GGCULTUREVENTSTUS',
+      timeoutMs: 7000,
+    });
+    const parsed = parseGgCultureXml(got.xml);
+    if (!got.ok && parsed.ok) {
+      return { ok: false, code: String(got.status), message: `HTTP ${got.status}`, total: 0, rows: [] };
+    }
+    if (!parsed.ok) {
+      console.error('[GGCULTUREVENTSTUS] parse/result', { code: parsed.code, message: parsed.message, hasKey: true });
+    }
+    return parsed;
+  } catch (err) {
+    return {
+      ok: false,
+      code: 'TIMEOUT',
+      message: err && err.message ? err.message : '경기도 문화행사 API 시간이 초과되었습니다.',
+      total: 0,
+      rows: [],
+    };
   }
-  return parsed;
 }
 
 export async function collectGgCultureEvents(options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
-  const pageSize = Math.min(1000, Math.max(1, Number(options.pageSize) || 1000));
-  const maxPages = Math.min(8, Math.max(1, Number(options.maxPages) || 4));
+  const pageSize = Math.min(1000, Math.max(1, Number(options.pageSize) || 80));
+  const maxPages = Math.min(8, Math.max(1, Number(options.maxPages) || 1));
   const first = await fetchGgCulturePage(1, pageSize, fetchImpl);
   if (!first.ok) return first;
   const rows = [...first.rows];

@@ -1,8 +1,13 @@
 import { persistTourFestivals, listFestivalCategoryCounts, writeTourSyncLog } from './festivalDbSync.js';
+import { fetchXml } from './openApiFetch.js';
 import { countCategories, parseSeoulCultureXml, toPersistableFestival } from './seoulCultureXml.js';
 
 export const SEOUL_CULTURE_API_NAME = 'culturalEventInfo';
-export const SEOUL_CULTURE_API_BASE = 'http://openapi.seoul.go.kr:8088';
+export const SEOUL_CULTURE_API_HOSTS = [
+  'https://openapi.seoul.go.kr:8088',
+  'http://openapi.seoul.go.kr:8088',
+];
+export const SEOUL_CULTURE_API_BASE = SEOUL_CULTURE_API_HOSTS[1];
 export const DEFAULT_SEOUL_CULTURE_API_KEY = '61794c4e756b63623132304c79785a44';
 
 export function seoulCultureApiKey() {
@@ -14,30 +19,49 @@ export function seoulCultureApiKey() {
   return DEFAULT_SEOUL_CULTURE_API_KEY;
 }
 
-function buildPageUrl(key, start, end) {
-  return `${SEOUL_CULTURE_API_BASE}/${encodeURIComponent(key)}/xml/${SEOUL_CULTURE_API_NAME}/${start}/${end}/`;
+function buildPageUrl(host, key, start, end) {
+  return `${host}/${encodeURIComponent(key)}/xml/${SEOUL_CULTURE_API_NAME}/${start}/${end}/`;
 }
 
 export async function fetchSeoulCulturePage(start = 1, end = 1000, fetchImpl = fetch) {
   const key = seoulCultureApiKey();
   if (!key) {
+    console.error('[culturalEventInfo] skip', { code: 'NO_KEY', hasKey: false, start, end });
     return { ok: false, code: 'NO_KEY', message: 'SEOUL_CULTURE_API_KEY가 없습니다.', total: 0, rows: [] };
   }
-  const res = await fetchImpl(buildPageUrl(key, start, end), {
-    headers: { Accept: 'application/xml,text/xml,*/*' },
-  });
-  const xml = await res.text();
-  const parsed = parseSeoulCultureXml(xml);
-  if (!res.ok && parsed.ok) {
-    return { ok: false, code: String(res.status), message: `HTTP ${res.status}`, total: 0, rows: [] };
+  let last = { ok: false, code: 'FETCH', message: '서울시 문화행사 API에 연결하지 못했습니다.', total: 0, rows: [] };
+  for (const host of SEOUL_CULTURE_API_HOSTS) {
+    try {
+      const got = await fetchXml(buildPageUrl(host, key, start, end), fetchImpl, {
+        label: 'culturalEventInfo',
+        timeoutMs: 7000,
+      });
+      const parsed = parseSeoulCultureXml(got.xml);
+      if (!got.ok && parsed.ok) {
+        last = { ok: false, code: String(got.status), message: `HTTP ${got.status}`, total: 0, rows: [] };
+        continue;
+      }
+      if (!parsed.ok) {
+        console.error('[culturalEventInfo] parse/result', { code: parsed.code, message: parsed.message, hasKey: true });
+      }
+      return parsed;
+    } catch (err) {
+      last = {
+        ok: false,
+        code: 'TIMEOUT',
+        message: err && err.message ? err.message : '서울시 문화행사 API 시간이 초과되었습니다.',
+        total: 0,
+        rows: [],
+      };
+    }
   }
-  return parsed;
+  return last;
 }
 
 export async function collectSeoulCultureEvents(options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
-  const pageSize = Math.min(1000, Math.max(1, Number(options.pageSize) || 1000));
-  const maxPages = Math.min(10, Math.max(1, Number(options.maxPages) || 5));
+  const pageSize = Math.min(1000, Math.max(1, Number(options.pageSize) || 80));
+  const maxPages = Math.min(10, Math.max(1, Number(options.maxPages) || 1));
   const first = await fetchSeoulCulturePage(1, pageSize, fetchImpl);
   if (!first.ok) return first;
   const rows = [...first.rows];

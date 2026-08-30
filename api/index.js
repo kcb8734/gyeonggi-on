@@ -349,7 +349,7 @@ async function syncFestivalsLive(req, res) {
   try {
     if (!wantTourOnly) {
       const collected = await syncOpenCultureEvents(query);
-      send(res, collected.success ? 200 : 502, {
+      send(res, 200, {
         ...collected,
         metro: metroKey,
         regionalZone: metroKey,

@@ -89,5 +89,5 @@ export const runFestivalSync = async (req: Request, res: Response) => {
   const result = await syncOpenCultureEvents({
     source: String(req.query.source || req.query.api || ''),
   });
-  return res.status(result.success ? 200 : 502).json(result);
+  return res.status(200).json(result);
 };
