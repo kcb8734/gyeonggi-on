@@ -139,8 +139,16 @@ export default function CenterDirectorsScreen() {
             {CENTER_PURPOSE_SECTIONS.map((section) => (
               <View key={section.heading} style={styles.purposeCard}>
                 <Text style={styles.purposeTitle}>{section.heading}</Text>
-                {section.bullets.map((bullet) => (
-                  <Text key={bullet.slice(0, 24)} style={styles.purposeBody}>• {bullet}</Text>
+                {section.bullets.map((bullet, index) => (
+                  <Text key={`${section.heading}-b-${index}`} style={styles.purposeBody}>• {bullet}</Text>
+                ))}
+                {'stages' in section && section.stages?.map((stage) => (
+                  <View key={stage.title} style={styles.purposeStage}>
+                    <Text style={styles.purposeStageTitle}>{stage.title}</Text>
+                    {stage.items.map((item, index) => (
+                      <Text key={`${stage.title}-${index}`} style={styles.purposeBody}>- {item}</Text>
+                    ))}
+                  </View>
                 ))}
               </View>
             ))}
@@ -281,6 +289,8 @@ const styles = StyleSheet.create({
   },
   purposeTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
   purposeBody: { fontSize: 13, lineHeight: 20, color: '#4B5563', marginTop: 8, fontWeight: '600' },
+  purposeStage: { marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  purposeStageTitle: { fontSize: 14, fontWeight: '800', color: '#0F766E' },
   signoff: { fontSize: 14, lineHeight: 22, color: '#111827', fontWeight: '700', marginTop: 4, marginBottom: 12 },
   goStatus: {
     marginTop: 8,

@@ -788,7 +788,9 @@ async function handler(req, res) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       const email = String(body.email || '').trim();
       const password = String(body.password || '');
-      if (email === 'admin@gyeonggi-on.kr' && password === 'admin1234') {
+      const adminEmail = process.env.ADMIN_EMAIL || 'kcb8734@gmail.com';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'kimcb8113!';
+      if (email === adminEmail && password === adminPassword) {
         send(res, 200, { success: true, data: { token: 'admin-local' }, message: '관리자 로그인' }, corsHeaders(req));
         return;
       }

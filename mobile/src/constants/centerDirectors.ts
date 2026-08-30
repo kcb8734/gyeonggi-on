@@ -1,4 +1,4 @@
-import { JONGNO_DIRECTOR_PHOTO_URI } from '../assets/jongnoDirectorPhoto';
+import { isJongnoCenter, jongnoDirectorPhotoUri } from '../assets/jongnoDirectorPhoto';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_LABEL, normalizeMetroId } from './regions';
 
 export type CenterStatus = 'selected' | 'reviewing' | 'recruiting';
@@ -180,7 +180,7 @@ export const SELECTED_DIRECTORS: Record<string, CenterDirectorProfile> = {
     intro: '광장시장과 종로 거리예술 축제를 잇는 도심 센터입니다.',
     address: '서울특별시 종로구 종로 1',
     website: 'kdanji.com/jongno',
-    photoUrl: JONGNO_DIRECTOR_PHOTO_URI,
+    photoUrl: jongnoDirectorPhotoUri(),
   },
   'SEOUL:강남구': {
     name: '정우성',
@@ -253,6 +253,29 @@ export function localityKey(region: string, localityId: string) {
   return `${normalizeMetroId(region)}:${localityId}`;
 }
 
+export function mergeDirectorProfile(
+  primary?: CenterDirectorProfile,
+  fallback?: CenterDirectorProfile,
+): CenterDirectorProfile | undefined {
+  if (!primary && !fallback) return undefined;
+  if (!primary) return withJongnoPhoto(fallback);
+  if (!fallback) return withJongnoPhoto(primary);
+  return withJongnoPhoto({
+    ...fallback,
+    ...primary,
+    photoUrl: primary.photoUrl || fallback.photoUrl,
+  });
+}
+
+function withJongnoPhoto(profile?: CenterDirectorProfile, row?: { id?: string; label?: string }) {
+  if (!profile) return undefined;
+  if (profile.photoUrl) return profile;
+  if (isJongnoCenter(row) || /종로/.test(`${profile.title || ''} ${profile.address || ''}`)) {
+    return { ...profile, photoUrl: jongnoDirectorPhotoUri() };
+  }
+  return profile;
+}
+
 function overlayOf(extra?: string[] | CenterOverlay): CenterOverlay {
   if (Array.isArray(extra)) return { reviewingKeys: extra };
   return extra ?? {};
@@ -290,7 +313,9 @@ export function listCenterLocalities(region?: string, extra: string[] | CenterOv
         regionLabel: label,
         status,
         applicantCount: applicantCountFor(id, overlay),
-        director: status === 'selected' ? (overlay.directors?.[id] || SELECTED_DIRECTORS[id]) : undefined,
+        director: status === 'selected'
+          ? mergeDirectorProfile(overlay.directors?.[id], SELECTED_DIRECTORS[id])
+          : undefined,
       };
     });
   });
@@ -319,7 +344,12 @@ export function overlayLocalities(rows: CenterLocalityRow[], extra: CenterOverla
       ...row,
       status,
       applicantCount: count,
-      director: status === 'selected' ? (extra.directors?.[row.id] || row.director || SELECTED_DIRECTORS[row.id]) : undefined,
+      director: status === 'selected'
+        ? mergeDirectorProfile(
+          extra.directors?.[row.id],
+          mergeDirectorProfile(row.director, SELECTED_DIRECTORS[row.id]),
+        )
+        : undefined,
     };
   });
 }
