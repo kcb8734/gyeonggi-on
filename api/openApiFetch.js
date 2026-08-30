@@ -2,7 +2,7 @@
 
 export function redactOpenApiUrl(url) {
   return String(url || '')
-    .replace(/([?&]KEY=)[^&]+/i, '$1***')
+    .replace(/([?&](?:apiKey|KEY|serviceKey)=)[^&]+/gi, '$1***')
     .replace(/:\/\/[^/]+\/([A-Za-z0-9]{16,})\//, '://$HOST/***/');
 }
 

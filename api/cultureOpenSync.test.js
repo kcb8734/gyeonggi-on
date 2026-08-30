@@ -12,6 +12,9 @@ test('샘플 적재는 50건 이상이다', () => {
 test('외부 API가 없어도 즉시 동기화는 샘플 52건을 반환한다', async () => {
   process.env.SEOUL_CULTURE_API_KEY = '';
   process.env.GG_CULTURE_API_KEY = '';
+  process.env.INCHEON_API_KEY = '';
+  process.env.IFAC_API_KEY = '';
+  process.env.INCHEON_CULTURE_API_KEY = '';
   const result = await syncOpenCultureEvents({}, { budgetMs: 4000 });
   assert.equal(result.success, true);
   assert.ok(Number(result.fetched) >= 50);

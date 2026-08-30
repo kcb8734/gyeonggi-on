@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 import { useNavigation } from '@react-navigation/native';
+import { fetchListedFestivals } from '../api/festivals';
 import { fetchTourFestivals, homeFestivalFromTour } from '../api/tour';
 import type { HomeFestival } from '../types/home';
 import { addSchedule, rememberFestival, useAppState } from '../stores/appStore';
 import { useSelectedRegionPreset } from '../stores/regionStore';
 import { REGION_FESTIVAL_FALLBACKS, withFestivalImage } from '../constants/regionTour';
-import { tourDetailParams } from '../utils/festivalFeed';
+import { preferPersistedFestivalList, tourDetailParams } from '../utils/festivalFeed';
 import { eventColor, overlapsDay, ymd } from '../utils/date';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -34,9 +35,16 @@ export default function CalendarScreen() {
   const region = useSelectedRegionPreset();
 
   useEffect(() => {
-    fetchTourFestivals({ areaCode: region.code, year }).then((items) => {
-      const mapped = items.map(homeFestivalFromTour);
-      const incoming = mapped.length ? mapped : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []);
+    Promise.all([
+      fetchListedFestivals(region.id),
+      fetchTourFestivals({ areaCode: region.code, year }),
+    ]).then(([listed, items]) => {
+      const incoming = preferPersistedFestivalList(
+        listed,
+        items.map(homeFestivalFromTour),
+        [],
+        REGION_FESTIVAL_FALLBACKS[region.id] ?? [],
+      );
       setFestivals(incoming.map((item) => withFestivalImage(item, region.id)));
     });
   }, [year, region.code, region.id]);

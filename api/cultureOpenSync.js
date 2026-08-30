@@ -1,6 +1,7 @@
 import { persistTourFestivals, listFestivalCategoryCounts } from './festivalDbSync.js';
 import { buildFallbackFestivals, FALLBACK_SYNC_MIN, fallbackSyncPayload } from './cultureSyncFallback.js';
 import { syncGgCultureEvents } from './ggCultureSync.js';
+import { syncIfacCultureEvents } from './ifacCultureSync.js';
 import { syncSeoulCultureEvents } from './seoulCultureSync.js';
 import { mergeCategoryCounts } from './seoulCultureXml.js';
 
@@ -35,16 +36,21 @@ async function runLive(query = {}, options = {}) {
   const hint = sourceHint(query);
   const wantSeoul = !hint || hint === 'all' || hint === 'seoul' || hint === 'culturaleventinfo' || hint === 'open';
   const wantGg = !hint || hint === 'all' || hint === 'gg' || hint === 'ggc' || hint === 'ggculture' || hint === 'open';
+  const wantIfac = !hint || hint === 'all' || hint === 'ifac' || hint === 'incheon' || hint === 'open';
   console.log('[culture-sync] start', {
     hint: hint || 'all',
     seoul: wantSeoul,
     gyeonggi: wantGg,
+    incheon: wantIfac,
     hasSeoulKey: Boolean(process.env.SEOUL_CULTURE_API_KEY || process.env.SEOUL_OPENAPI_KEY),
     hasGgKey: Boolean(process.env.GG_CULTURE_API_KEY || process.env.GGCULTURE_API_KEY || process.env.GG_OPENAPI_KEY),
+    hasIfacKey: Boolean(process.env.INCHEON_API_KEY || process.env.IFAC_API_KEY || process.env.INCHEON_CULTURE_API_KEY),
   });
-  const results = [];
-  if (wantSeoul) results.push(await syncSeoulCultureEvents(withBudget(options.seoul || {})));
-  if (wantGg) results.push(await syncGgCultureEvents(withBudget(options.gg || {})));
+  const jobs = [];
+  if (wantSeoul) jobs.push(syncSeoulCultureEvents(withBudget(options.seoul || {})));
+  if (wantGg) jobs.push(syncGgCultureEvents(withBudget(options.gg || {})));
+  if (wantIfac) jobs.push(syncIfacCultureEvents(withBudget(options.ifac || {})));
+  const results = jobs.length ? await Promise.all(jobs) : [];
   if (!results.length) {
     return applySampleFallback('unsupported source');
   }
@@ -78,7 +84,7 @@ async function runLive(query = {}, options = {}) {
   return {
     success: true,
     source: apis.join('+') || 'none',
-    sourceLabel: labels.join(' · ') || '서울시·경기도 문화행사 OpenAPI',
+    sourceLabel: labels.join(' · ') || '서울시·경기도·인천 문화행사 OpenAPI',
     targetApi: apis[0] || 'culturalEventInfo',
     fetched,
     upserted,

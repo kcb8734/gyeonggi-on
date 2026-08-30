@@ -46,8 +46,9 @@ import {
   toHomeFestival,
   tourServiceKey,
 } from './tourLive.js';
-import { listFestivalCategoryCounts, listPersistedFestivals, listTourSyncLogs, persistTourFestivals } from './festivalDbSync.js';
+import { listFestivalCategoryCounts, listPersistedFestivals, listTourSyncLogs, mergeHomeFestivalRows, persistTourFestivals } from './festivalDbSync.js';
 import { syncOpenCultureEvents } from './cultureOpenSync.js';
+import { dispatchOpenDataSync, loadOpenSourceBoard } from './openDataSync.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -290,15 +291,10 @@ async function listFestivalsLive(req, res) {
       year: query.year,
       category: query.category,
     });
-    let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
-    let source = result.source;
-    if (!festivals.length) {
-      const persisted = await listPersistedFestivals(result.metro);
-      if (persisted.length) {
-        festivals = persisted;
-        source = 'db';
-      }
-    }
+    const live = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    const persisted = await listPersistedFestivals(result.metro).catch(() => []);
+    const festivals = mergeHomeFestivalRows(persisted, live);
+    const source = persisted.length ? (live.length ? 'db+tour' : 'db') : result.source;
     send(res, 200, {
       success: true,
       metro: result.metro,
@@ -318,7 +314,7 @@ async function listFestivalsLive(req, res) {
     const builtin = fallbackTourFestivals({ metro: metroKey, areaCode: METRO_AREA[metroKey] })
       .map((item) => homeFromTour(item, metroKey, METRO_AREA[metroKey]))
       .filter(Boolean);
-    const festivals = persisted.length ? persisted : builtin;
+    const festivals = mergeHomeFestivalRows(persisted, builtin);
     send(res, 200, {
       success: true,
       metro: metroKey,
@@ -345,48 +341,30 @@ async function syncFestivalsLive(req, res) {
   const query = readQuery(req);
   const metroKey = normalizeMetroId(query.metro);
   const sourceHint = String(query.source || query.api || '').toLowerCase();
-  const wantTourOnly = sourceHint === 'tour' || sourceHint === 'tourapi' || sourceHint === 'searchfestival2';
+  const wantDispatch = sourceHint === 'tour' || sourceHint === 'tourapi' || sourceHint === 'searchfestival2'
+    || sourceHint === 'seoul' || sourceHint === 'culturaleventinfo'
+    || sourceHint === 'gg' || sourceHint === 'ggc' || sourceHint === 'ggculture'
+    || sourceHint === 'ifac' || sourceHint === 'incheon'
+    || sourceHint === 'muni' || sourceHint === 'municipal' || sourceHint === 'local';
   try {
-    if (!wantTourOnly) {
-      const collected = await syncOpenCultureEvents(query);
+    if (wantDispatch) {
+      const collected = await dispatchOpenDataSync(query);
       send(res, 200, {
         ...collected,
-        metro: metroKey,
-        regionalZone: metroKey,
-        festivals: [],
-        data: [],
+        metro: collected.metro || metroKey,
+        regionalZone: collected.metro || metroKey,
+        festivals: collected.festivals || [],
+        data: collected.data || [],
       }, headers);
       return;
     }
-    const result = await searchFestival2({
-      metro: metroKey,
-      areaCode: query.areaCode || METRO_AREA[metroKey],
-      month: query.month,
-      year: query.year,
-      category: query.category,
-    });
-    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
-    const persist = await persistTourFestivals(result.festivals);
-    const categories = persist.ok ? await listFestivalCategoryCounts() : [];
+    const collected = await syncOpenCultureEvents(query);
     send(res, 200, {
-      success: true,
-      metro: result.metro,
-      regionalZone: result.metro,
-      areaCode: result.areaCode,
-      moiCode: MOI_CODE_BY_METRO[result.metro] || result.lDongRegnCd,
-      regionLabel: result.regionLabel,
-      count: festivals.length,
-      fetched: festivals.length,
-      upserted: persist.upserted,
-      skipped: persist.skipped,
-      persisted: persist.ok,
-      source: result.source,
-      categories,
-      festivals: festivals,
-      data: festivals,
-      message: persist.ok
-        ? result.regionLabel + ' 축제 ' + persist.upserted + '건을 DB에 동기화했습니다. (' + result.source + ')'
-        : result.regionLabel + ' 축제 ' + festivals.length + '건을 TourAPI에서 수집했습니다. ' + persist.message,
+      ...collected,
+      metro: metroKey,
+      regionalZone: metroKey,
+      festivals: [],
+      data: [],
     }, headers);
   } catch (err) {
     console.error('[api] festival sync', err && err.message ? err.message : err);
@@ -410,11 +388,13 @@ async function adminDashboardLive(req, res) {
   const base = dashboard();
   const categories = await listFestivalCategoryCounts();
   const logs = await listTourSyncLogs();
+  const sources = await loadOpenSourceBoard();
   if (categories.length) {
     base.tour.categories = categories;
     const total = categories.reduce((sum, row) => sum + Number(row.count || 0), 0);
     if (total > 0) base.kpi.festivals = total;
   }
+  base.tour.sources = sources;
   if (logs.length) {
     base.tour.logs = logs;
     const latest = logs[0];
@@ -423,9 +403,13 @@ async function adminDashboardLive(req, res) {
       base.tour.source = '서울시 문화행사 culturalEventInfo';
     } else if (latest && /GGCULTURE/i.test(String(latest.target_api || ''))) {
       base.tour.source = '경기도 문화행사 GGCULTUREVENTSTUS';
+    } else if (latest && /ifac/i.test(String(latest.target_api || ''))) {
+      base.tour.source = '인천문화재단 문화예술행사';
+    } else if (latest && /searchFestival2/i.test(String(latest.target_api || ''))) {
+      base.tour.source = '한국관광공사 TourAPI 4.0';
     }
   } else if (categories.some((row) => /콘서트|연극|전시\/미술|교육|공연/.test(String(row.name || '')))) {
-    base.tour.source = '서울시·경기도 문화행사 OpenAPI';
+    base.tour.source = '서울시·경기도·인천 문화행사 OpenAPI';
   }
   send(res, 200, { success: true, data: base }, corsHeaders(req));
 }
@@ -534,19 +518,10 @@ async function getHomeFeed(req, res) {
       category: query.category,
       numOfRows: 200,
     });
-    let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
-    let source = result.source;
+    const live = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
     const persisted = await listPersistedFestivals(metro).catch(() => []);
-    if (persisted.length) {
-      const seen = new Set(festivals.map((item) => String(item.contentId || item.title || '')));
-      persisted.forEach((item) => {
-        const key = String(item.contentId || item.title || '');
-        if (key && seen.has(key)) return;
-        if (key) seen.add(key);
-        festivals.push(item);
-      });
-      if (!source || source === 'none') source = 'db';
-    }
+    const festivals = mergeHomeFestivalRows(persisted, live);
+    const source = persisted.length ? (live.length ? 'db+tour' : 'db') : result.source;
     send(res, 200, {
       success: true,
       available: festivals.length > 0,
@@ -813,6 +788,12 @@ async function handler(req, res) {
     }
     if (/admin\/dashboard/i.test(path)) {
       await adminDashboardLive(req, res);
+      return;
+    }
+    if (/admin\/open-sources/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const board = await loadOpenSourceBoard();
+      send(res, 200, { success: true, data: board }, corsHeaders(req));
       return;
     }
     if (/admin\/engine/i.test(path)) {

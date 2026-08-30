@@ -26,7 +26,7 @@ import { REGION_FESTIVAL_FALLBACKS, regionById, withFestivalImage } from '../con
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalHasSampleCoupon } from '../utils/festivalCoupon';
-import { mergeFestivalSources, tourDetailParams } from '../utils/festivalFeed';
+import { preferPersistedFestivalList, tourDetailParams } from '../utils/festivalFeed';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -81,7 +81,7 @@ export default function HomeScreen() {
   useEffect(() => {
     Promise.all([
       fetchHomeFeed(metro),
-      metro === 'GYEONGGI' ? fetchListedFestivals() : Promise.resolve([]),
+      fetchListedFestivals(metro),
       fetchTourFestivals({ areaCode: selectedPreset.code }),
     ]).then(([feed, listed, tourFestivals]) => {
       const extra = app.localPromotions.filter((item) =>
@@ -95,7 +95,7 @@ export default function HomeScreen() {
         total_discount_rate: item.total_discount_rate
           ?? ((item.merchant_discount_rate ?? 0) + (item.gov_matching_rate ?? 0)),
       }))]);
-      const incoming = mergeFestivalSources(
+      const incoming = preferPersistedFestivalList(
         listed,
         tourFestivals.map(homeFestivalFromTour),
         feed.festivals,
