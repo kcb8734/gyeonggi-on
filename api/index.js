@@ -47,7 +47,7 @@ import {
   tourServiceKey,
 } from './tourLive.js';
 import { listFestivalCategoryCounts, listPersistedFestivals, listTourSyncLogs, persistTourFestivals } from './festivalDbSync.js';
-import { syncGgCultureEvents } from './ggCultureSync.js';
+import { syncOpenCultureEvents } from './cultureOpenSync.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -348,9 +348,9 @@ async function syncFestivalsLive(req, res) {
   const wantTourOnly = sourceHint === 'tour' || sourceHint === 'tourapi' || sourceHint === 'searchfestival2';
   try {
     if (!wantTourOnly) {
-      const gg = await syncGgCultureEvents();
-      send(res, gg.success ? 200 : 502, {
-        ...gg,
+      const collected = await syncOpenCultureEvents(query);
+      send(res, collected.success ? 200 : 502, {
+        ...collected,
         metro: metroKey,
         regionalZone: metroKey,
         festivals: [],
@@ -419,11 +419,13 @@ async function adminDashboardLive(req, res) {
     base.tour.logs = logs;
     const latest = logs[0];
     if (latest && latest.ran_at) base.tour.lastSync = latest.ran_at;
-    if (latest && /GGCULTURE/i.test(String(latest.target_api || ''))) {
+    if (latest && /culturalEventInfo/i.test(String(latest.target_api || ''))) {
+      base.tour.source = '서울시 문화행사 culturalEventInfo';
+    } else if (latest && /GGCULTURE/i.test(String(latest.target_api || ''))) {
       base.tour.source = '경기도 문화행사 GGCULTUREVENTSTUS';
     }
-  } else if (categories.some((row) => /교육|공연|전시|체험/.test(String(row.name || '')))) {
-    base.tour.source = '경기도 문화행사 GGCULTUREVENTSTUS';
+  } else if (categories.some((row) => /콘서트|연극|전시\/미술|교육|공연/.test(String(row.name || '')))) {
+    base.tour.source = '서울시·경기도 문화행사 OpenAPI';
   }
   send(res, 200, { success: true, data: base }, corsHeaders(req));
 }

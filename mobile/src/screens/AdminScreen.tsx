@@ -313,7 +313,7 @@ export default function AdminScreen() {
     const categories = Array.isArray(data?.categories) ? data.categories : [];
     const fetched = Number(data?.fetched ?? data?.upserted ?? 0);
     const upserted = Number(data?.upserted ?? fetched);
-    const source = cleanSource(data?.sourceLabel || data?.source) || '경기도 문화행사 GGCULTUREVENTSTUS';
+    const source = cleanSource(data?.sourceLabel || data?.source) || '서울시·경기도 문화행사 OpenAPI';
     if (categories.length || upserted > 0 || fetched > 0) {
       setFestivalCount(upserted || fetched);
       setFestivalSource(source);
@@ -331,7 +331,7 @@ export default function AdminScreen() {
           logs: [
             {
               ran_at: new Date().toISOString(),
-              target_api: data?.targetApi || data?.source || 'GGCULTUREVENTSTUS',
+              target_api: data?.targetApi || data?.source || 'culturalEventInfo',
               fetched: fetched || upserted,
               failed: Number(data?.failed || 0),
               status: data?.success === false ? '실패' : '정상',
