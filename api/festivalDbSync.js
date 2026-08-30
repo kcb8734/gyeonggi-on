@@ -10,14 +10,34 @@ const GYEONGGI_CITIES = [
   '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군',
 ];
 
+const SEOUL_GUS = [
+  '종로구', '중구', '용산구', '성동구', '광진구', '동대문구', '중랑구', '성북구',
+  '강북구', '도봉구', '노원구', '은평구', '서대문구', '마포구', '양천구', '강서구',
+  '구로구', '금천구', '영등포구', '동작구', '관악구', '서초구', '강남구', '송파구', '강동구',
+];
+
 let pool = null;
 
-export function municipalityFromAddress(address) {
+export function inferMetro(address, metro) {
+  const zone = String(metro || '').trim().toUpperCase();
+  if (zone === 'SEOUL' || zone === 'SE' || zone === 'SEOULCULTURE') return 'SEOUL';
+  if (zone === 'GYEONGGI' || zone === 'GG' || zone === 'GGC' || zone === 'TOUR') return 'GYEONGGI';
+  if (zone) return zone;
   const hay = String(address || '');
+  if (hay.includes('서울') || SEOUL_GUS.some((name) => name !== '중구' && hay.includes(name))) return 'SEOUL';
+  return 'GYEONGGI';
+}
+
+export function municipalityFromAddress(address, metro) {
+  const hay = String(address || '');
+  const zone = inferMetro(hay, metro);
+  if (zone === 'SEOUL') return SEOUL_GUS.find((name) => hay.includes(name)) || '서울특별시';
   return GYEONGGI_CITIES.find((name) => hay.includes(name)) || '경기도';
 }
 
-export function municipalityRegionCode(name) {
+export function municipalityRegionCode(name, metro) {
+  const zone = inferMetro(name, metro);
+  if (zone === 'SEOUL') return 'SEOUL_' + String(name || '').replace(/\s+/g, '');
   return 'GG_' + String(name || '').replace(/\s+/g, '');
 }
 
@@ -53,22 +73,46 @@ function getPool() {
   return pool;
 }
 
-async function ensureMunicipalityId(client, address) {
-  const name = municipalityFromAddress(address);
-  const regionCode = municipalityRegionCode(name);
+async function ensureMunicipalityId(client, address, metro) {
+  const zone = inferMetro(address, metro);
+  const name = municipalityFromAddress(address, zone);
+  const regionCode = municipalityRegionCode(name, zone);
   const existing = await client.query(
     'SELECT id FROM municipalities WHERE name = $1 OR region_code = $2 LIMIT 1',
     [name, regionCode],
   );
-  if (existing.rowCount) return existing.rows[0].id;
-  const inserted = await client.query(
-    `INSERT INTO municipalities (name, region_code, budget_balance)
-     VALUES ($1, $2, 0)
-     ON CONFLICT (region_code) DO UPDATE SET name = EXCLUDED.name
-     RETURNING id`,
-    [name, regionCode],
-  );
-  return inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+  if (existing.rowCount) {
+    try {
+      await client.query(
+        'UPDATE municipalities SET metro_region = COALESCE($2, metro_region) WHERE id = $1',
+        [existing.rows[0].id, zone],
+      );
+    } catch {
+      // metro_region 컬럼이 없는 구스키마는 건너뛴다.
+    }
+    return existing.rows[0].id;
+  }
+  try {
+    const inserted = await client.query(
+      `INSERT INTO municipalities (name, region_code, budget_balance, metro_region)
+       VALUES ($1, $2, 0, $3)
+       ON CONFLICT (region_code) DO UPDATE SET
+         name = EXCLUDED.name,
+         metro_region = COALESCE(EXCLUDED.metro_region, municipalities.metro_region)
+       RETURNING id`,
+      [name, regionCode, zone],
+    );
+    return inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+  } catch {
+    const inserted = await client.query(
+      `INSERT INTO municipalities (name, region_code, budget_balance)
+       VALUES ($1, $2, 0)
+       ON CONFLICT (region_code) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [name, regionCode],
+    );
+    return inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+  }
 }
 
 export async function persistTourFestivals(items, options = {}) {
@@ -98,7 +142,8 @@ export async function persistTourFestivals(items, options = {}) {
       }
       const end = String(item && (item.eventEndDate || item.end_date) || start).slice(0, 10);
       const address = String(item && (item.address || item.location_name) || '');
-      const municipalityId = await ensureMunicipalityId(client, `${address} ${title}`);
+      const metro = inferMetro(`${address} ${title}`, item.metro || item.regionalZone || options.metro || source);
+      const municipalityId = await ensureMunicipalityId(client, `${address} ${title}`, metro);
       const rowSource = String(item.source || source || 'tour').slice(0, 20);
       await client.query(
         `INSERT INTO festivals (

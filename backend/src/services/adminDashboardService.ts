@@ -64,9 +64,11 @@ export async function getAdminDashboard() {
       quotaUsed: 42,
       quotaLimit: 1000,
       lastSync: syncLogs?.rows[0]?.ran_at || '오늘 07:00 KST',
-      source: /GGCULTURE/i.test(String(syncLogs?.rows[0]?.target_api || ''))
-        ? '경기도 문화행사 GGCULTUREVENTSTUS'
-        : '한국관광공사 TourAPI 4.0',
+      source: /culturalEventInfo/i.test(String(syncLogs?.rows[0]?.target_api || ''))
+        ? '서울시 문화행사 culturalEventInfo'
+        : /GGCULTURE/i.test(String(syncLogs?.rows[0]?.target_api || ''))
+          ? '경기도 문화행사 GGCULTUREVENTSTUS'
+          : '한국관광공사 TourAPI 4.0',
       categories: categoryRows?.rows?.length
         ? categoryRows.rows
         : [
