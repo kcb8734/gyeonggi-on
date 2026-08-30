@@ -1,44 +1,69 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { METRO_LOCALITIES, REGION_META, metroSourcePrefix, normalizeMetroId } from './metroLocalities.js';
 
 const require = createRequire(import.meta.url);
 
-const GYEONGGI_CITIES = [
-  '수원시', '용인시', '고양시', '화성시', '성남시', '부천시', '남양주시', '안산시',
-  '안양시', '평택시', '시흥시', '파주시', '김포시', '의정부시', '광주시', '하남시',
-  '광명시', '군포시', '오산시', '이천시', '양주시', '구리시', '안성시', '포천시',
-  '의왕시', '여주시', '양평군', '동두천시', '과천시', '가평군', '연천군',
-];
-
-const SEOUL_GUS = [
-  '종로구', '중구', '용산구', '성동구', '광진구', '동대문구', '중랑구', '성북구',
-  '강북구', '도봉구', '노원구', '은평구', '서대문구', '마포구', '양천구', '강서구',
-  '구로구', '금천구', '영등포구', '동작구', '관악구', '서초구', '강남구', '송파구', '강동구',
+const ADDRESS_HINTS = [
+  ['서울특별시', 'SEOUL'], ['서울시', 'SEOUL'], ['서울', 'SEOUL'],
+  ['부산광역시', 'BUSAN'], ['부산', 'BUSAN'],
+  ['대구광역시', 'DAEGU'], ['대구', 'DAEGU'],
+  ['인천광역시', 'INCHEON'], ['인천', 'INCHEON'],
+  ['광주광역시', 'GWANGJU'],
+  ['대전광역시', 'DAEJEON'], ['대전', 'DAEJEON'],
+  ['울산광역시', 'ULSAN'], ['울산', 'ULSAN'],
+  ['세종특별자치시', 'SEJONG'], ['세종시', 'SEJONG'], ['세종', 'SEJONG'],
+  ['경기도', 'GYEONGGI'], ['경기', 'GYEONGGI'],
+  ['강원특별자치도', 'GANGWON'], ['강원도', 'GANGWON'], ['강원', 'GANGWON'],
+  ['충청북도', 'CHUNGBUK'], ['충북', 'CHUNGBUK'],
+  ['충청남도', 'CHUNGNAM'], ['충남', 'CHUNGNAM'],
+  ['전북특별자치도', 'JEONBUK'], ['전라북도', 'JEONBUK'], ['전북', 'JEONBUK'],
+  ['전라남도', 'JEONNAM'], ['전남', 'JEONNAM'],
+  ['경상북도', 'GYEONGBUK'], ['경북', 'GYEONGBUK'],
+  ['경상남도', 'GYEONGNAM'], ['경남', 'GYEONGNAM'],
+  ['제주특별자치도', 'JEJU'], ['제주도', 'JEJU'], ['제주', 'JEJU'],
 ];
 
 let pool = null;
 
+function localityName(row) {
+  return String(row.label || row.id || '').replace(/^(서울|부산|대구|인천|광주|대전|울산)\s+/, '');
+}
+
 export function inferMetro(address, metro) {
-  const zone = String(metro || '').trim().toUpperCase();
-  if (zone === 'SEOUL' || zone === 'SE' || zone === 'SEOULCULTURE') return 'SEOUL';
-  if (zone === 'GYEONGGI' || zone === 'GG' || zone === 'GGC' || zone === 'TOUR') return 'GYEONGGI';
-  if (zone) return zone;
+  const raw = String(metro || '').trim().toUpperCase();
+  if (raw === 'SE' || raw === 'SEOULCULTURE') return 'SEOUL';
+  if (raw === 'GG' || raw === 'GGC') return 'GYEONGGI';
+  if (raw && raw !== 'TOUR' && raw !== 'ALL' && raw !== 'SAMPLE' && REGION_META[normalizeMetroId(raw)]) {
+    return normalizeMetroId(raw);
+  }
   const hay = String(address || '');
-  if (hay.includes('서울') || SEOUL_GUS.some((name) => name !== '중구' && hay.includes(name))) return 'SEOUL';
+  if (hay.includes('광주광역시')) return 'GWANGJU';
+  if (/경기도\s*광주/.test(hay)) return 'GYEONGGI';
+  for (const [token, zone] of ADDRESS_HINTS) {
+    if (hay.includes(token)) return zone;
+  }
   return 'GYEONGGI';
 }
 
 export function municipalityFromAddress(address, metro) {
   const hay = String(address || '');
   const zone = inferMetro(hay, metro);
-  if (zone === 'SEOUL') return SEOUL_GUS.find((name) => hay.includes(name)) || '서울특별시';
-  return GYEONGGI_CITIES.find((name) => hay.includes(name)) || '경기도';
+  const list = METRO_LOCALITIES[zone] || [];
+  const hit = list.find((row) => {
+    const name = localityName(row);
+    return name && hay.includes(name);
+  });
+  if (hit) return localityName(hit);
+  if (zone === 'SEOUL') return '서울특별시';
+  if (zone === 'GYEONGGI') return '경기도';
+  return REGION_META[zone]?.label?.replace(/온$/, '') || zone;
 }
 
 export function municipalityRegionCode(name, metro) {
   const zone = inferMetro(name, metro);
-  if (zone === 'SEOUL') return 'SEOUL_' + String(name || '').replace(/\s+/g, '');
-  return 'GG_' + String(name || '').replace(/\s+/g, '');
+  const prefix = metroSourcePrefix(zone);
+  return `${prefix}_${String(name || '').replace(/\s+/g, '')}`.slice(0, 40);
 }
 
 function loadPg() {
@@ -306,6 +331,43 @@ export async function listTourSyncLogs(limit = 8) {
     );
     return result.rows || [];
   } catch {
+    return [];
+  }
+}
+
+export async function listFestivalSourceCounts() {
+  const db = getPool();
+  if (!db) return [];
+  try {
+    const result = await db.query(
+      `SELECT COALESCE(NULLIF(TRIM(source), ''), 'db') AS source, COUNT(*)::int AS count
+       FROM festivals
+       GROUP BY 1
+       ORDER BY count DESC`,
+    );
+    return result.rows || [];
+  } catch (err) {
+    console.error('[festival-source-counts]', err && err.message ? err.message : err);
+    return [];
+  }
+}
+
+export async function listFestivalSourceMetroCounts() {
+  const db = getPool();
+  if (!db) return [];
+  try {
+    const result = await db.query(
+      `SELECT
+         COALESCE(NULLIF(TRIM(f.source), ''), 'db') AS source,
+         COALESCE(NULLIF(TRIM(mu.metro_region), ''), 'GYEONGGI') AS metro,
+         COUNT(*)::int AS count
+       FROM festivals f
+       LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       GROUP BY 1, 2`,
+    );
+    return result.rows || [];
+  } catch (err) {
+    console.error('[festival-source-metro-counts]', err && err.message ? err.message : err);
     return [];
   }
 }

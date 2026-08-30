@@ -42,6 +42,23 @@ test('GET /api/home is not a 404', async () => {
   assert.notEqual(result.status, 404);
 });
 
+test('GET /api/admin/dashboard includes open data sources', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/admin/dashboard' });
+  assert.equal(result.status, 200);
+  const data = (result.body as { data?: { tour?: { sources?: { national?: unknown[]; tourMetros?: unknown[]; muniMetros?: unknown[] } } } }).data;
+  assert.equal(data?.tour?.sources?.national?.length, 3);
+  assert.equal(data?.tour?.sources?.tourMetros?.length, 17);
+  assert.equal(data?.tour?.sources?.muniMetros?.length, 15);
+});
+
+test('POST /api/festivals/sync?source=muni&metro=BUSAN tells how to enable the slot', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/festivals/sync?source=muni&metro=BUSAN' });
+  assert.equal(result.status, 200);
+  const body = result.body as { message?: string; ready?: boolean; fetched?: number };
+  assert.match(String(body.message), /BUSAN_CULTURE_API/);
+  assert.equal(body.fetched, 0);
+});
+
 test('POST /api/festivals/sync returns a sync payload', async () => {
   const result = await invoke({ method: 'POST', url: '/api/festivals/sync' });
   assert.notEqual(result.status, 404);

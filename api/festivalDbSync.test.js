@@ -5,8 +5,13 @@ import { listPersistedFestivals, municipalityFromAddress, municipalityRegionCode
 test('municipalityFromAddress maps Gyeonggi cities', () => {
   assert.equal(municipalityFromAddress('경기도 수원시 팔달구 정조로 825'), '수원시');
   assert.equal(municipalityFromAddress('경기도 용인시 기흥구'), '용인시');
-  assert.equal(municipalityFromAddress('서울특별시 중구'), '경기도');
+  assert.equal(municipalityFromAddress('서울특별시 중구'), '중구');
   assert.equal(municipalityRegionCode('수원시'), 'GG_수원시');
+});
+
+test('municipalityFromAddress maps other metros when zone is given', () => {
+  assert.equal(municipalityFromAddress('부산광역시 해운대구', 'BUSAN'), '해운대구');
+  assert.equal(municipalityRegionCode('해운대구', 'BUSAN'), 'BUSAN_해운대구');
 });
 
 test('persistTourFestivals is a no-op without DATABASE_URL', async () => {

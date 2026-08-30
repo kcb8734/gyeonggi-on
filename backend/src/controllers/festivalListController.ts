@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
 import { syncOpenCultureEvents } from '../services/cultureOpenSync';
-import { collectGyeonggiFestivals, syncNationwideFestivals, tourItemsToHome } from '../services/festivalSyncService';
+import { AREA_CODE_BY_METRO, REGION_LABEL } from '../constants/metroLocalities';
+import { collectGyeonggiFestivals, collectRegionFestivals, syncNationwideFestivals, tourItemsToHome, upsertTourFestivals } from '../services/festivalSyncService';
 import { toNumber } from '../utils/geo';
 
 function cronAuthorized(req: Request): boolean {
@@ -85,6 +86,56 @@ export const runFestivalSync = async (req: Request, res: Response) => {
   if (/cron/i.test(String(req.path || req.originalUrl || ''))) {
     const result = await syncNationwideFestivals();
     return res.status(result.success ? 200 : 502).json(result);
+  }
+  const hint = String(req.query.source || req.query.api || '').toLowerCase();
+  const metro = String(req.query.metro || '').toUpperCase();
+  if (hint === 'tour' || hint === 'tourapi' || hint === 'searchfestival2') {
+    const nationwide = !metro || metro === 'ALL' || String(req.query.areaCode || '') === 'all';
+    if (nationwide) {
+      const result = await syncNationwideFestivals();
+      return res.status(result.success ? 200 : 502).json({
+        ...result,
+        sourceLabel: '한국관광공사 TourAPI 4.0 전국',
+        targetApi: 'searchFestival2',
+      });
+    }
+    const areaCode = AREA_CODE_BY_METRO[metro] || String(req.query.areaCode || '31');
+    const collected = await collectRegionFestivals(areaCode);
+    const persist = await upsertTourFestivals(collected.items);
+    return res.status(200).json({
+      success: true,
+      source: 'tour',
+      sourceLabel: `한국관광공사 TourAPI 4.0 ${REGION_LABEL[metro] || metro}`,
+      targetApi: `searchFestival2:${metro}`,
+      fetched: collected.items.length,
+      upserted: persist.upserted,
+      skipped: persist.skipped,
+      persisted: true,
+      failed: 0,
+      categories: [],
+      message: `${REGION_LABEL[metro] || metro} TourAPI ${persist.upserted}건을 DB에 동기화했습니다.`,
+    });
+  }
+  if (hint === 'muni' || hint === 'municipal' || hint === 'local') {
+    if (metro === 'SEOUL' || metro === 'GYEONGGI') {
+      const result = await syncOpenCultureEvents({ source: metro === 'SEOUL' ? 'seoul' : 'ggc' });
+      return res.status(200).json(result);
+    }
+    const urlEnv = `${metro}_CULTURE_API_URL`;
+    const keyEnv = `${metro}_CULTURE_API_KEY`;
+    const ready = Boolean(String(process.env[urlEnv] || '').trim() && String(process.env[keyEnv] || '').trim());
+    if (!ready) {
+      return res.status(200).json({
+        success: false,
+        source: 'muni',
+        sourceLabel: `${REGION_LABEL[metro] || metro} 지자체 OpenAPI`,
+        targetApi: `${metro}_CULTURE`,
+        fetched: 0,
+        upserted: 0,
+        ready: false,
+        message: `${urlEnv} 와 ${keyEnv} 를 설정하면 해당 광역 공공API 수집이 켜집니다.`,
+      });
+    }
   }
   const result = await syncOpenCultureEvents({
     source: String(req.query.source || req.query.api || ''),
