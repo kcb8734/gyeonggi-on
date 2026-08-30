@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6' },
   hero: { width: 360, height: 220, backgroundColor: '#93C5FD', overflow: 'hidden' },
-  heroImage: { width: '100%', height: '100%' },
+  heroImage: { width: '100%', height: 220 },
   heroFallback: { width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1E6FEA' },
   heroFallbackText: { color: '#fff', fontWeight: '800', fontSize: 16, paddingHorizontal: 24, textAlign: 'center' },
   body: { padding: 16, gap: 10 },

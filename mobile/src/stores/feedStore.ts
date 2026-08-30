@@ -20,10 +20,11 @@ export interface FeedPost {
   mine?: boolean;
 }
 
-const FEED_KEY = 'onandon-feed-v6';
+const FEED_KEY = 'onandon-feed-v8';
 
 function hydratePost(post: FeedPost): FeedPost {
-  const broken = !post.imageUrl || post.imageUrl.startsWith('asset://') || post.imageUrl === 'null';
+  const raw = String(post.imageUrl || '').trim();
+  const broken = !raw || raw.startsWith('asset://') || raw === 'null' || !/^(https?:|data:|blob:|file:)/i.test(raw);
   if (!broken) return post;
   return {
     ...post,

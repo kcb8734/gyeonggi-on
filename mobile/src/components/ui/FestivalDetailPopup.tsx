@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   hero: { width: '100%', height: 180, backgroundColor: '#93C5FD', overflow: 'hidden' },
-  heroImage: { width: '100%', height: '100%' },
+  heroImage: { width: '100%', height: 180 },
   fallback: { backgroundColor: '#1E6FEA', alignItems: 'center', justifyContent: 'center' },
   fallbackText: { color: '#fff', fontWeight: '800', fontSize: 16, paddingHorizontal: 20, textAlign: 'center' },
   body: { padding: 16, paddingBottom: 28 },
