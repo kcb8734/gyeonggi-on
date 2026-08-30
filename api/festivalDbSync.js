@@ -71,8 +71,9 @@ async function ensureMunicipalityId(client, address) {
   return inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
 }
 
-export async function persistTourFestivals(items) {
+export async function persistTourFestivals(items, options = {}) {
   const rows = Array.isArray(items) ? items : [];
+  const source = String(options.source || '').trim();
   const db = getPool();
   if (!db) {
     return {
@@ -97,7 +98,8 @@ export async function persistTourFestivals(items) {
       }
       const end = String(item && (item.eventEndDate || item.end_date) || start).slice(0, 10);
       const address = String(item && (item.address || item.location_name) || '');
-      const municipalityId = await ensureMunicipalityId(client, address);
+      const municipalityId = await ensureMunicipalityId(client, `${address} ${title}`);
+      const rowSource = String(item.source || source || 'tour').slice(0, 20);
       await client.query(
         `INSERT INTO festivals (
            municipality_id, title, description, start_date, end_date,
@@ -106,7 +108,7 @@ export async function persistTourFestivals(items) {
          ) VALUES (
            $1, $2, $3, $4, $5,
            $6, $7, $8, $9, $10, $11,
-           $12, $13, 'tour'
+           $12, $13, $14
          )
          ON CONFLICT (tour_content_id) DO UPDATE SET
            title = EXCLUDED.title,
@@ -120,7 +122,7 @@ export async function persistTourFestivals(items) {
            image_url = COALESCE(EXCLUDED.image_url, festivals.image_url),
            is_trending = EXCLUDED.is_trending,
            tel = COALESCE(EXCLUDED.tel, festivals.tel),
-           source = 'tour'`,
+           source = EXCLUDED.source`,
         [
           municipalityId,
           title.slice(0, 100),
@@ -130,11 +132,12 @@ export async function persistTourFestivals(items) {
           address.slice(0, 150) || null,
           item.mapY || item.latitude || null,
           item.mapX || item.longitude || null,
-          item.category || '문화/예술',
+          String(item.category || '문화/예술').slice(0, 30),
           item.firstImage || item.image_url || null,
           Boolean(item.firstImage || item.image_url),
-          contentId,
+          contentId.slice(0, 40),
           item.tel || null,
+          rowSource,
         ],
       );
       upserted += 1;
@@ -202,6 +205,62 @@ export async function listPersistedFestivals(metro = 'GYEONGGI') {
     return (result.rows || []).map((row) => rowToHomeFestival(row, metro));
   } catch (err) {
     console.error('[festival-db-list]', err && err.message ? err.message : err);
+    return [];
+  }
+}
+
+export async function listFestivalCategoryCounts() {
+  const db = getPool();
+  if (!db) return [];
+  try {
+    const result = await db.query(
+      `SELECT COALESCE(NULLIF(TRIM(category), ''), '기타') AS name, COUNT(*)::int AS count
+       FROM festivals
+       GROUP BY 1
+       ORDER BY count DESC, name ASC`,
+    );
+    return result.rows || [];
+  } catch (err) {
+    console.error('[festival-category-counts]', err && err.message ? err.message : err);
+    return [];
+  }
+}
+
+export async function writeTourSyncLog(input) {
+  const db = getPool();
+  if (!db) return false;
+  try {
+    await db.query(
+      `INSERT INTO tour_sync_logs (ran_at, target_api, fetched, failed, status, message)
+       VALUES (NOW(), $1, $2, $3, $4, $5)`,
+      [
+        String(input.targetApi || 'GGCULTUREVENTSTUS').slice(0, 80),
+        Number(input.fetched || 0),
+        Number(input.failed || 0),
+        String(input.status || '정상').slice(0, 20),
+        input.message || null,
+      ],
+    );
+    return true;
+  } catch (err) {
+    console.error('[tour-sync-log]', err && err.message ? err.message : err);
+    return false;
+  }
+}
+
+export async function listTourSyncLogs(limit = 8) {
+  const db = getPool();
+  if (!db) return [];
+  try {
+    const result = await db.query(
+      `SELECT ran_at, target_api, fetched, failed, status
+       FROM tour_sync_logs
+       ORDER BY ran_at DESC
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows || [];
+  } catch {
     return [];
   }
 }

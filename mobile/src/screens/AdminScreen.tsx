@@ -309,14 +309,50 @@ export default function AdminScreen() {
     }
   };
 
+  const applySyncResult = (data: any) => {
+    const categories = Array.isArray(data?.categories) ? data.categories : [];
+    const fetched = Number(data?.fetched ?? data?.upserted ?? 0);
+    const upserted = Number(data?.upserted ?? fetched);
+    const source = cleanSource(data?.sourceLabel || data?.source) || '경기도 문화행사 GGCULTUREVENTSTUS';
+    if (categories.length || upserted > 0 || fetched > 0) {
+      setFestivalCount(upserted || fetched);
+      setFestivalSource(source);
+      setDashboard((current: any) => ({
+        ...(current ?? FALLBACK_DASHBOARD),
+        kpi: {
+          ...(current?.kpi ?? FALLBACK_DASHBOARD.kpi),
+          festivals: upserted || fetched || current?.kpi?.festivals,
+        },
+        tour: {
+          ...(current?.tour ?? FALLBACK_DASHBOARD.tour),
+          source,
+          lastSync: new Date().toISOString(),
+          categories: categories.length ? categories : (current?.tour?.categories ?? FALLBACK_DASHBOARD.tour.categories),
+          logs: [
+            {
+              ran_at: new Date().toISOString(),
+              target_api: data?.targetApi || data?.source || 'GGCULTUREVENTSTUS',
+              fetched: fetched || upserted,
+              failed: Number(data?.failed || 0),
+              status: data?.success === false ? '실패' : '정상',
+            },
+            ...((current?.tour?.logs ?? []) as any[]),
+          ].slice(0, 8),
+        },
+      }));
+    }
+  };
+
   const handleSync = async () => {
     setSyncMessage('수집을 요청하는 중입니다...');
     try {
       const res = await fetch('/api/festivals/sync', { method: 'POST' });
       const data = await res.json();
       setSyncMessage(data.message || '수집 요청을 보냈습니다.');
+      applySyncResult(data);
       await loadFestivals();
       await loadDashboard();
+      applySyncResult(data);
     } catch {
       setSyncMessage('수집 API에 연결하지 못했습니다. 홈 목록은 /api/festivals 실시간 조회를 씁니다.');
     }

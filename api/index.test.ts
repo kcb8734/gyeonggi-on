@@ -46,9 +46,16 @@ test('POST /api/festivals/sync returns a sync payload', async () => {
   const result = await invoke({ method: 'POST', url: '/api/festivals/sync' });
   assert.notEqual(result.status, 404);
   assert.notEqual(result.status, 401);
-  const body = result.body as { fetched?: number; message?: string; success?: boolean };
+  const body = result.body as {
+    fetched?: number;
+    message?: string;
+    success?: boolean;
+    categories?: Array<{ name: string; count: number }>;
+    targetApi?: string;
+  };
   assert.equal(typeof body.message, 'string');
   assert.equal(typeof body.fetched, 'number');
+  assert.ok(Array.isArray(body.categories) || body.success === false);
 });
 
 test('GET /api/centers returns 17 region summaries', async () => {
