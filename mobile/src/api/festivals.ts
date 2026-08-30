@@ -3,15 +3,17 @@ import { PREVIEW_HOME } from './previewHome';
 import type { HomeFestival } from '../types/home';
 import type { FestivalMapResponse, FestivalPin, NearbyFestivalsResponse } from '../types/map';
 
-export async function fetchListedFestivals(): Promise<HomeFestival[]> {
+export async function fetchListedFestivals(metro?: string): Promise<HomeFestival[]> {
   try {
-    const res = await api.get<{ festivals?: HomeFestival[]; data?: HomeFestival[] }>('/api/festivals');
+    const res = await api.get<{ festivals?: HomeFestival[]; data?: HomeFestival[] }>('/api/festivals', {
+      params: metro ? { metro } : undefined,
+    });
     const rows = res.data?.festivals?.length ? res.data.festivals : res.data?.data;
     if (rows?.length) return rows;
   } catch {
     // 미리보기 폴백
   }
-  return PREVIEW_HOME.festivals;
+  return [];
 }
 
 export async function fetchNearbyFestivals(params?: {

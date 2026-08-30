@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { festivalListHeroUrl, firstNonEmptyFestivals, mergeFestivalSources, tourDetailParams } from './festivalFeed';
+import { festivalListHeroUrl, firstNonEmptyFestivals, mergeFestivalSources, preferPersistedFestivalList, tourDetailParams } from './festivalFeed';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import type { HomeFestival } from '../types/home';
 
@@ -35,6 +35,15 @@ test('GYEONGGI fallbacks keep the home list populated', () => {
   assert.ok((REGION_FESTIVAL_FALLBACKS.GYEONGGI?.length ?? 0) >= 5);
   const merged = mergeFestivalSources([], [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI);
   assert.ok(merged.some((item) => item.title.includes('수원화성')));
+});
+
+test('preferPersistedFestivalList does not bury DB rows under dummy fallbacks', () => {
+  const listed = [fest('ggc-1', '오페라박물관 야외음악회 사랑의 묘약')];
+  const merged = preferPersistedFestivalList(listed, [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI);
+  assert.equal(merged[0].title, '오페라박물관 야외음악회 사랑의 묘약');
+  assert.equal(merged.some((item) => item.title.includes('수원화성')), false);
+  const empty = preferPersistedFestivalList([], [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI ?? []);
+  assert.ok(empty.length > 0);
 });
 
 test('17개 권역 축제 폴백이 모두 채워져 있다', () => {

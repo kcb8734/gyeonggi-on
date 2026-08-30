@@ -22,6 +22,17 @@ export function mergeFestivalSources(...groups: HomeFestival[][]) {
   return out;
 }
 
+/** DB 수집분이 있으면 더미 폴백을 붙이지 않는다. */
+export function preferPersistedFestivalList(
+  listed: HomeFestival[],
+  tour: HomeFestival[] = [],
+  feed: HomeFestival[] = [],
+  fallbacks: HomeFestival[] = [],
+) {
+  const live = mergeFestivalSources(listed, tour, feed);
+  return live.length ? live : mergeFestivalSources(live, fallbacks);
+}
+
 export function firstNonEmptyFestivals(...groups: HomeFestival[][]) {
   for (const group of groups) {
     if (group?.length) return group;

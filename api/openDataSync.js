@@ -1,5 +1,6 @@
 import { catalogOpenSources, decorateOpenSources } from './metroOpenSources.js';
 import { syncGgCultureEvents } from './ggCultureSync.js';
+import { syncIfacCultureEvents } from './ifacCultureSync.js';
 import { syncSeoulCultureEvents } from './seoulCultureSync.js';
 import { syncTourMetroEvents } from './metroTourSync.js';
 import { syncMunicipalCultureEvents } from './metroCultureGeneric.js';
@@ -33,9 +34,13 @@ export async function dispatchOpenDataSync(query = {}) {
   if (hint === 'gg' || hint === 'ggc' || hint === 'ggculture') {
     return syncGgCultureEvents({ pageSize: 80, maxPages: 1 });
   }
+  if (hint === 'ifac' || hint === 'incheon') {
+    return syncIfacCultureEvents({ pageSize: 80, maxPages: 1 });
+  }
   if (hint === 'muni' || hint === 'municipal' || hint === 'local') {
     if (metro === 'SEOUL') return syncSeoulCultureEvents({ pageSize: 80, maxPages: 1 });
     if (metro === 'GYEONGGI') return syncGgCultureEvents({ pageSize: 80, maxPages: 1 });
+    if (metro === 'INCHEON') return syncIfacCultureEvents({ pageSize: 80, maxPages: 1 });
     return syncMunicipalCultureEvents(metro);
   }
   return syncOpenCultureEvents(query);

@@ -30,10 +30,66 @@ function localityName(row) {
   return String(row.label || row.id || '').replace(/^(서울|부산|대구|인천|광주|대전|울산)\s+/, '');
 }
 
+export function festivalDateYmd(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const iso = text.match(/(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const dotted = text.match(/(\d{4})[./](\d{1,2})[./](\d{1,2})/);
+  if (dotted) {
+    return `${dotted[1]}-${dotted[2].padStart(2, '0')}-${dotted[3].padStart(2, '0')}`;
+  }
+  const digits = text.replace(/\D/g, '');
+  if (digits.length >= 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  return '';
+}
+
+export function listedMetroForRow(row, fallback = 'GYEONGGI') {
+  const source = String(row && row.source || '').toLowerCase();
+  const hay = `${row && row.location_name || ''} ${row && row.municipality_name || ''} ${row && row.title || ''} ${row && row.description || ''}`;
+  if (source === 'seoul') return 'SEOUL';
+  if (source === 'ggc') return 'GYEONGGI';
+  if (source === 'ifac' || source === 'incheon') {
+    if (hay.includes('서울')) return 'SEOUL';
+    if (hay.includes('경기')) return 'GYEONGGI';
+    return 'INCHEON';
+  }
+  return inferMetro(hay, row && (row.metro_region || row.metro || row.regionalZone || fallback));
+}
+
+export function rowMatchesMetro(row, metro) {
+  const zone = normalizeMetroId(metro);
+  if (!zone || zone === 'ALL') return true;
+  return listedMetroForRow(row, zone) === zone;
+}
+
+export function mergeHomeFestivalRows(...groups) {
+  const out = [];
+  const seen = new Set();
+  for (const group of groups) {
+    for (const item of group || []) {
+      const title = String(item && item.title || '').trim();
+      const id = String(item && (item.contentId || item.id || item.tour_content_id) || '').trim();
+      const key = title ? `title:${title}` : id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 export function inferMetro(address, metro) {
   const raw = String(metro || '').trim().toUpperCase();
   if (raw === 'SE' || raw === 'SEOULCULTURE') return 'SEOUL';
   if (raw === 'GG' || raw === 'GGC') return 'GYEONGGI';
+  if (raw === 'IFAC' || raw === 'INCHEON') return 'INCHEON';
   if (raw && raw !== 'TOUR' && raw !== 'ALL' && raw !== 'SAMPLE' && REGION_META[normalizeMetroId(raw)]) {
     return normalizeMetroId(raw);
   }
@@ -160,12 +216,13 @@ export async function persistTourFestivals(items, options = {}) {
     for (const item of rows) {
       const contentId = String(item && item.contentId || '').trim();
       const title = String(item && item.title || '').trim();
-      const start = String(item && (item.eventStartDate || item.start_date) || '').slice(0, 10);
+      const start = festivalDateYmd(item && (item.eventStartDate || item.start_date))
+        || festivalDateYmd(item && (item.eventEndDate || item.end_date));
       if (!contentId || !title || !start) {
         skipped += 1;
         continue;
       }
-      const end = String(item && (item.eventEndDate || item.end_date) || start).slice(0, 10);
+      const end = festivalDateYmd(item && (item.eventEndDate || item.end_date)) || start;
       const address = String(item && (item.address || item.location_name) || '');
       const metro = inferMetro(`${address} ${title}`, item.metro || item.regionalZone || options.metro || source);
       const municipalityId = await ensureMunicipalityId(client, `${address} ${title}`, metro);
@@ -235,6 +292,9 @@ export async function persistTourFestivals(items, options = {}) {
 
 export function rowToHomeFestival(row, metro = 'GYEONGGI') {
   const contentId = String(row && (row.tour_content_id || row.contentId || row.id) || '');
+  const zone = listedMetroForRow(row, metro);
+  const start = festivalDateYmd(row && row.start_date) || festivalDateYmd(row && row.end_date);
+  const end = festivalDateYmd(row && row.end_date) || start;
   return {
     id: contentId ? 'tour-' + contentId : String(row && row.title || ''),
     contentId: contentId || String(row && row.title || ''),
@@ -243,8 +303,8 @@ export function rowToHomeFestival(row, metro = 'GYEONGGI') {
     location_name: row && row.location_name,
     latitude: Number(row && row.latitude) || 0,
     longitude: Number(row && row.longitude) || 0,
-    start_date: row && row.start_date,
-    end_date: row && row.end_date,
+    start_date: start || null,
+    end_date: end || null,
     municipality_name: (row && row.municipality_name) || null,
     description: (row && row.description) || null,
     category: (row && row.category) || '문화/예술',
@@ -252,27 +312,53 @@ export function rowToHomeFestival(row, metro = 'GYEONGGI') {
     is_trending: Boolean(row && row.is_trending),
     source: (row && row.source) || 'tour',
     tel: (row && row.tel) || null,
-    regionalZone: metro,
-    metro: metro,
+    regionalZone: zone,
+    metro: zone,
   };
 }
 
-export async function listPersistedFestivals(metro = 'GYEONGGI') {
-  const db = getPool();
-  if (!db) return [];
-  try {
-    const result = await db.query(
-      `SELECT
+const LIST_SQL_WITH_METRO = `SELECT
+         f.title, f.location_name, f.latitude, f.longitude,
+         f.start_date, f.end_date, f.description, f.category, f.image_url,
+         f.is_trending, f.tour_content_id, f.tel, f.source,
+         mu.name AS municipality_name,
+         mu.metro_region
+       FROM festivals f
+       LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       ORDER BY
+         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         f.is_trending DESC,
+         f.start_date DESC NULLS LAST
+       LIMIT 400`;
+
+const LIST_SQL_BASIC = `SELECT
          f.title, f.location_name, f.latitude, f.longitude,
          f.start_date, f.end_date, f.description, f.category, f.image_url,
          f.is_trending, f.tour_content_id, f.tel, f.source,
          mu.name AS municipality_name
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
-       ORDER BY f.is_trending DESC, f.start_date ASC
-       LIMIT 80`,
-    );
-    return (result.rows || []).map((row) => rowToHomeFestival(row, metro));
+       ORDER BY
+         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         f.is_trending DESC,
+         f.start_date DESC NULLS LAST
+       LIMIT 400`;
+
+export async function listPersistedFestivals(metro = 'GYEONGGI') {
+  const db = getPool();
+  if (!db) return [];
+  const zone = normalizeMetroId(metro);
+  try {
+    let result;
+    try {
+      result = await db.query(LIST_SQL_WITH_METRO);
+    } catch {
+      result = await db.query(LIST_SQL_BASIC);
+    }
+    return (result.rows || [])
+      .map((row) => rowToHomeFestival(row, zone))
+      .filter((row) => !zone || zone === 'ALL' || row.metro === zone)
+      .slice(0, 200);
   } catch (err) {
     console.error('[festival-db-list]', err && err.message ? err.message : err);
     return [];

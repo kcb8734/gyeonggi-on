@@ -37,6 +37,15 @@ export function hasGgApiKey() {
   ).trim());
 }
 
+export function hasIfacApiKey() {
+  return Boolean(String(
+    process.env.INCHEON_API_KEY
+    || process.env.IFAC_API_KEY
+    || process.env.INCHEON_CULTURE_API_KEY
+    || '',
+  ).trim());
+}
+
 export function municipalSlot(metro) {
   const names = municipalEnvNames(metro);
   const key = envFirst(names.key);
@@ -56,6 +65,7 @@ export function catalogOpenSources() {
   const tourKey = hasTourApiKey();
   const seoulKey = Boolean(String(process.env.SEOUL_CULTURE_API_KEY || process.env.SEOUL_OPENAPI_KEY || '').trim());
   const ggKey = hasGgApiKey();
+  const ifacKey = hasIfacApiKey();
   const national = [
     {
       id: 'tour',
@@ -93,6 +103,18 @@ export function catalogOpenSources() {
       collectable: ggKey,
       syncQuery: { source: 'ggc' },
     },
+    {
+      id: 'ifac',
+      kind: 'muni',
+      metro: 'INCHEON',
+      label: '인천문화재단 문화예술행사',
+      targetApi: 'ifac-culture',
+      description: 'ifac.or.kr openAPI/real/search.do svid=culture',
+      envHint: 'INCHEON_API_KEY',
+      keyConfigured: ifacKey,
+      collectable: ifacKey,
+      syncQuery: { source: 'ifac' },
+    },
   ];
 
   const tourMetros = METRO_IDS.map((metro) => ({
@@ -108,7 +130,7 @@ export function catalogOpenSources() {
     syncQuery: { source: 'tour', metro },
   }));
 
-  const muniMetros = METRO_IDS.filter((metro) => metro !== 'SEOUL' && metro !== 'GYEONGGI').map((metro) => {
+  const muniMetros = METRO_IDS.filter((metro) => metro !== 'SEOUL' && metro !== 'GYEONGGI' && metro !== 'INCHEON').map((metro) => {
     const slot = municipalSlot(metro);
     return {
       id: `muni-${metro}`,
@@ -149,6 +171,7 @@ export function decorateOpenSources(catalog, stats = {}) {
     let count = 0;
     if (row.id === 'seoul') count = bySource.seoul || 0;
     else if (row.id === 'ggc') count = bySource.ggc || 0;
+    else if (row.id === 'ifac') count = bySource.ifac || 0;
     else if (row.id === 'tour') count = bySource.tour || 0;
     else if (row.kind === 'tour-metro') count = byPair[`tour:${row.metro}`] || 0;
     else if (row.kind === 'muni-slot') count = byPair[`muni:${row.metro}`] || 0;
@@ -177,6 +200,7 @@ export function matchLogToSource(targetApi, sourceIdHint) {
   if (sourceIdHint) return sourceIdHint;
   if (/culturalEventInfo/i.test(api)) return 'seoul';
   if (/GGCULTURE/i.test(api)) return 'ggc';
+  if (/ifac/i.test(api)) return 'ifac';
   const cultureMetro = METRO_IDS.find((id) => new RegExp(`^${id}_CULTURE$`, 'i').test(api));
   if (cultureMetro) return `muni-${cultureMetro}`;
   const tourMetro = METRO_IDS.find((id) => new RegExp(`searchFestival2:${id}$`, 'i').test(api));

@@ -87,7 +87,7 @@ export function OpenSourceActions({
 }) {
   return (
     <View style={{ marginTop: 4 }}>
-      <ActionButton label={busy ? '서울·경기 수집 중...' : '서울·경기 문화행사 즉시 동기화'} onPress={onAllCulture} disabled={busy} />
+      <ActionButton label={busy ? '서울·경기·인천 수집 중...' : '서울·경기·인천 문화행사 즉시 동기화'} onPress={onAllCulture} disabled={busy} />
     </View>
   );
 }

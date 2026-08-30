@@ -1,6 +1,7 @@
 import { pool, tryQuery } from '../db/pool';
 import { buildFallbackFestivals, FALLBACK_SYNC_MIN } from './cultureSyncFallback';
 import { syncGgCultureEvents } from './ggCultureEventService';
+import { syncIfacCultureEvents } from './ifacCultureEventService';
 import { syncSeoulCultureEvents } from './seoulCultureEventService';
 import { mergeCategoryCounts } from './seoulCultureXml';
 
@@ -63,7 +64,7 @@ async function applySampleFallback(reason: string) {
     success: true,
     fallback: true,
     source: 'sample',
-    sourceLabel: '서울시·경기도 문화행사 샘플 적재',
+    sourceLabel: '서울시·경기도·인천 문화행사 샘플 적재',
     targetApi: 'culturalEventInfo',
     fetched: items.length,
     upserted,
@@ -80,17 +81,25 @@ async function applySampleFallback(reason: string) {
 
 export async function syncOpenCultureEvents(
   query: { source?: string; api?: string } = {},
-  options: { seoul?: Parameters<typeof syncSeoulCultureEvents>[0]; gg?: Parameters<typeof syncGgCultureEvents>[0]; budgetMs?: number } = {},
+  options: {
+    seoul?: Parameters<typeof syncSeoulCultureEvents>[0];
+    gg?: Parameters<typeof syncGgCultureEvents>[0];
+    ifac?: Parameters<typeof syncIfacCultureEvents>[0];
+    budgetMs?: number;
+  } = {},
 ) {
   const budgetMs = Number(options.budgetMs || 18000);
   const hint = sourceHint(query);
   const run = async () => {
     const wantSeoul = !hint || hint === 'all' || hint === 'seoul' || hint === 'culturaleventinfo' || hint === 'open';
     const wantGg = !hint || hint === 'all' || hint === 'gg' || hint === 'ggc' || hint === 'ggculture' || hint === 'open';
-    console.log('[culture-sync] start', { hint: hint || 'all', seoul: wantSeoul, gyeonggi: wantGg });
-    const results = [];
-    if (wantSeoul) results.push(await syncSeoulCultureEvents(withBudget(options.seoul || {})));
-    if (wantGg) results.push(await syncGgCultureEvents(withBudget(options.gg || {})));
+    const wantIfac = !hint || hint === 'all' || hint === 'ifac' || hint === 'incheon' || hint === 'open';
+    console.log('[culture-sync] start', { hint: hint || 'all', seoul: wantSeoul, gyeonggi: wantGg, incheon: wantIfac });
+    const jobs = [];
+    if (wantSeoul) jobs.push(syncSeoulCultureEvents(withBudget(options.seoul || {})));
+    if (wantGg) jobs.push(syncGgCultureEvents(withBudget(options.gg || {})));
+    if (wantIfac) jobs.push(syncIfacCultureEvents(withBudget(options.ifac || {})));
+    const results = jobs.length ? await Promise.all(jobs) : [];
     const fetched = results.reduce((sum, row) => sum + Number(row.fetched || 0), 0);
     const upserted = results.reduce((sum, row) => sum + Number(row.upserted || 0), 0);
     const success = results.some((row) => row.success);

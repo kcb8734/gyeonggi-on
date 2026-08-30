@@ -10,10 +10,12 @@ export function catalogOpenSources() {
   const tourKey = envSet('TOUR_API_SERVICE_KEY') || envSet('NTS_SERVICE_KEY');
   const seoulKey = envSet('SEOUL_CULTURE_API_KEY') || envSet('SEOUL_OPENAPI_KEY');
   const ggKey = envSet('GG_CULTURE_API_KEY') || envSet('GGCULTURE_API_KEY') || envSet('GG_OPENAPI_KEY');
+  const ifacKey = envSet('INCHEON_API_KEY') || envSet('IFAC_API_KEY') || envSet('INCHEON_CULTURE_API_KEY');
   const national = [
     { id: 'tour', kind: 'tour', metro: 'ALL', label: '한국관광공사 TourAPI 4.0', targetApi: 'searchFestival2', description: 'KorService2 searchFestival2 전국', envHint: 'TOUR_API_SERVICE_KEY', keyConfigured: tourKey, collectable: tourKey, syncQuery: { source: 'tour', areaCode: 'all' } },
     { id: 'seoul', kind: 'muni', metro: 'SEOUL', label: '서울시 문화행사', targetApi: 'culturalEventInfo', description: 'openapi.seoul.go.kr culturalEventInfo', envHint: 'SEOUL_CULTURE_API_KEY', keyConfigured: seoulKey, collectable: true, syncQuery: { source: 'seoul' } },
     { id: 'ggc', kind: 'muni', metro: 'GYEONGGI', label: '경기도 문화행사', targetApi: 'GGCULTUREVENTSTUS', description: 'openapi.gg.go.kr GGCULTUREVENTSTUS', envHint: 'GG_CULTURE_API_KEY', keyConfigured: ggKey, collectable: ggKey, syncQuery: { source: 'ggc' } },
+    { id: 'ifac', kind: 'muni', metro: 'INCHEON', label: '인천문화재단 문화예술행사', targetApi: 'ifac-culture', description: 'ifac.or.kr openAPI/real/search.do svid=culture', envHint: 'INCHEON_API_KEY', keyConfigured: ifacKey, collectable: ifacKey, syncQuery: { source: 'ifac' } },
   ];
   const tourMetros = METRO_IDS.map((metro) => ({
     id: `tour-${metro}`,
@@ -28,7 +30,7 @@ export function catalogOpenSources() {
     syncQuery: { source: 'tour', metro },
     count: 0,
   }));
-  const muniMetros = METRO_IDS.filter((metro) => metro !== 'SEOUL' && metro !== 'GYEONGGI').map((metro) => {
+  const muniMetros = METRO_IDS.filter((metro) => metro !== 'SEOUL' && metro !== 'GYEONGGI' && metro !== 'INCHEON').map((metro) => {
     const urlEnv = `${metro}_CULTURE_API_URL`;
     const keyEnv = `${metro}_CULTURE_API_KEY`;
     const ready = envSet(urlEnv) && envSet(keyEnv);
@@ -59,6 +61,7 @@ export function decorateOpenSources(
     let count = 0;
     if (row.id === 'seoul') count = bySource.seoul || 0;
     else if (row.id === 'ggc') count = bySource.ggc || 0;
+    else if (row.id === 'ifac') count = bySource.ifac || 0;
     else if (row.id === 'tour') count = bySource.tour || 0;
     else if (row.kind === 'tour-metro') count = byPair[`tour:${row.metro}`] || 0;
     else if (row.kind === 'muni-slot') count = byPair[`muni:${row.metro}`] || 0;

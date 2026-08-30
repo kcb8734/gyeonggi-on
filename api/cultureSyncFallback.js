@@ -63,7 +63,7 @@ export function fallbackSyncPayload(items, persist) {
     success: true,
     fallback: true,
     source: 'sample',
-    sourceLabel: '서울시·경기도 문화행사 샘플 적재',
+    sourceLabel: '서울시·경기도·인천 문화행사 샘플 적재',
     targetApi: 'culturalEventInfo',
     fetched: items.length,
     upserted,

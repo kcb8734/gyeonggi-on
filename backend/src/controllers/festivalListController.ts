@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
 import { syncOpenCultureEvents } from '../services/cultureOpenSync';
-import { AREA_CODE_BY_METRO, REGION_LABEL } from '../constants/metroLocalities';
+import { AREA_CODE_BY_METRO, REGION_LABEL, normalizeMetroId } from '../constants/metroLocalities';
 import { collectGyeonggiFestivals, collectRegionFestivals, syncNationwideFestivals, tourItemsToHome, upsertTourFestivals } from '../services/festivalSyncService';
 import { toNumber } from '../utils/geo';
 
@@ -12,8 +12,45 @@ function cronAuthorized(req: Request): boolean {
   return header === `Bearer ${secret}`;
 }
 
-export function toListedFestival(row: Record<string, unknown>) {
+export function festivalDateYmd(value: unknown): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const iso = text.match(/(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const dotted = text.match(/(\d{4})[./](\d{1,2})[./](\d{1,2})/);
+  if (dotted) return `${dotted[1]}-${dotted[2].padStart(2, '0')}-${dotted[3].padStart(2, '0')}`;
+  const digits = text.replace(/\D/g, '');
+  if (digits.length >= 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  return '';
+}
+
+export function listedMetroForRow(row: Record<string, unknown>, fallback = 'GYEONGGI') {
+  const source = String(row.source || '').toLowerCase();
+  const hay = `${row.location_name || ''} ${row.municipality_name || ''} ${row.title || ''} ${row.description || ''}`;
+  if (source === 'seoul') return 'SEOUL';
+  if (source === 'ggc') return 'GYEONGGI';
+  if (source === 'ifac' || source === 'incheon') {
+    if (hay.includes('서울')) return 'SEOUL';
+    if (hay.includes('경기')) return 'GYEONGGI';
+    return String(row.metro_region || 'INCHEON');
+  }
+  if (hay.includes('서울')) return 'SEOUL';
+  if (hay.includes('인천')) return 'INCHEON';
+  if (hay.includes('경기')) return 'GYEONGGI';
+  return String(row.metro_region || row.metro || fallback);
+}
+
+export function toListedFestival(row: Record<string, unknown>, fallback = 'GYEONGGI') {
   const contentId = String(row.tour_content_id || row.id || '');
+  const start = festivalDateYmd(row.start_date) || festivalDateYmd(row.end_date);
+  const end = festivalDateYmd(row.end_date) || start;
+  const metro = listedMetroForRow(row, fallback);
   return {
     id: row.tour_content_id ? `tour-${row.tour_content_id}` : row.id,
     contentId,
@@ -22,8 +59,8 @@ export function toListedFestival(row: Record<string, unknown>) {
     location_name: row.location_name,
     latitude: toNumber(row.latitude),
     longitude: toNumber(row.longitude),
-    start_date: row.start_date,
-    end_date: row.end_date,
+    start_date: start || null,
+    end_date: end || null,
     municipality_name: row.municipality_name ?? null,
     description: row.description ?? null,
     category: row.category ?? '문화/예술',
@@ -31,30 +68,62 @@ export function toListedFestival(row: Record<string, unknown>) {
     is_trending: Boolean(row.is_trending),
     source: row.source ?? 'db',
     tel: row.tel ?? null,
+    metro,
+    regionalZone: metro,
   };
 }
 
-/** GET /api/festivals — 경기온 홈 카드용 최신 축제 목록 */
-export const listSyncedFestivals = async (_req: Request, res: Response) => {
-  try {
-    const result = await pool.query(
-      `SELECT
+const LIST_SQL_WITH_METRO = `SELECT
+         f.id, f.title, f.location_name, f.latitude, f.longitude,
+         f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
+         f.tour_content_id, f.tel, f.source,
+         mu.name AS municipality_name,
+         mu.metro_region
+       FROM festivals f
+       LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       ORDER BY
+         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         f.is_trending DESC,
+         f.start_date DESC NULLS LAST
+       LIMIT 400`;
+
+const LIST_SQL_BASIC = `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
          f.start_date, f.end_date, f.description, f.category, f.image_url, f.is_trending,
          f.tour_content_id, f.tel, f.source,
          mu.name AS municipality_name
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
-       ORDER BY f.is_trending DESC, f.start_date ASC
-       LIMIT 80`,
-    );
-    if (result.rowCount) {
+       ORDER BY
+         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         f.is_trending DESC,
+         f.start_date DESC NULLS LAST
+       LIMIT 400`;
+
+/** GET /api/festivals — 백오피스 수집분(서울·경기·인천 포함)을 홈 카드에 내려준다 */
+export const listSyncedFestivals = async (req: Request, res: Response) => {
+  const metro = normalizeMetroId(String(req.query.metro || 'GYEONGGI'));
+  try {
+    let rows: Array<Record<string, unknown>> = [];
+    try {
+      const result = await pool.query(LIST_SQL_WITH_METRO);
+      rows = result.rows as Array<Record<string, unknown>>;
+    } catch {
+      const result = await pool.query(LIST_SQL_BASIC);
+      rows = result.rows as Array<Record<string, unknown>>;
+    }
+    const festivals = rows
+      .map((row) => toListedFestival(row, metro))
+      .filter((row) => !metro || metro === 'ALL' || row.metro === metro)
+      .slice(0, 200);
+    if (festivals.length) {
       return res.json({
         success: true,
-        metro: 'GYEONGGI',
-        count: result.rowCount,
-        festivals: result.rows.map(toListedFestival),
-        data: result.rows.map(toListedFestival),
+        metro,
+        count: festivals.length,
+        source: 'db',
+        festivals,
+        data: festivals,
       });
     }
   } catch (err) {
@@ -62,11 +131,12 @@ export const listSyncedFestivals = async (_req: Request, res: Response) => {
   }
 
   try {
-    const collected = await collectGyeonggiFestivals();
+    const areaCode = AREA_CODE_BY_METRO[metro] || '31';
+    const collected = metro === 'GYEONGGI' ? await collectGyeonggiFestivals() : await collectRegionFestivals(areaCode);
     const festivals = tourItemsToHome(collected.items);
     return res.json({
       success: true,
-      metro: 'GYEONGGI',
+      metro,
       count: festivals.length,
       source: collected.source,
       festivals,
@@ -117,8 +187,9 @@ export const runFestivalSync = async (req: Request, res: Response) => {
     });
   }
   if (hint === 'muni' || hint === 'municipal' || hint === 'local') {
-    if (metro === 'SEOUL' || metro === 'GYEONGGI') {
-      const result = await syncOpenCultureEvents({ source: metro === 'SEOUL' ? 'seoul' : 'ggc' });
+    if (metro === 'SEOUL' || metro === 'GYEONGGI' || metro === 'INCHEON') {
+      const source = metro === 'SEOUL' ? 'seoul' : metro === 'GYEONGGI' ? 'ggc' : 'ifac';
+      const result = await syncOpenCultureEvents({ source });
       return res.status(200).json(result);
     }
     const urlEnv = `${metro}_CULTURE_API_URL`;

@@ -185,6 +185,7 @@ function fallbackOpenSources() {
     { id: 'tour', kind: 'tour', label: '한국관광공사 TourAPI 4.0', targetApi: 'searchFestival2', description: 'KorService2 전국', envHint: 'TOUR_API_SERVICE_KEY', collectable: true, count: 0, lastStatus: '대기', syncQuery: { source: 'tour', areaCode: 'all' } },
     { id: 'seoul', kind: 'muni', metro: 'SEOUL', label: '서울시 문화행사', targetApi: 'culturalEventInfo', description: 'openapi.seoul.go.kr', envHint: 'SEOUL_CULTURE_API_KEY', collectable: true, count: 0, lastStatus: '대기', syncQuery: { source: 'seoul' } },
     { id: 'ggc', kind: 'muni', metro: 'GYEONGGI', label: '경기도 문화행사', targetApi: 'GGCULTUREVENTSTUS', description: 'openapi.gg.go.kr', envHint: 'GG_CULTURE_API_KEY', collectable: true, count: 0, lastStatus: '대기', syncQuery: { source: 'ggc' } },
+    { id: 'ifac', kind: 'muni', metro: 'INCHEON', label: '인천문화재단 문화예술행사', targetApi: 'ifac-culture', description: 'ifac.or.kr svid=culture', envHint: 'INCHEON_API_KEY', collectable: false, count: 0, lastStatus: '키없음', syncQuery: { source: 'ifac' } },
   ];
   const tourMetros: OpenSourceRow[] = METRO_REGIONS.map((region) => ({
     id: `tour-${region.id}`,
@@ -199,7 +200,7 @@ function fallbackOpenSources() {
     lastStatus: '대기',
     syncQuery: { source: 'tour', metro: region.id },
   }));
-  const muniMetros: OpenSourceRow[] = METRO_REGIONS.filter((region) => region.id !== 'SEOUL' && region.id !== 'GYEONGGI').map((region) => ({
+  const muniMetros: OpenSourceRow[] = METRO_REGIONS.filter((region) => region.id !== 'SEOUL' && region.id !== 'GYEONGGI' && region.id !== 'INCHEON').map((region) => ({
     id: `muni-${region.id}`,
     kind: 'muni-slot',
     metro: region.id,
@@ -352,7 +353,7 @@ export default function AdminScreen() {
     const categories = Array.isArray(data?.categories) ? data.categories : [];
     const fetched = Number(data?.fetched ?? data?.upserted ?? 0);
     const upserted = Number(data?.upserted ?? fetched);
-    const source = cleanSource(data?.sourceLabel || data?.source) || '서울시·경기도 문화행사 OpenAPI';
+    const source = cleanSource(data?.sourceLabel || data?.source) || '서울시·경기도·인천 문화행사 OpenAPI';
     if (categories.length || upserted > 0 || fetched > 0) {
       setFestivalCount(upserted || fetched);
       setFestivalSource(source);
@@ -389,7 +390,7 @@ export default function AdminScreen() {
     const sample = {
       success: true,
       fallback: true,
-      sourceLabel: '서울시·경기도 문화행사 샘플 적재',
+      sourceLabel: '서울시·경기도·인천 문화행사 샘플 적재',
       targetApi: 'culturalEventInfo',
       fetched: 52,
       upserted: 52,
@@ -655,7 +656,7 @@ export default function AdminScreen() {
             <OpenSourceActions onAllCulture={handleSync} busy={syncBusy === 'culture'} />
           </View>
           <OpenSourceList
-            title="TourAPI 4.0 · 서울시 · 경기도"
+            title="TourAPI 4.0 · 서울시 · 경기도 · 인천"
             hint="국가·광역 공공 API 수집 현황입니다. 각 행에서 바로 수집할 수 있습니다."
             rows={(tour.sources?.national?.length ? tour.sources.national : fallbackOpenSources().national)}
             busyId={syncBusy}
@@ -669,8 +670,8 @@ export default function AdminScreen() {
             onCollect={handleSourceSync}
           />
           <OpenSourceList
-            title="나머지 15개 광역 지자체 OpenAPI"
-            hint="Vercel/서버에 {권역}_CULTURE_API_URL 과 {권역}_CULTURE_API_KEY 를 넣으면 해당 지자체 API 수집이 켜집니다. 서울·경기는 전용 수집기를 씁니다."
+            title="나머지 14개 광역 지자체 OpenAPI"
+            hint="Vercel/서버에 {권역}_CULTURE_API_URL 과 {권역}_CULTURE_API_KEY 를 넣으면 해당 지자체 API 수집이 켜집니다. 서울·경기·인천은 전용 수집기를 씁니다."
             rows={(tour.sources?.muniMetros?.length ? tour.sources.muniMetros : fallbackOpenSources().muniMetros)}
             busyId={syncBusy}
             onCollect={handleSourceSync}
