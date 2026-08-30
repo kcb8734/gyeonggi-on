@@ -3,7 +3,7 @@ import { resolveFallbackKey } from './regionalFallbackKeys';
 import { normalizeMetroId } from './regions';
 
 export const REGION_STOCK: Record<string, string> = {
-  GYEONGGI: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80',
+  GYEONGGI: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80',
   SEOUL: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800&q=80',
   INCHEON: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&q=80',
   GANGWON: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',

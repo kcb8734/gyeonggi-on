@@ -20,7 +20,7 @@ export interface FeedPost {
   mine?: boolean;
 }
 
-const FEED_KEY = 'onandon-feed-v7';
+const FEED_KEY = 'onandon-feed-v8';
 
 function hydratePost(post: FeedPost): FeedPost {
   const raw = String(post.imageUrl || '').trim();

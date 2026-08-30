@@ -77,8 +77,12 @@ const styles = StyleSheet.create({
   emptyText: { color: '#9CA3AF', fontWeight: '700' },
   hero: { ...StyleSheet.absoluteFillObject },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17,24,39,0.28)',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 280,
+    backgroundColor: 'rgba(17,24,39,0.45)',
   },
   meta: {
     position: 'absolute',

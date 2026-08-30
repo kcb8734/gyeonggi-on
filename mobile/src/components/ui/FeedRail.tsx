@@ -57,8 +57,12 @@ const styles = StyleSheet.create({
     height: 248,
   },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17,24,39,0.28)',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 132,
+    backgroundColor: 'rgba(17,24,39,0.42)',
   },
   meta: {
     position: 'absolute',
