@@ -46,7 +46,8 @@ import {
   toHomeFestival,
   tourServiceKey,
 } from './tourLive.js';
-import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
+import { listFestivalCategoryCounts, listPersistedFestivals, listTourSyncLogs, persistTourFestivals } from './festivalDbSync.js';
+import { syncGgCultureEvents } from './ggCultureSync.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -343,7 +344,20 @@ async function syncFestivalsLive(req, res) {
   }
   const query = readQuery(req);
   const metroKey = normalizeMetroId(query.metro);
+  const sourceHint = String(query.source || query.api || '').toLowerCase();
+  const wantTourOnly = sourceHint === 'tour' || sourceHint === 'tourapi' || sourceHint === 'searchfestival2';
   try {
+    if (!wantTourOnly) {
+      const gg = await syncGgCultureEvents();
+      send(res, gg.success ? 200 : 502, {
+        ...gg,
+        metro: metroKey,
+        regionalZone: metroKey,
+        festivals: [],
+        data: [],
+      }, headers);
+      return;
+    }
     const result = await searchFestival2({
       metro: metroKey,
       areaCode: query.areaCode || METRO_AREA[metroKey],
@@ -353,6 +367,7 @@ async function syncFestivalsLive(req, res) {
     });
     const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
     const persist = await persistTourFestivals(result.festivals);
+    const categories = persist.ok ? await listFestivalCategoryCounts() : [];
     send(res, 200, {
       success: true,
       metro: result.metro,
@@ -366,6 +381,7 @@ async function syncFestivalsLive(req, res) {
       skipped: persist.skipped,
       persisted: persist.ok,
       source: result.source,
+      categories,
       festivals: festivals,
       data: festivals,
       message: persist.ok
@@ -382,11 +398,34 @@ async function syncFestivalsLive(req, res) {
       skipped: 0,
       persisted: false,
       source: 'none',
+      categories: [],
       festivals: [],
       data: [],
       message: err && err.message ? err.message : '축제 동기화에 실패했습니다.',
     }, headers);
   }
+}
+
+async function adminDashboardLive(req, res) {
+  const base = dashboard();
+  const categories = await listFestivalCategoryCounts();
+  const logs = await listTourSyncLogs();
+  if (categories.length) {
+    base.tour.categories = categories;
+    const total = categories.reduce((sum, row) => sum + Number(row.count || 0), 0);
+    if (total > 0) base.kpi.festivals = total;
+  }
+  if (logs.length) {
+    base.tour.logs = logs;
+    const latest = logs[0];
+    if (latest && latest.ran_at) base.tour.lastSync = latest.ran_at;
+    if (latest && /GGCULTURE/i.test(String(latest.target_api || ''))) {
+      base.tour.source = '경기도 문화행사 GGCULTUREVENTSTUS';
+    }
+  } else if (categories.some((row) => /교육|공연|전시|체험/.test(String(row.name || '')))) {
+    base.tour.source = '경기도 문화행사 GGCULTUREVENTSTUS';
+  }
+  send(res, 200, { success: true, data: base }, corsHeaders(req));
 }
 
 async function listTourFestivals(req, res) {
@@ -771,7 +810,7 @@ async function handler(req, res) {
       return;
     }
     if (/admin\/dashboard/i.test(path)) {
-      send(res, 200, { success: true, data: dashboard() }, corsHeaders(req));
+      await adminDashboardLive(req, res);
       return;
     }
     if (/admin\/engine/i.test(path)) {

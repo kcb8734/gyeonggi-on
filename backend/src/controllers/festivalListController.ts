@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
-import { collectGyeonggiFestivals, syncGyeonggiFestivals, tourItemsToHome } from '../services/festivalSyncService';
+import { syncGgCultureEvents } from '../services/ggCultureEventService';
+import { collectGyeonggiFestivals, syncNationwideFestivals, tourItemsToHome } from '../services/festivalSyncService';
 import { toNumber } from '../utils/geo';
 
 function cronAuthorized(req: Request): boolean {
@@ -81,6 +82,10 @@ export const runFestivalSync = async (req: Request, res: Response) => {
   if (!cronAuthorized(req)) {
     return res.status(401).json({ success: false, message: 'cron 인증이 필요합니다.' });
   }
-  const result = await syncGyeonggiFestivals();
+  if (/cron/i.test(String(req.path || req.originalUrl || ''))) {
+    const result = await syncNationwideFestivals();
+    return res.status(result.success ? 200 : 502).json(result);
+  }
+  const result = await syncGgCultureEvents();
   return res.status(result.success ? 200 : 502).json(result);
 };

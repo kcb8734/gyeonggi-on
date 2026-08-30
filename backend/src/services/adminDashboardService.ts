@@ -11,6 +11,12 @@ export async function getAdminDashboard() {
   const syncLogs = await tryQuery(
     `SELECT ran_at, target_api, fetched, failed, status FROM tour_sync_logs ORDER BY ran_at DESC LIMIT 8`,
   );
+  const categoryRows = await tryQuery(
+    `SELECT COALESCE(NULLIF(TRIM(category), ''), '기타') AS name, COUNT(*)::int AS count
+     FROM festivals
+     GROUP BY 1
+     ORDER BY count DESC, name ASC`,
+  );
   const weights = await tryQuery(`SELECT * FROM admin_engine_settings WHERE id = 'default'`);
   const courses = await tryQuery(
     `SELECT id, festival_title, course_json, is_editors_pick, recommend_count, save_count FROM ai_courses ORDER BY created_at DESC LIMIT 12`,
@@ -57,14 +63,18 @@ export async function getAdminDashboard() {
     tour: {
       quotaUsed: 42,
       quotaLimit: 1000,
-      lastSync: '오늘 07:00 KST',
-      source: '한국관광공사 TourAPI 4.0',
-      categories: [
-        { name: '축제/행사', count: festivalCount },
-        { name: '역사체험', count: 8 },
-        { name: '캠핑장', count: 6 },
-        { name: '음식점', count: 21 },
-      ],
+      lastSync: syncLogs?.rows[0]?.ran_at || '오늘 07:00 KST',
+      source: /GGCULTURE/i.test(String(syncLogs?.rows[0]?.target_api || ''))
+        ? '경기도 문화행사 GGCULTUREVENTSTUS'
+        : '한국관광공사 TourAPI 4.0',
+      categories: categoryRows?.rows?.length
+        ? categoryRows.rows
+        : [
+          { name: '축제/행사', count: festivalCount },
+          { name: '역사체험', count: 8 },
+          { name: '캠핑장', count: 6 },
+          { name: '음식점', count: 21 },
+        ],
       logs: syncLogs?.rows.length
         ? syncLogs.rows
         : [
