@@ -73,6 +73,15 @@ test('front face document uses flex layout and nowrap contact values', () => {
   assert.doesNotMatch(html, /max-width: 640px/);
 });
 
+test('jongno mock card embeds the director portrait', () => {
+  const jongno = listCenterLocalities('SEOUL').find((row) => row.label === '종로구');
+  const model = buildCenterCardModel(jongno!);
+  assert.ok(model?.photoUrl?.startsWith('data:image/jpeg'));
+  const html = buildCenterCardFaceDocument(model!, 'front', 96);
+  assert.match(html, /class="photo"/);
+  assert.match(html, /data:image\/jpeg/);
+});
+
 test('back face keeps website QR while print size stays 92x52mm', () => {
   const suwon = listCenterLocalities('GYEONGGI').find((row) => row.label === '수원시');
   const model = buildCenterCardModel(suwon!);

@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedPosts } from '../stores/feedStore';
 import ModalExitButton from '../components/ui/ModalExitButton';
 
 export default function FeedViewScreen({ postId }: { postId: string }) {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const posts = useFeedPosts();
   const [pageH, setPageH] = useState(640);
   const scroller = useRef<ScrollView>(null);
@@ -44,7 +46,7 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
           <View key={post.id} style={{ height: pageH, width: '100%' }}>
             <Image source={{ uri: post.imageUrl }} style={styles.hero} />
             <View style={styles.scrim} />
-            <View style={styles.meta}>
+            <View style={[styles.meta, { bottom: 28 + Math.max(insets.bottom, 12) }]}>
               {post.festival ? <Text style={styles.fest}>{post.festival}</Text> : null}
               <Text style={styles.caption}>{post.caption}</Text>
               <View style={styles.badge}>

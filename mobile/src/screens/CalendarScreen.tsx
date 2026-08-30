@@ -7,6 +7,7 @@ import type { HomeFestival } from '../types/home';
 import { addSchedule, rememberFestival, useAppState } from '../stores/appStore';
 import { useSelectedRegionPreset } from '../stores/regionStore';
 import { REGION_FESTIVAL_FALLBACKS, withFestivalImage } from '../constants/regionTour';
+import { tourDetailParams } from '../utils/festivalFeed';
 import { eventColor, overlapsDay, ymd } from '../utils/date';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -58,18 +59,7 @@ export default function CalendarScreen() {
   const openFestival = (festival: HomeFestival) => {
     rememberFestival(festival);
     if (festival.contentId) {
-      navigation.navigate('TourDetail', {
-        contentId: festival.contentId,
-        contentTypeId: festival.contentTypeId,
-        tel: festival.tel,
-        title: festival.title,
-        city: festival.municipality_name ?? undefined,
-        address: festival.location_name ?? undefined,
-        latitude: festival.latitude,
-        longitude: festival.longitude,
-        metro: region.id,
-        imageUrl: festival.image_url ?? undefined,
-      });
+      navigation.navigate('TourDetail', tourDetailParams(festival, region.id));
     }
   };
 

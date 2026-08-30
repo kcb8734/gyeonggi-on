@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { firstNonEmptyFestivals, mergeFestivalSources } from './festivalFeed';
+import { festivalListHeroUrl, firstNonEmptyFestivals, mergeFestivalSources, tourDetailParams } from './festivalFeed';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import type { HomeFestival } from '../types/home';
 
@@ -44,4 +44,31 @@ test('17개 권역 축제 폴백이 모두 채워져 있다', () => {
     assert.ok((REGION_FESTIVAL_FALLBACKS[zone]?.length ?? 0) >= 3, zone);
   }
   assert.ok(REGION_FESTIVAL_FALLBACKS.SEOUL.some((item) => item.title.includes('한강몽땅')));
+});
+
+test('양평 세미원 상세는 리스트와 같은 연꽃 이미지를 쓴다', () => {
+  const listed = festivalListHeroUrl({
+    title: '양평 세미원 연꽃문화제',
+    location_name: '경기도 양평군 양서면 양수로 93',
+    image_url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80',
+    metro: 'GYEONGGI',
+  });
+  const fromRecent = festivalListHeroUrl(null, {
+    title: '양평 세미원 연꽃문화제',
+    address: '경기도 양평군 양서면 양수로 93',
+    metro: 'GYEONGGI',
+  });
+  assert.equal(listed, fromRecent);
+  assert.match(listed, /1469474968028-56623f02e42e/);
+  const params = tourDetailParams({
+    id: 'gg-9',
+    contentId: 'yangpyeong-lotus',
+    title: '양평 세미원 연꽃문화제',
+    location_name: '경기도 양평군 양서면 양수로 93',
+    latitude: 37.54,
+    longitude: 127.37,
+    image_url: listed,
+    metro: 'GYEONGGI',
+  });
+  assert.equal(params.imageUrl, listed);
 });

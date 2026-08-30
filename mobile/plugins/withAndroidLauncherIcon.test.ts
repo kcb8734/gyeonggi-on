@@ -18,8 +18,8 @@ const appJson = JSON.parse(readFileSync(join(dir, '..', 'app.json'), 'utf8')) as
 
 test('app.json keeps the launcher overwrite plugin', () => {
   assert.ok(appJson.expo.plugins.includes('./plugins/withAndroidLauncherIcon'));
-  assert.equal(appJson.expo.version, '1.0.6');
-  assert.equal(appJson.expo.android.versionCode, 7);
+  assert.equal(appJson.expo.version, '1.0.7');
+  assert.equal(appJson.expo.android.versionCode, 8);
 });
 
 test('copyLauncherIcons creates mipmap folders and drops stale webp', () => {

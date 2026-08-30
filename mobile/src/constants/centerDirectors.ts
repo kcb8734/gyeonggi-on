@@ -1,3 +1,4 @@
+import { JONGNO_DIRECTOR_PHOTO_URI } from '../assets/jongnoDirectorPhoto';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_LABEL, normalizeMetroId } from './regions';
 
 export type CenterStatus = 'selected' | 'reviewing' | 'recruiting';
@@ -179,6 +180,7 @@ export const SELECTED_DIRECTORS: Record<string, CenterDirectorProfile> = {
     intro: '광장시장과 종로 거리예술 축제를 잇는 도심 센터입니다.',
     address: '서울특별시 종로구 종로 1',
     website: 'kdanji.com/jongno',
+    photoUrl: JONGNO_DIRECTOR_PHOTO_URI,
   },
   'SEOUL:강남구': {
     name: '정우성',

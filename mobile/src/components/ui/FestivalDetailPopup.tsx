@@ -15,8 +15,7 @@ import { isFavorite, isScheduled } from '../../stores/appStore';
 import { ddayLabel, formatRange } from '../../utils/date';
 import { formatTel, telHref } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
-import { festivalImageFor } from '../../constants/regionMedia';
-import { secureMediaUrl } from '../../utils/mediaUrl';
+import { festivalListHeroUrl } from '../../utils/festivalFeed';
 import ModalExitButton from './ModalExitButton';
 
 interface Props {
@@ -61,7 +60,7 @@ export default function FestivalDetailPopup({
   const inquiry = festival.inquiryTel || festival.tel;
   const callUrl = telHref(inquiry);
   const telLabel = formatTel(inquiry) || inquiry;
-  const heroUri = secureMediaUrl(festival.image_url) || festivalImageFor(festival.title, festival.location_name, festival.metro || festival.regionalZone);
+  const heroUri = festivalListHeroUrl(festival);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
