@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../db/pool';
-import { syncGgCultureEvents } from '../services/ggCultureEventService';
+import { syncOpenCultureEvents } from '../services/cultureOpenSync';
 import { collectGyeonggiFestivals, syncNationwideFestivals, tourItemsToHome } from '../services/festivalSyncService';
 import { toNumber } from '../utils/geo';
 
@@ -86,6 +86,8 @@ export const runFestivalSync = async (req: Request, res: Response) => {
     const result = await syncNationwideFestivals();
     return res.status(result.success ? 200 : 502).json(result);
   }
-  const result = await syncGgCultureEvents();
-  return res.status(result.success ? 200 : 502).json(result);
+  const result = await syncOpenCultureEvents({
+    source: String(req.query.source || req.query.api || ''),
+  });
+  return res.status(200).json(result);
 };

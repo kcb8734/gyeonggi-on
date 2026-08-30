@@ -1,5 +1,6 @@
 /** 권역·축제별 대표 이미지. TourAPI 이미지가 없을 때 카드·피드·쿠폰에 쓴다. */
-import { regionalFallbackUri } from './regionalFallbackKeys';
+import { resolveFallbackKey } from './regionalFallbackKeys';
+import { normalizeMetroId } from './regions';
 
 export const REGION_STOCK: Record<string, string> = {
   GYEONGGI: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80',
@@ -37,7 +38,11 @@ export function festivalImageFor(title?: string | null, location?: string | null
   const hay = `${title ?? ''} ${location ?? ''}`;
   const hit = FESTIVAL_IMAGES.find((item) => hay.includes(item.token));
   if (hit) return hit.url;
-  return regionalFallbackUri(location, metro, title);
+  const zone = metro ? normalizeMetroId(metro) : '';
+  if (zone && REGION_STOCK[zone]) return REGION_STOCK[zone];
+  const key = resolveFallbackKey(location, metro, title);
+  if (REGION_STOCK[key]) return REGION_STOCK[key];
+  return REGION_STOCK.GYEONGGI;
 }
 
 export function shopPhotosFor(kind: 'food' | 'cafe' | 'market' | 'night' = 'food') {
