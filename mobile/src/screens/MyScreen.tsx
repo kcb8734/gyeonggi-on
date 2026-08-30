@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import SafeFestivalImage from '../components/ui/SafeFestivalImage';
+import { tourDetailParams } from '../utils/festivalFeed';
 import FestivalRegisterModal from '../components/ui/FestivalRegisterModal';
 import ProfileEditModal from '../components/ui/ProfileEditModal';
 import { forgetFestival, syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
@@ -179,12 +180,7 @@ export default function MyScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.row}
-            onPress={() => item.contentId && navigation.navigate('TourDetail', {
-              contentId: item.contentId,
-              contentTypeId: item.contentTypeId,
-              tel: item.tel,
-              title: item.title,
-            })}
+            onPress={() => item.contentId && navigation.navigate('TourDetail', tourDetailParams(item))}
           >
             <SafeFestivalImage uri={item.image_url} title={item.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>
@@ -211,12 +207,7 @@ export default function MyScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.row}
-            onPress={() => item.contentId && navigation.navigate('TourDetail', {
-              contentId: item.contentId,
-              contentTypeId: item.contentTypeId,
-              tel: item.tel,
-              title: item.title,
-            })}
+            onPress={() => item.contentId && navigation.navigate('TourDetail', tourDetailParams(item))}
           >
             <SafeFestivalImage uri={item.image_url} title={item.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>

@@ -21,22 +21,20 @@ function CircleChevron({
   );
 }
 
-/** 모달 우상단 원형 나가기. `<` / `>` 둘 다 닫기. */
+/** 모달 우상단 원형 나가기. 오른쪽이면 `>` 만 표시. */
 export default function ModalExitButton({ onPress }: { onPress: () => void }) {
   return (
     <View style={styles.wrap} pointerEvents="box-none">
-      <CircleChevron mark="<" onPress={onPress} />
       <CircleChevron mark=">" onPress={onPress} />
     </View>
   );
 }
 
-/** 스택 헤더·화면 상단용 원형 `<` `>` 나가기. */
+/** 스택 헤더·화면 왼쪽 원형 나가기. 왼쪽이면 `<` 만 표시. */
 export function StackExitButton({ onPress }: { onPress: () => void }) {
   return (
     <View style={styles.stackWrap}>
       <CircleChevron mark="<" onPress={onPress} />
-      <CircleChevron mark=">" onPress={onPress} />
     </View>
   );
 }
@@ -49,12 +47,10 @@ const styles = StyleSheet.create({
     zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   stackWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     paddingVertical: 2,
     paddingRight: 8,
   },

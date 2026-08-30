@@ -26,7 +26,7 @@ import { REGION_FESTIVAL_FALLBACKS, regionById, withFestivalImage } from '../con
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalHasSampleCoupon } from '../utils/festivalCoupon';
-import { mergeFestivalSources } from '../utils/festivalFeed';
+import { mergeFestivalSources, tourDetailParams } from '../utils/festivalFeed';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -383,18 +383,7 @@ export default function HomeScreen() {
           const festival = selected;
           setSelected(null);
           if (festival.contentId) {
-            navigation.navigate('TourDetail', {
-              contentId: festival.contentId,
-              contentTypeId: festival.contentTypeId,
-              tel: festival.tel,
-              title: festival.title,
-              city: festival.municipality_name ?? undefined,
-              address: festival.location_name ?? undefined,
-              latitude: festival.latitude,
-              longitude: festival.longitude,
-              metro,
-              imageUrl: festival.image_url ?? undefined,
-            });
+            navigation.navigate('TourDetail', tourDetailParams(festival, metro));
           } else {
             navigation.navigate('Nearby', { festivalId: festival.id });
           }

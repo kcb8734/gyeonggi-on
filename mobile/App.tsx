@@ -90,6 +90,8 @@ const homeHeaderOptions = {
 };
 
 function Tabs() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 8);
   return (
     <Tab.Navigator
       screenOptions={{
@@ -97,7 +99,15 @@ function Tabs() {
         tabBarActiveTintColor: '#E0392A',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarShowLabel: false,
-        tabBarStyle: { height: 74, paddingBottom: 10, paddingTop: 8 },
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          height: 56 + bottomPad,
+          paddingTop: 8,
+          paddingBottom: bottomPad,
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          backgroundColor: '#fff',
+        },
         tabBarItemStyle: { flex: 1 },
       }}
     >

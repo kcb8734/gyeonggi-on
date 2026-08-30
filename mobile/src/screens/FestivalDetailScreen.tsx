@@ -13,12 +13,12 @@ import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 import CourseGuideModal from '../components/ui/CourseGuideModal';
 import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { findFallbackFestival } from '../constants/regionTour';
-import { festivalImageFor } from '../constants/regionMedia';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
 import type { TourDetail } from '../types/tour';
 import { formatTel, telHref } from '../utils/phone';
+import { festivalListHeroUrl } from '../utils/festivalFeed';
 import { secureMediaUrl } from '../utils/mediaUrl';
 
 const EMPTY_COPY = {
@@ -100,7 +100,12 @@ export default function FestivalDetailScreen({
               : (fallbackAddress || known?.location_name || data.address),
             mapX,
             mapY,
-            firstImage: secureMediaUrl(data.firstImage || fallbackImageUrl || known?.image_url || data.firstImage),
+            firstImage: festivalListHeroUrl(known, {
+              imageUrl: fallbackImageUrl || data.firstImage,
+              address: fallbackAddress || data.address,
+              metro: fallbackMetro,
+              title: fallbackTitle || data.title,
+            }) || secureMediaUrl(data.firstImage),
             eventStartDate: data.eventStartDate || known?.start_date,
             eventEndDate: data.eventEndDate || known?.end_date,
           });
@@ -108,7 +113,12 @@ export default function FestivalDetailScreen({
       })
       .catch(() => {
         if (!cancelled) {
-          const image = secureMediaUrl(fallbackImageUrl || known?.image_url) || festivalImageFor(fallbackTitle, fallbackAddress, fallbackMetro);
+          const image = festivalListHeroUrl(known, {
+            imageUrl: fallbackImageUrl,
+            address: fallbackAddress,
+            metro: fallbackMetro,
+            title: fallbackTitle,
+          });
           setDetail({
             contentId,
             contentTypeId: contentTypeId ?? (fallbackKind === 'food' ? '39' : '15'),
@@ -160,8 +170,13 @@ export default function FestivalDetailScreen({
 
   const isRestaurant = detail.contentTypeId === '39' || contentTypeId === '39' || fallbackKind === 'food' || detail.category === '먹거리';
   const favorited = isFavorite(`tour-${detail.contentId}`);
-  const fallbackHero = festivalImageFor(detail.title || fallbackTitle, detail.address || fallbackAddress, fallbackMetro);
-  const hero = secureMediaUrl(detail.images[0]?.originUrl ?? detail.firstImage) || fallbackHero;
+  const fallbackHero = festivalListHeroUrl(known, {
+    imageUrl: fallbackImageUrl,
+    address: fallbackAddress || detail.address,
+    metro: fallbackMetro,
+    title: fallbackTitle || detail.title,
+  });
+  const hero = fallbackHero || secureMediaUrl(detail.images[0]?.originUrl ?? detail.firstImage);
   const hasMap = detail.mapX !== 0 && detail.mapY !== 0;
   const resolvedTel = detail.tel || fallbackTel;
   const callUrl = telHref(resolvedTel);

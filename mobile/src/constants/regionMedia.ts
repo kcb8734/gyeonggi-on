@@ -57,6 +57,9 @@ const FESTIVAL_IMAGES: Array<{ token: string; url: string }> = [
   { token: '들불', url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80' },
   { token: '칠십리', url: 'https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=800&q=80' },
   { token: '유채', url: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800&q=80' },
+  { token: '세미원', url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80' },
+  { token: '연꽃', url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80' },
+  { token: '양평', url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80' },
 ];
 
 const SHOP_EXTERIOR = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80';
