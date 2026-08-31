@@ -19,6 +19,7 @@ export interface TourFestival {
   fee?: string;
   eventPlace?: string;
   areaCode?: string;
+  source?: 'tour' | 'fallback' | 'sample';
 }
 
 export interface TourPlace {
@@ -66,6 +67,7 @@ export interface TourFestivalsResponse {
   month: number | null;
   year: number;
   count: number;
+  source?: string;
   data: TourFestival[];
 }
 

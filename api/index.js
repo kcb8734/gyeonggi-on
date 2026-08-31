@@ -40,7 +40,7 @@ import { sendResendEmail } from './resendFrom.js';
 import {
   getTourDetail2,
   metroRegions,
-  fallbackTourFestivals,
+  liveTourFestivals,
   searchFestival2,
   searchNearby2,
   toHomeFestival,
@@ -290,11 +290,12 @@ async function listFestivalsLive(req, res) {
       month: query.month,
       year: query.year,
       category: query.category,
+      allowBuiltin: false,
     });
-    const live = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    const live = liveTourFestivals(result).map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
     const persisted = await listPersistedFestivals(result.metro).catch(() => []);
     const festivals = mergeHomeFestivalRows(persisted, live);
-    const source = persisted.length ? (live.length ? 'db+tour' : 'db') : result.source;
+    const source = persisted.length ? (live.length ? 'db+tour' : 'db') : (live.length ? 'tour' : 'none');
     send(res, 200, {
       success: true,
       metro: result.metro,
@@ -311,10 +312,6 @@ async function listFestivalsLive(req, res) {
   } catch (err) {
     console.error('[api] searchFestival2', err && err.message ? err.message : err);
     const persisted = await listPersistedFestivals(metroKey).catch(() => []);
-    const builtin = fallbackTourFestivals({ metro: metroKey, areaCode: METRO_AREA[metroKey] })
-      .map((item) => homeFromTour(item, metroKey, METRO_AREA[metroKey]))
-      .filter(Boolean);
-    const festivals = mergeHomeFestivalRows(persisted, builtin);
     send(res, 200, {
       success: true,
       metro: metroKey,
@@ -322,11 +319,11 @@ async function listFestivalsLive(req, res) {
       areaCode: METRO_AREA[metroKey] || '31',
       moiCode: MOI_CODE_BY_METRO[metroKey] || '41',
       regionLabel: REGION_LABEL[metroKey] || '경기온',
-      count: festivals.length,
-      source: persisted.length ? 'db' : (festivals.length ? 'fallback' : 'none'),
-      festivals: festivals,
-      data: festivals,
-      message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
+      count: persisted.length,
+      source: persisted.length ? 'db' : 'none',
+      festivals: persisted,
+      data: persisted,
+      message: persisted.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
     }, headers);
   }
 }
@@ -517,11 +514,12 @@ async function getHomeFeed(req, res) {
       year: query.year || now.getFullYear(),
       category: query.category,
       numOfRows: 200,
+      allowBuiltin: false,
     });
-    const live = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
+    const live = liveTourFestivals(result).map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
     const persisted = await listPersistedFestivals(metro).catch(() => []);
     const festivals = mergeHomeFestivalRows(persisted, live);
-    const source = persisted.length ? (live.length ? 'db+tour' : 'db') : result.source;
+    const source = persisted.length ? (live.length ? 'db+tour' : 'db') : (live.length ? 'tour' : 'none');
     send(res, 200, {
       success: true,
       available: festivals.length > 0,

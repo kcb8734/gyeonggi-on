@@ -1,4 +1,15 @@
-/** 공공 OpenAPI 호출. 키는 로그에 남기지 않는다. */
+export function logOpenApiEmpty(label, info = {}) {
+  console.error(`[${label}] empty-or-error`, {
+    code: info.code || '',
+    message: info.message || '',
+    hasKey: Boolean(info.hasKey),
+    httpStatus: info.httpStatus ?? null,
+    xmlBytes: Number(info.xmlBytes || 0),
+    parsedRows: Number(info.parsedRows || 0),
+    mappedRows: info.mappedRows,
+    preview: String(info.preview || '').replace(/\s+/g, ' ').slice(0, 180),
+  });
+}
 
 export function redactOpenApiUrl(url) {
   return String(url || '')

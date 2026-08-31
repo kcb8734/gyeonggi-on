@@ -129,6 +129,7 @@ export function toTourFestival(item) {
   if (!contentId || !title) return null;
   const start = formatYmd(item.eventstartdate || item.eventStartDate);
   const end = formatYmd(item.eventenddate || item.eventEndDate) || start;
+  const source = text(item.source).toLowerCase();
   return {
     contentId: contentId,
     contentTypeId: text(item.contenttypeid || item.contentTypeId) || CONTENT_FESTIVAL,
@@ -144,6 +145,7 @@ export function toTourFestival(item) {
     category: classifyFestival(title, item.overview || ''),
     overview: stripHtml(item.overview) || undefined,
     areaCode: text(item.areacode) || undefined,
+    source: source === 'fallback' || source === 'sample' ? source : undefined,
   };
 }
 
@@ -166,7 +168,7 @@ export function toHomeFestival(item, metro, areaCode) {
     category: tour.category,
     image_url: tour.firstImage || null,
     is_trending: Boolean(tour.firstImage),
-    source: 'tour',
+    source: tour.source === 'fallback' || tour.source === 'sample' ? tour.source : 'tour',
     tel: tour.tel,
     regionalZone: metro,
     metro: metro,
@@ -318,8 +320,21 @@ const BUILTIN_BY_METRO = {
 function builtinFestivals(resolved) {
   const metro = resolved.metro || metroForArea(resolved.areaCode, 'GYEONGGI');
   const rows = BUILTIN_BY_METRO[metro];
-  if (rows?.length) return rows;
-  return Object.values(BUILTIN_BY_METRO).flat();
+  const list = rows?.length ? rows : Object.values(BUILTIN_BY_METRO).flat();
+  return list.map((item) => ({ ...item, source: 'fallback' }));
+}
+
+export function isLiveTourSource(source) {
+  const value = String(source || '').toLowerCase();
+  return value === 'searchfestival2' || value === 'cache';
+}
+
+export function liveTourFestivals(result) {
+  if (!result || !isLiveTourSource(result.source)) return [];
+  return (result.festivals || []).filter((item) => {
+    const source = String(item && item.source || '').toLowerCase();
+    return source !== 'fallback' && source !== 'sample';
+  });
 }
 
 export function fallbackTourFestivals(input = {}) {
@@ -369,6 +384,18 @@ export async function searchFestival2(input, fetchImpl) {
   delete query.MobileApp;
   delete query._type;
   const key = festivalCacheKey(resolved);
+  const allowBuiltin = input && input.allowBuiltin !== false;
+  const emptyLive = (reason, extra = {}) => {
+    console.error('[searchFestival2] empty-or-error', {
+      code: extra.code || 'EMPTY',
+      message: reason,
+      metro: resolved.metro || 'ALL',
+      areaCode: resolved.areaCode || 'all',
+      hasKey: Boolean(tourServiceKey()),
+      allowBuiltin,
+    });
+    return { ...resolved, festivals: [], source: 'none', message: reason };
+  };
   try {
     const items = await tourGet(resolved.path, query, fetchImpl);
     if (!items.length && query.lDongRegnCd && resolved.areaCode) {
@@ -396,13 +423,16 @@ export async function searchFestival2(input, fetchImpl) {
     }
     const cached = LAST_OK_FESTIVALS.get(key) || [];
     if (cached.length) return { ...resolved, festivals: cached, source: 'cache' };
+    if (!allowBuiltin) return emptyLive('TourAPI 검색 결과가 0건입니다.', { code: 'EMPTY' });
     const fallback = builtinFestivals(resolved);
     return { ...resolved, festivals: fallback, source: fallback.length ? 'fallback' : 'none' };
   } catch (err) {
     const cached = LAST_OK_FESTIVALS.get(key) || [];
     if (cached.length) return { ...resolved, festivals: cached, source: 'cache' };
+    const message = err && err.message ? err.message : 'TourAPI 조회에 실패했습니다.';
+    if (!allowBuiltin) return emptyLive(message, { code: 'FETCH_FAIL' });
     const fallback = builtinFestivals(resolved);
-    if (fallback.length) return { ...resolved, festivals: fallback, source: 'fallback' };
+    if (fallback.length) return { ...resolved, festivals: fallback, source: 'fallback', message };
     throw err;
   }
 }

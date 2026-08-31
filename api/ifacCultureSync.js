@@ -1,5 +1,5 @@
 import { persistTourFestivals, listFestivalCategoryCounts, writeTourSyncLog } from './festivalDbSync.js';
-import { fetchXml } from './openApiFetch.js';
+import { fetchXml, logOpenApiEmpty } from './openApiFetch.js';
 import { countCategories, parseIfacCultureXml, toPersistableFestival } from './ifacCultureXml.js';
 
 export const IFAC_CULTURE_API_NAME = 'ifac-culture';
@@ -59,7 +59,25 @@ export async function fetchIfacCulturePage(page = 1, size = 80, fetchImpl = fetc
         continue;
       }
       if (!parsed.ok) {
-        console.error('[ifac-culture] parse/result', { code: parsed.code, message: parsed.message, hasKey: true });
+        logOpenApiEmpty('ifac-culture', {
+          code: parsed.code,
+          message: parsed.message,
+          hasKey: true,
+          httpStatus: got.status,
+          xmlBytes: String(got.xml || '').length,
+          parsedRows: parsed.rows.length,
+          preview: got.xml,
+        });
+      } else if (!parsed.rows.length) {
+        logOpenApiEmpty('ifac-culture', {
+          code: parsed.code || 'EMPTY',
+          message: parsed.message || '파싱된 <item>이 없습니다.',
+          hasKey: true,
+          httpStatus: got.status,
+          xmlBytes: String(got.xml || '').length,
+          parsedRows: 0,
+          preview: got.xml,
+        });
       }
       return parsed;
     } catch (err) {
@@ -128,6 +146,15 @@ export async function syncIfacCultureEvents(options = {}) {
     };
   }
   const items = collected.rows.map(toPersistableFestival).filter(Boolean);
+  if (collected.ok && collected.rows.length && !items.length) {
+    logOpenApiEmpty('ifac-culture', {
+      code: 'MAP_EMPTY',
+      message: 'XML item은 있으나 persist 매핑 결과가 0건입니다.',
+      hasKey: true,
+      parsedRows: collected.rows.length,
+      mappedRows: 0,
+    });
+  }
   const persist = await persistTourFestivals(items, { source: 'ifac', metro: 'INCHEON' });
   const categories = persist.ok
     ? await listFestivalCategoryCounts()

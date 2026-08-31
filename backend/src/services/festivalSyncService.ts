@@ -49,7 +49,7 @@ export async function collectRegionFestivals(areaCode = '31'): Promise<{ items: 
     areaCode,
     eventStartDate,
     numOfRows: 120,
-  }));
+  }, { allowFallback: false }));
   const stamped = items.map((item) => ({ ...item, areaCode: item.areaCode || areaCode }));
   return { items: stamped, source: stamped.length ? 'searchFestival2' : 'none' };
 }
@@ -140,7 +140,7 @@ export async function upsertTourFestivals(items: TourFestival[]): Promise<{ upse
         item.firstImage ?? null,
         Boolean(item.firstImage),
         item.contentId,
-        item.tel ?? null,
+        String(item.tel || '').trim().slice(0, 50) || null,
       ],
     );
     upserted += 1;

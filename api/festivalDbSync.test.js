@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { festivalDateYmd, listedMetroForRow, listPersistedFestivals, mergeHomeFestivalRows, municipalityFromAddress, municipalityRegionCode, persistTourFestivals, rowMatchesMetro } from './festivalDbSync.js';
+import { clipFestivalTel, festivalDateYmd, listedMetroForRow, listPersistedFestivals, mergeHomeFestivalRows, municipalityFromAddress, municipalityRegionCode, persistTourFestivals, rowMatchesMetro } from './festivalDbSync.js';
 
 test('municipalityFromAddress maps Gyeonggi cities', () => {
   assert.equal(municipalityFromAddress('경기도 수원시 팔달구 정조로 825'), '수원시');
@@ -30,12 +30,23 @@ test('listedMetroForRow maps open-data sources onto 17 metros', () => {
   assert.equal(rowMatchesMetro({ source: 'seoul', title: '서울빛초롱축제' }, 'GYEONGGI'), false);
 });
 
-test('mergeHomeFestivalRows keeps DB rows first', () => {
-  const db = [{ title: '수원화성문화제', contentId: 'ggc-1', source: 'ggc' }];
-  const tour = [{ title: '수원화성문화제', contentId: 'tour-1', source: 'tour' }, { title: '가평 자라섬 재즈페스티벌', contentId: 'tour-2' }];
+test('mergeHomeFestivalRows keeps TourAPI as master over municipal duplicates', () => {
+  const db = [{ title: '수원화성문화제', contentId: 'ggc-1', source: 'ggc', start_date: '2026-08-19', location_name: '수원' }];
+  const tour = [
+    { title: '수원화성문화제', contentId: 'tour-1', source: 'tour', start_date: '2026-08-19', location_name: '경기도 수원시' },
+    { title: '가평 자라섬 재즈페스티벌', contentId: 'tour-2', source: 'tour', start_date: '2026-08-22', location_name: '가평' },
+  ];
   const merged = mergeHomeFestivalRows(db, tour);
-  assert.equal(merged[0].source, 'ggc');
+  assert.equal(merged[0].source, 'tour');
   assert.equal(merged.length, 2);
+});
+
+test('persist clips tel and municipality codes to schema limits', () => {
+  assert.equal(clipFestivalTel(''), null);
+  assert.equal(clipFestivalTel('031-228-3675'), '031-228-3675');
+  const longTel = '경기도자미술관(이천) 031-645-0730 경기도자박물관(광주) 031-799-1500 경기생활도자미술관(여주) 031-887-8252';
+  assert.equal(clipFestivalTel(longTel).length, 50);
+  assert.ok(municipalityRegionCode('수원시').length <= 20);
 });
 
 test('persistTourFestivals is a no-op without DATABASE_URL', async () => {

@@ -1,5 +1,5 @@
 import { persistTourFestivals, listFestivalCategoryCounts, writeTourSyncLog } from './festivalDbSync.js';
-import { fetchXml } from './openApiFetch.js';
+import { fetchXml, logOpenApiEmpty } from './openApiFetch.js';
 import { countCategories, parseSeoulCultureXml, toPersistableFestival } from './seoulCultureXml.js';
 
 export const SEOUL_CULTURE_API_NAME = 'culturalEventInfo';
@@ -42,7 +42,25 @@ export async function fetchSeoulCulturePage(start = 1, end = 1000, fetchImpl = f
         continue;
       }
       if (!parsed.ok) {
-        console.error('[culturalEventInfo] parse/result', { code: parsed.code, message: parsed.message, hasKey: true });
+        logOpenApiEmpty('culturalEventInfo', {
+          code: parsed.code,
+          message: parsed.message,
+          hasKey: true,
+          httpStatus: got.status,
+          xmlBytes: String(got.xml || '').length,
+          parsedRows: parsed.rows.length,
+          preview: got.xml,
+        });
+      } else if (!parsed.rows.length) {
+        logOpenApiEmpty('culturalEventInfo', {
+          code: parsed.code || 'EMPTY',
+          message: parsed.message || '파싱된 <row>가 없습니다.',
+          hasKey: true,
+          httpStatus: got.status,
+          xmlBytes: String(got.xml || '').length,
+          parsedRows: 0,
+          preview: got.xml,
+        });
       }
       return parsed;
     } catch (err) {
@@ -109,6 +127,16 @@ export async function syncSeoulCultureEvents(options = {}) {
     };
   }
   const items = collected.rows.map(toPersistableFestival).filter(Boolean);
+  if (collected.ok && collected.rows.length && !items.length) {
+    logOpenApiEmpty('culturalEventInfo', {
+      code: 'MAP_EMPTY',
+      message: 'XML row는 있으나 persist 매핑 결과가 0건입니다.',
+      hasKey: true,
+      parsedRows: collected.rows.length,
+      mappedRows: 0,
+      preview: JSON.stringify(collected.rows[0] || {}).slice(0, 180),
+    });
+  }
   const persist = await persistTourFestivals(items, { source: 'seoul', metro: 'SEOUL' });
   const categories = persist.ok
     ? await listFestivalCategoryCounts()

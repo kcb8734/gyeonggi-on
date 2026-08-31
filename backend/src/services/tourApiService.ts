@@ -50,6 +50,8 @@ export interface TourApiOptions {
   ttlMs?: number;
   timeoutMs?: number;
   mobileApp?: string;
+  /** false면 키 누락·빈 응답 때 목업을 넣지 않고 빈 배열을 반환한다. */
+  allowFallback?: boolean;
 }
 
 export interface SearchFestivalsParams {
@@ -598,6 +600,10 @@ export async function searchFestivals(
     ?? (month ? ymd(year, month, lastDayOfMonth(year, month)) : undefined);
 
   if (!resolveServiceKey(options)) {
+    if (options.allowFallback === false) {
+      console.error('[searchFestivals] empty-or-error', { code: 'NO_KEY', hasKey: false });
+      return [];
+    }
     return fallbackFestivals({ ...params, year, month });
   }
 
@@ -653,8 +659,21 @@ export async function searchFestivals(
     }, ttlOf(options));
 
     const merged = mergeWithOverrides(festivals);
-    return merged.length ? merged : fallbackFestivals({ ...params, year, month });
+    if (merged.length) return merged;
+    if (options.allowFallback === false) {
+      console.error('[searchFestivals] empty-or-error', { code: 'EMPTY', hasKey: true, parsedRows: 0 });
+      return [];
+    }
+    return fallbackFestivals({ ...params, year, month });
   } catch (err) {
+    if (options.allowFallback === false) {
+      console.error('[searchFestivals] empty-or-error', {
+        code: 'FETCH_FAIL',
+        message: err instanceof Error ? err.message : String(err),
+        hasKey: true,
+      });
+      return [];
+    }
     console.warn('[searchFestivals] fallback mock:', err instanceof Error ? err.message : err);
     return fallbackFestivals({ ...params, year, month });
   }
