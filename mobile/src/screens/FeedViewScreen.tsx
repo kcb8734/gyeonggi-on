@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedPosts } from '../stores/feedStore';
+import ModalExitButton from '../components/ui/ModalExitButton';
+import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 
 export default function FeedViewScreen({ postId }: { postId: string }) {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const posts = useFeedPosts();
   const [pageH, setPageH] = useState(640);
   const scroller = useRef<ScrollView>(null);
@@ -30,9 +34,7 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
 
   return (
     <View style={styles.root} onLayout={(event) => setPageH(event.nativeEvent.layout.height)}>
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>‹ 나가기</Text>
-      </TouchableOpacity>
+      <ModalExitButton onPress={() => navigation.goBack()} />
       <ScrollView
         ref={scroller}
         pagingEnabled
@@ -43,9 +45,15 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
       >
         {posts.map((post) => (
           <View key={post.id} style={{ height: pageH, width: '100%' }}>
-            <Image source={{ uri: post.imageUrl }} style={styles.hero} />
+            <SafeFestivalImage
+              uri={post.imageUrl}
+              title={post.festival}
+              location={post.festival}
+              metro={post.metro}
+              style={styles.hero}
+            />
             <View style={styles.scrim} />
-            <View style={styles.meta}>
+            <View style={[styles.meta, { bottom: 28 + Math.max(insets.bottom, 12) }]}>
               {post.festival ? <Text style={styles.fest}>{post.festival}</Text> : null}
               <Text style={styles.caption}>{post.caption}</Text>
               <View style={styles.badge}>
@@ -65,23 +73,16 @@ export default function FeedViewScreen({ postId }: { postId: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#111827' },
-  back: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 20,
-    backgroundColor: 'rgba(17,24,39,0.72)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
   emptyText: { color: '#9CA3AF', fontWeight: '700' },
-  hero: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  hero: { ...StyleSheet.absoluteFillObject },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17,24,39,0.28)',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 280,
+    backgroundColor: 'rgba(17,24,39,0.45)',
   },
   meta: {
     position: 'absolute',

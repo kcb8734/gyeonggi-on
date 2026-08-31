@@ -42,13 +42,64 @@ test('GET /api/home is not a 404', async () => {
   assert.notEqual(result.status, 404);
 });
 
+test('GET /api/festivals returns JSON with seoul/ggc-ready festival list', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/festivals?metro=GYEONGGI' });
+  assert.equal(result.status, 200);
+  const body = result.body as { success?: boolean; festivals?: unknown[]; data?: unknown[]; metro?: string };
+  assert.equal(body.success, true);
+  assert.equal(body.metro, 'GYEONGGI');
+  assert.ok(Array.isArray(body.festivals) || Array.isArray(body.data));
+});
+
+test('GET /api/admin/dashboard includes open data sources', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/admin/dashboard' });
+  assert.equal(result.status, 200);
+  const data = (result.body as { data?: { tour?: { sources?: { national?: unknown[]; tourMetros?: unknown[]; muniMetros?: unknown[] } } } }).data;
+  assert.equal(data?.tour?.sources?.national?.length, 4);
+  assert.equal(data?.tour?.sources?.tourMetros?.length, 17);
+  assert.equal(data?.tour?.sources?.muniMetros?.length, 14);
+});
+
+test('POST /api/festivals/sync?source=muni&metro=BUSAN tells how to enable the slot', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/festivals/sync?source=muni&metro=BUSAN' });
+  assert.equal(result.status, 200);
+  const body = result.body as { message?: string; ready?: boolean; fetched?: number };
+  assert.match(String(body.message), /BUSAN_CULTURE_API/);
+  assert.equal(body.fetched, 0);
+});
+
+test('POST /api/festivals/sync?source=ifac asks for INCHEON_API_KEY when unset', async () => {
+  const prev = process.env.INCHEON_API_KEY;
+  const prevIfac = process.env.IFAC_API_KEY;
+  const prevCulture = process.env.INCHEON_CULTURE_API_KEY;
+  process.env.INCHEON_API_KEY = '';
+  process.env.IFAC_API_KEY = '';
+  process.env.INCHEON_CULTURE_API_KEY = '';
+  const result = await invoke({ method: 'POST', url: '/api/festivals/sync?source=ifac' });
+  assert.equal(result.status, 200);
+  const body = result.body as { message?: string; fetched?: number; targetApi?: string };
+  assert.match(String(body.message), /INCHEON_API_KEY/);
+  assert.equal(body.fetched, 0);
+  assert.equal(body.targetApi, 'ifac-culture');
+  process.env.INCHEON_API_KEY = prev;
+  process.env.IFAC_API_KEY = prevIfac;
+  process.env.INCHEON_CULTURE_API_KEY = prevCulture;
+});
+
 test('POST /api/festivals/sync returns a sync payload', async () => {
   const result = await invoke({ method: 'POST', url: '/api/festivals/sync' });
   assert.notEqual(result.status, 404);
   assert.notEqual(result.status, 401);
-  const body = result.body as { fetched?: number; message?: string; success?: boolean };
+  const body = result.body as {
+    fetched?: number;
+    message?: string;
+    success?: boolean;
+    categories?: Array<{ name: string; count: number }>;
+    targetApi?: string;
+  };
   assert.equal(typeof body.message, 'string');
   assert.equal(typeof body.fetched, 'number');
+  assert.ok(Array.isArray(body.categories) || body.success === false);
 });
 
 test('GET /api/centers returns 17 region summaries', async () => {

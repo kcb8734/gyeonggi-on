@@ -2,6 +2,7 @@ import { REGION_LABEL } from '../constants/metroLocalities';
 import { tryQuery } from '../db/pool';
 import { matchingMatrix, memoryEngine, memoryGuardLogs, memoryEditorsPicks } from './inMemoryPlatform';
 import { listFeedRewards } from './feedRewardService';
+import { catalogOpenSources, decorateOpenSources } from './metroOpenSources';
 
 export async function getAdminDashboard() {
   const festivals = await tryQuery(`SELECT COUNT(*)::int AS n FROM festivals`);
@@ -10,6 +11,25 @@ export async function getAdminDashboard() {
   const scanCoupons = await tryQuery(`SELECT COUNT(*)::int AS issued, COUNT(*) FILTER (WHERE is_used)::int AS used FROM coupons`);
   const syncLogs = await tryQuery(
     `SELECT ran_at, target_api, fetched, failed, status FROM tour_sync_logs ORDER BY ran_at DESC LIMIT 8`,
+  );
+  const categoryRows = await tryQuery(
+    `SELECT COALESCE(NULLIF(TRIM(category), ''), '기타') AS name, COUNT(*)::int AS count
+     FROM festivals
+     GROUP BY 1
+     ORDER BY count DESC, name ASC`,
+  );
+  const sourceRows = await tryQuery(
+    `SELECT COALESCE(NULLIF(TRIM(source), ''), 'db') AS source, COUNT(*)::int AS count
+     FROM festivals GROUP BY 1`,
+  );
+  const sourceMetroRows = await tryQuery(
+    `SELECT
+       COALESCE(NULLIF(TRIM(f.source), ''), 'db') AS source,
+       COALESCE(NULLIF(TRIM(mu.metro_region), ''), 'GYEONGGI') AS metro,
+       COUNT(*)::int AS count
+     FROM festivals f
+     LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+     GROUP BY 1, 2`,
   );
   const weights = await tryQuery(`SELECT * FROM admin_engine_settings WHERE id = 'default'`);
   const courses = await tryQuery(
@@ -57,14 +77,20 @@ export async function getAdminDashboard() {
     tour: {
       quotaUsed: 42,
       quotaLimit: 1000,
-      lastSync: '오늘 07:00 KST',
-      source: '한국관광공사 TourAPI 4.0',
-      categories: [
-        { name: '축제/행사', count: festivalCount },
-        { name: '역사체험', count: 8 },
-        { name: '캠핑장', count: 6 },
-        { name: '음식점', count: 21 },
-      ],
+      lastSync: syncLogs?.rows[0]?.ran_at || '오늘 07:00 KST',
+      source: /culturalEventInfo/i.test(String(syncLogs?.rows[0]?.target_api || ''))
+        ? '서울시 문화행사 culturalEventInfo'
+        : /GGCULTURE/i.test(String(syncLogs?.rows[0]?.target_api || ''))
+          ? '경기도 문화행사 GGCULTUREVENTSTUS'
+          : '한국관광공사 TourAPI 4.0',
+      categories: categoryRows?.rows?.length
+        ? categoryRows.rows
+        : [
+          { name: '축제/행사', count: festivalCount },
+          { name: '역사체험', count: 8 },
+          { name: '캠핑장', count: 6 },
+          { name: '음식점', count: 21 },
+        ],
       logs: syncLogs?.rows.length
         ? syncLogs.rows
         : [
@@ -73,6 +99,10 @@ export async function getAdminDashboard() {
           { ran_at: new Date(Date.now() - 15 * 3600 * 1000).toISOString(), target_api: 'detailCommon2', fetched: 31, failed: 0, status: '정상' },
           { ran_at: new Date(Date.now() - 21 * 3600 * 1000).toISOString(), target_api: 'locationBasedList1', fetched: 24, failed: 0, status: '정상' },
         ],
+      sources: decorateOpenSources(catalogOpenSources(), {
+        sourceCounts: sourceRows?.rows ?? [],
+        sourceMetroCounts: sourceMetroRows?.rows ?? [],
+      }),
     },
     coupons: couponRows,
     matching: matrix,

@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import HomeScreen from './src/screens/HomeScreen';
@@ -25,6 +25,7 @@ import { disableSystemFontScaling } from './src/utils/fontScale';
 import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
 import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
+import { StackExitButton } from './src/components/ui/ModalExitButton';
 import { findLocalityByWebSlug } from './src/constants/centerDirectors';
 
 ensureKoreanWebFont();
@@ -72,11 +73,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function StackBack() {
   const navigation = useNavigation();
-  return (
-    <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ paddingHorizontal: 4, paddingVertical: 6 }}>
-      <Text style={{ color: '#111827', fontWeight: '800', fontSize: 15 }}>‹ 나가기</Text>
-    </Pressable>
-  );
+  return <StackExitButton onPress={() => navigation.goBack()} />;
 }
 
 function HomeNavHeader() {
@@ -93,6 +90,8 @@ const homeHeaderOptions = {
 };
 
 function Tabs() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 8);
   return (
     <Tab.Navigator
       screenOptions={{
@@ -100,7 +99,15 @@ function Tabs() {
         tabBarActiveTintColor: '#E0392A',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarShowLabel: false,
-        tabBarStyle: { height: 74, paddingBottom: 10, paddingTop: 8 },
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          height: 56 + bottomPad,
+          paddingTop: 8,
+          paddingBottom: bottomPad,
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          backgroundColor: '#fff',
+        },
         tabBarItemStyle: { flex: 1 },
       }}
     >
@@ -221,6 +228,8 @@ export default function App() {
                     : route.params?.contentTypeId === '14' || route.params?.kind === 'culture'
                       ? '문화시설 상세'
                       : '행사 상세',
+                headerBackVisible: false,
+                headerLeft: () => <StackBack />,
               })}
             >
               {({ route }) => (
@@ -239,13 +248,15 @@ export default function App() {
                 />
               )}
             </Stack.Screen>
-            <Stack.Screen name="MerchantSettlement" options={{ title: '정산 현황' }} component={MerchantSettlementScreen} />
+            <Stack.Screen name="MerchantSettlement" options={{ title: '정산 현황', headerBackVisible: false, headerLeft: () => <StackBack /> }} component={MerchantSettlementScreen} />
             <Stack.Screen options={({ route }) => ({
               title: route.params?.topic === 'help'
                 ? '고객센터'
                 : route.params?.topic === 'privacy'
                   ? '개인정보처리방침'
                   : '공지사항',
+              headerBackVisible: false,
+              headerLeft: () => <StackBack />,
             })} name="Support" initialParams={startsOnPrivacy() ? { topic: 'privacy' } : undefined}>
               {({ route }) => <SupportScreen topic={route.params?.topic} />}
             </Stack.Screen>

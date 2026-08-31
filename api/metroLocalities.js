@@ -40,6 +40,29 @@ const REGION_LABEL = Object.fromEntries(Object.entries(REGION_META).map(([id, me
 const REGION_PHONE = Object.fromEntries(Object.entries(REGION_META).map(([id, meta]) => [id, meta.phone]));
 const AREA_CODE_BY_METRO = Object.fromEntries(Object.entries(REGION_META).map(([id, meta]) => [id, meta.tourAreaCode]));
 const MOI_CODE_BY_METRO = Object.fromEntries(Object.entries(REGION_META).map(([id, meta]) => [id, meta.moiCode]));
+const METRO_SOURCE_PREFIX = {
+  SEOUL: 'SEOUL',
+  BUSAN: 'BUSAN',
+  DAEGU: 'DAEGU',
+  INCHEON: 'INCHEON',
+  GWANGJU: 'GWANGJU',
+  DAEJEON: 'DAEJEON',
+  ULSAN: 'ULSAN',
+  SEJONG: 'SEJONG',
+  GYEONGGI: 'GG',
+  GANGWON: 'GANGWON',
+  CHUNGBUK: 'CHUNGBUK',
+  CHUNGNAM: 'CHUNGNAM',
+  JEONBUK: 'JEONBUK',
+  JEONNAM: 'JEONNAM',
+  GYEONGBUK: 'GYEONGBUK',
+  GYEONGNAM: 'GYEONGNAM',
+  JEJU: 'JEJU',
+};
+
+function metroSourcePrefix(metro) {
+  return METRO_SOURCE_PREFIX[metro] || metro;
+}
 
 const METRO_AREA = {
   ...AREA_CODE_BY_METRO,
@@ -186,6 +209,8 @@ export {
   MOI_CODE_BY_METRO,
   METRO_AREA,
   METRO_LOCALITIES,
+  METRO_SOURCE_PREFIX,
+  metroSourcePrefix,
   officerDisplayName,
   matchingRows,
   feedRewardRows,

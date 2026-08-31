@@ -19,8 +19,8 @@ export default function App() {
   const [view, setView] = useState<View>(
     localStorage.getItem('admin_token') ? 'dashboard' : 'login',
   );
-  const [email, setEmail] = useState('admin@gyeonggi-on.kr');
-  const [password, setPassword] = useState('admin1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [merchants, setMerchants] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -121,11 +121,11 @@ export default function App() {
         <form className="login-card" onSubmit={handleLogin}>
           <p className="eyebrow">온앤온+(on&on+) Admin</p>
           <h1>관리자 로그인</h1>
-          <p className="muted">운영 주소 https://www.kdanji.com/admin · 기본 계정 admin@gyeonggi-on.kr / admin1234</p>
+          <p className="muted">운영 관리자만 로그인할 수 있습니다.</p>
           <label>이메일</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" autoCorrect="off" />
           <label>비밀번호</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
           {error ? <p className="error">{error}</p> : null}
           <button type="submit">로그인</button>
         </form>

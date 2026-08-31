@@ -3,7 +3,7 @@
     "name": "온앤온+",
     "slug": "gyeonggi-on",
     "scheme": "onandon",
-    "version": "1.0.4",
+    "version": "1.0.16",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -25,9 +25,10 @@
     },
     "android": {
       "package": "kr.gyeonggion.app",
-      "versionCode": 5,
+      "versionCode": 17,
       "compileSdkVersion": 36,
       "targetSdkVersion": 36,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": ["INTERNET", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -43,6 +44,7 @@
     "plugins": [
       "./plugins/withAndroidSdk36",
       "./plugins/withAndroidReleaseSigning",
+      "./plugins/withAndroidLauncherIcon",
       [
         "expo-location",
         {
@@ -57,6 +59,10 @@
         }
       ]
     ],
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
+    },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png",

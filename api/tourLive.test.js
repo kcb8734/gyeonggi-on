@@ -29,6 +29,13 @@ test('nationwide all omits region filters', () => {
   assert.equal(query.params.contentTypeId, '15');
 });
 
+test('year-wide festival query does not clamp to the current month', () => {
+  const query = resolveFestivalQuery({ metro: 'SEOUL', year: 2026 });
+  assert.equal(query.params.eventStartDate, '20260101');
+  assert.equal(query.params.eventEndDate, undefined);
+  assert.equal(query.params.numOfRows, '200');
+});
+
 test('searchFestival2 retries with areaCode=31 when lDongRegnCd returns empty', async () => {
   const prev = process.env.TOUR_API_SERVICE_KEY;
   process.env.TOUR_API_SERVICE_KEY = 'test-key';
@@ -98,6 +105,37 @@ test('searchFestival2 returns Seoul fallback when TourAPI rate-limits', async ()
     assert.ok(result.festivals.length > 0);
     assert.equal(result.source, 'fallback');
     assert.ok(result.festivals.some((item) => item.title.includes('서울')));
+  } finally {
+    if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
+    else process.env.TOUR_API_SERVICE_KEY = prev;
+  }
+});
+
+test('searchFestival2 returns Daegu fallback instead of Gyeonggi', async () => {
+  const prev = process.env.TOUR_API_SERVICE_KEY;
+  process.env.TOUR_API_SERVICE_KEY = 'test-key';
+  const fetchImpl = async () => ({ ok: false, status: 429, json: async () => ({}) });
+  try {
+    const { searchFestival2 } = await import('./tourLive.js');
+    const result = await searchFestival2({ metro: 'DAEGU' }, fetchImpl);
+    assert.ok(result.festivals.some((item) => item.title.includes('치맥')));
+    assert.equal(result.festivals.some((item) => item.title.includes('수원화성')), false);
+  } finally {
+    if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
+    else process.env.TOUR_API_SERVICE_KEY = prev;
+  }
+});
+
+test('searchFestival2 allowBuiltin false does not inject builtin samples', async () => {
+  const prev = process.env.TOUR_API_SERVICE_KEY;
+  process.env.TOUR_API_SERVICE_KEY = 'test-key';
+  const fetchImpl = async () => ({ ok: false, status: 429, json: async () => ({}) });
+  try {
+    const { liveTourFestivals, searchFestival2 } = await import('./tourLive.js');
+    const result = await searchFestival2({ metro: 'JEJU', month: 3, year: 2024, allowBuiltin: false }, fetchImpl);
+    assert.equal(result.festivals.length, 0);
+    assert.equal(result.source, 'none');
+    assert.deepEqual(liveTourFestivals(result), []);
   } finally {
     if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
     else process.env.TOUR_API_SERVICE_KEY = prev;

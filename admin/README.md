@@ -6,5 +6,5 @@ npm install
 npm run dev   # http://localhost:5173/admin/login
 ```
 
-기본 계정: `admin@gyeonggi-on.kr` / `admin1234`  
-백엔드 `ADMIN_EMAIL`, `ADMIN_PASSWORD`와 같아야 합니다.
+관리자 계정은 서버 환경 변수 `ADMIN_EMAIL`, `ADMIN_PASSWORD`로만 설정합니다.
+앱과 관리자 화면에는 접속 계정·비밀번호를 표시하지 않습니다.

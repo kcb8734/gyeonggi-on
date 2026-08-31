@@ -1,8 +1,9 @@
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { HomeFestival } from '../../types/home';
 import { festivalImageFor } from '../../constants/regionMedia';
 import { ddayLabel } from '../../utils/date';
+import SafeFestivalImage from './SafeFestivalImage';
 
 interface Props {
   festival: HomeFestival;
@@ -14,16 +15,18 @@ interface Props {
 
 export default function FestivalGridCard({ festival, discountRate, hasCoupon, onPress, onCouponPress }: Props) {
   const dday = ddayLabel(festival.start_date, festival.end_date);
-  const imageUrl = festival.image_url || festivalImageFor(festival.title, festival.location_name);
+  const imageUrl = festival.image_url || festivalImageFor(festival.title, festival.location_name, festival.metro || festival.regionalZone);
   const showCoupon = Boolean(hasCoupon);
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <View>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.fallback]} />
-        )}
+        <SafeFestivalImage
+          uri={imageUrl}
+          title={festival.title}
+          location={festival.location_name}
+          metro={festival.metro || festival.regionalZone}
+          style={styles.image}
+        />
         {dday ? (
           <View style={[styles.dday, dday === '진행중' && styles.ddayLive, dday === '종료' && styles.ddayDone]}>
             <Text style={styles.ddayText}>{dday}</Text>

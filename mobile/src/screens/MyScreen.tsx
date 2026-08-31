@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import SafeFestivalImage from '../components/ui/SafeFestivalImage';
+import { tourDetailParams } from '../utils/festivalFeed';
 import FestivalRegisterModal from '../components/ui/FestivalRegisterModal';
 import ProfileEditModal from '../components/ui/ProfileEditModal';
 import { forgetFestival, syncRewardBalance, toggleFavorite, useAppState } from '../stores/appStore';
@@ -105,7 +107,13 @@ export default function MyScreen() {
               style={styles.vaultRow}
               onPress={() => navigation.navigate('FeedView', { postId: post.id })}
             >
-              <Image source={{ uri: post.imageUrl }} style={styles.thumb} />
+              <SafeFestivalImage
+                uri={post.imageUrl}
+                title={post.festival}
+                location={post.festival}
+                metro={post.metro}
+                style={styles.thumb}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle} numberOfLines={2}>{post.caption}</Text>
                 <Text style={styles.rowMeta}>{post.festival ?? '축제'} · {post.createdAt}</Text>
@@ -178,14 +186,9 @@ export default function MyScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.row}
-            onPress={() => item.contentId && navigation.navigate('TourDetail', {
-              contentId: item.contentId,
-              contentTypeId: item.contentTypeId,
-              tel: item.tel,
-              title: item.title,
-            })}
+            onPress={() => item.contentId && navigation.navigate('TourDetail', tourDetailParams(item))}
           >
-            {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.thumb} /> : <View style={styles.thumb} />}
+            <SafeFestivalImage uri={item.image_url} title={item.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowMeta}>{item.location_name}</Text>
@@ -210,14 +213,9 @@ export default function MyScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.row}
-            onPress={() => item.contentId && navigation.navigate('TourDetail', {
-              contentId: item.contentId,
-              contentTypeId: item.contentTypeId,
-              tel: item.tel,
-              title: item.title,
-            })}
+            onPress={() => item.contentId && navigation.navigate('TourDetail', tourDetailParams(item))}
           >
-            {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.thumb} /> : <View style={styles.thumb} />}
+            <SafeFestivalImage uri={item.image_url} title={item.title} style={styles.thumb} />
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowMeta}>{item.location_name}</Text>
@@ -256,7 +254,7 @@ export default function MyScreen() {
         <View style={styles.menuDivider} />
         <TouchableOpacity style={styles.menu} onPress={() => navigation.navigate('Admin')}>
           <Text style={styles.menuTitle}>관리자 페이지</Text>
-          <Text style={styles.menuMeta}>kdanji.com/admin · TourAPI 수집 안내</Text>
+          <Text style={styles.menuMeta}>운영 관리 전용</Text>
         </TouchableOpacity>
       </View>
       <FestivalRegisterModal visible={festivalModal} onClose={() => setFestivalModal(false)} />

@@ -261,6 +261,20 @@ test('searchFestivals returns fallback mock when service key is missing', async 
   if (prevNts !== undefined) process.env.NTS_SERVICE_KEY = prevNts;
 });
 
+test('searchFestivals allowFallback false returns empty without a key', async () => {
+  const prevTour = process.env.TOUR_API_SERVICE_KEY;
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  delete process.env.TOUR_API_SERVICE_KEY;
+  delete process.env.NTS_SERVICE_KEY;
+  const list = await searchFestivals(
+    { month: 8, year: 2026 },
+    { serviceKey: '', cache: new TtlCache(), allowFallback: false },
+  );
+  assert.deepEqual(list, []);
+  if (prevTour !== undefined) process.env.TOUR_API_SERVICE_KEY = prevTour;
+  if (prevNts !== undefined) process.env.NTS_SERVICE_KEY = prevNts;
+});
+
 test('searchFestivals falls back when TourAPI times out', async () => {
   const fetchImpl: typeof fetch = async () => {
     const err = new Error('aborted');

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFeedPosts } from '../../stores/feedStore';
+import SafeFestivalImage from './SafeFestivalImage';
 
 export default function FeedRail({ onPress, metro }: { onPress?: (postId: string) => void; metro?: string }) {
   const posts = useFeedPosts(metro);
@@ -14,7 +15,13 @@ export default function FeedRail({ onPress, metro }: { onPress?: (postId: string
           activeOpacity={0.9}
           onPress={() => onPress?.(post.id)}
         >
-          <Image source={{ uri: post.imageUrl }} style={styles.image} />
+          <SafeFestivalImage
+            uri={post.imageUrl}
+            title={post.festival}
+            location={post.festival}
+            metro={post.metro || metro}
+            style={styles.image}
+          />
           <View style={styles.scrim} />
           <View style={styles.meta}>
             {post.festival ? <Text style={styles.fest} numberOfLines={1}>{post.festival}</Text> : null}
@@ -40,11 +47,22 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#111827',
+    position: 'relative',
   },
-  image: { width: '100%', height: '100%' },
+  image: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 148,
+    height: 248,
+  },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17,24,39,0.28)',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 132,
+    backgroundColor: 'rgba(17,24,39,0.42)',
   },
   meta: {
     position: 'absolute',

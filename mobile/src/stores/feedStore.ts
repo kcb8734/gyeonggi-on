@@ -20,7 +20,17 @@ export interface FeedPost {
   mine?: boolean;
 }
 
-const FEED_KEY = 'onandon-feed-v5';
+const FEED_KEY = 'onandon-feed-v8';
+
+function hydratePost(post: FeedPost): FeedPost {
+  const raw = String(post.imageUrl || '').trim();
+  const broken = !raw || raw.startsWith('asset://') || raw === 'null' || !/^(https?:|data:|blob:|file:)/i.test(raw);
+  if (!broken) return post;
+  return {
+    ...post,
+    imageUrl: festivalImageFor(post.festival, post.festival, post.metro),
+  };
+}
 const MY_KEY = 'onandon-my-feeds-v2';
 
 const GYEONGGI_SEEDED: FeedPost[] = [
@@ -130,7 +140,7 @@ const SEEDED: FeedPost[] = [
 ];
 
 type Listener = () => void;
-let posts: FeedPost[] = readJson(FEED_KEY, SEEDED);
+let posts: FeedPost[] = readJson(FEED_KEY, SEEDED).map(hydratePost);
 let myPosts: FeedPost[] = readJson(MY_KEY, []);
 const listeners = new Set<Listener>();
 

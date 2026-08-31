@@ -1,3 +1,4 @@
+import { isJongnoCenter, jongnoDirectorPhotoUri } from '../assets/jongnoDirectorPhoto';
 import {
   dedicatedCenterName,
   directorTitleFor,
@@ -16,10 +17,12 @@ export const CARD_MM = {
   photoH: 25,
   pad: 6.4,
   logoH: 6.4,
-  ruleFromBottom: 7.1,
-  brandAboveRule: 3,
-  contactBelowRule: 2,
-  contactFont: 2.65,
+  nameToBrand: 5,
+  ruleFromBottom: 8.2,
+  brandAboveRule: 1,
+  contactBelowRule: 1,
+  contactFont: 2.55,
+  brandLineGap: 1,
 };
 export const CARD_PRINT_CM = { width: 9.2, height: 5.2 };
 export const CARD_COLORS = { title: '#585655', brand: '#585656', contact: '#111111' };
@@ -48,7 +51,7 @@ export function buildCenterCardModel(row: CenterLocalityRow, director?: CenterDi
     name: profile.name,
     title: profile.title || directorTitleFor(row.regionLabel, row.label),
     dedicatedCenter: dedicatedCenterName(row.region, row.label),
-    photoUrl: profile.photoUrl,
+    photoUrl: profile.photoUrl || (isJongnoCenter(row) ? jongnoDirectorPhotoUri() : undefined),
     phone: profile.phone,
     email: profile.email,
     address: profile.address || `${row.regionLabel.replace(/온$/, '')} ${row.label}`,
@@ -90,34 +93,34 @@ function cardCss(dpi: number) {
       display: flex; flex-direction: column;
       overflow: hidden; position: relative;
     }
-    .stage { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: ${u(2.4)}; }
-    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .stage { flex: 0 0 auto; min-height: 0; display: flex; align-items: flex-start; gap: ${u(2.4)}; }
+    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
     .brand-logo { height: ${u(CARD_MM.logoH)}; width: auto; display: block; max-width: ${u(34)}; object-fit: contain; }
     .photo { width: ${u(CARD_MM.photoW)}; height: ${u(CARD_MM.photoH)}; object-fit: cover; border-radius: ${u(3.6)}; background: #d1d5db; flex-shrink: 0; }
     .ph { display: flex; align-items: center; justify-content: center; font-size: ${u(7)}; font-weight: 800; color: #6b7280; }
     .who { margin-top: ${u(5.2)}; display: flex; align-items: baseline; gap: ${u(1.8)}; flex-wrap: nowrap; }
-    .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
+    .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; line-height: 1; }
     .bar { color: #c5c5c5; font-weight: 400; font-size: ${u(3.2)}; }
     .title { font-size: ${u(2.55)}; color: ${CARD_COLORS.title}; font-weight: 500; white-space: nowrap; overflow: hidden; }
-    .brand-block { margin-top: auto; padding-top: ${u(2.2)}; padding-bottom: ${u(CARD_MM.brandAboveRule)}; }
-    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; }
-    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; }
+    .brand-block {
+      position: static; margin-top: ${u(CARD_MM.nameToBrand)}; padding-bottom: 0;
+    }
+    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1; }
+    .center { margin-top: ${u(CARD_MM.brandLineGap)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; line-height: 1; white-space: nowrap; overflow: hidden; }
     .rule {
-      position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)};
-      bottom: ${u(CARD_MM.ruleFromBottom)}; margin: 0; border: 0;
-      border-top: ${u(0.25)} solid #d1d5db;
+      position: static; width: 100%; margin: ${u(CARD_MM.brandAboveRule)} 0 0;
+      border: 0; border-top: ${u(0.25)} solid #d1d5db; flex-shrink: 0;
     }
     .grid {
-      flex-shrink: 0;
-      height: ${u(CARD_MM.ruleFromBottom)};
+      position: static; width: 100%; height: auto; margin: 0;
       display: grid;
       grid-template-columns: 1fr 1fr;
       column-gap: ${u(2.2)};
-      row-gap: ${u(0.35)};
+      row-gap: ${u(0.1)};
       padding-top: ${u(CARD_MM.contactBelowRule)};
       font-size: ${u(CARD_MM.contactFont)};
       color: ${CARD_COLORS.contact};
-      line-height: 1.15;
+      line-height: 1.05;
     }
     .kv { display: grid; grid-template-columns: ${u(4.8)} 1fr; column-gap: ${u(0.9)}; align-items: center; min-width: 0; }
     .kv.addr { grid-column: 1 / -1; }
@@ -142,8 +145,9 @@ function kv(label: string, value: string, extraClass = '') {
 }
 
 function photoHtml(model: CenterCardModel) {
-  return model.photoUrl
-    ? `<img class="photo" src="${escapeHtml(model.photoUrl)}" alt="" />`
+  const src = model.photoUrl || (isJongnoCenter(model) ? jongnoDirectorPhotoUri() : '');
+  return src
+    ? `<img class="photo" src="${escapeHtml(src)}" alt="" />`
     : `<div class="photo ph">${escapeHtml(model.name.slice(0, 1))}</div>`;
 }
 
@@ -453,7 +457,6 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     }
     ctx.restore();
 
-    const ruleY = H - pad - mm(CARD_MM.ruleFromBottom);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#111111';
     ctx.font = font('800', 3.53);
@@ -469,9 +472,12 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
 
     ctx.fillStyle = CARD_COLORS.brand;
     ctx.font = font('800', 3.2);
-    ctx.fillText('온앤온+', pad, ruleY - mm(CARD_MM.brandAboveRule + 3.2));
+    const brandY = nameY + mm(CARD_MM.nameToBrand + 3.2);
+    ctx.fillText('온앤온+', pad, brandY);
     ctx.font = 'italic 700 ' + mm(2.75) + 'px "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
-    ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(CARD_MM.brandAboveRule));
+    const centerY = brandY + mm(CARD_MM.brandLineGap + 2.75);
+    ctx.fillText(model.dedicatedCenter, pad, centerY);
+    const ruleY = centerY + mm(CARD_MM.brandAboveRule);
 
     ctx.strokeStyle = '#d1d5db';
     ctx.lineWidth = Math.max(1, mm(0.25));
@@ -482,7 +488,7 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
 
     const col = (W - pad * 2 - mm(2.2)) / 2;
     const row1 = ruleY + mm(CARD_MM.contactBelowRule + CARD_MM.contactFont);
-    const row2 = row1 + mm(CARD_MM.contactFont + 0.45);
+    const row2 = row1 + mm(CARD_MM.contactFont + 0.12);
     const rows: Array<[string, string, number, number, number]> = [
       ['M.', model.phone, pad, row1, col],
       ['E.', model.email, pad + col + mm(2.2), row1, col],

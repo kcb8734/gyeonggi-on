@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Image,
   Linking,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import SafeFestivalImage from '../components/ui/SafeFestivalImage';
 import CourseGuideModal from '../components/ui/CourseGuideModal';
 import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { findFallbackFestival } from '../constants/regionTour';
-import { festivalImageFor } from '../constants/regionMedia';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
 import type { TourDetail } from '../types/tour';
 import { formatTel, telHref } from '../utils/phone';
+import { festivalListHeroUrl } from '../utils/festivalFeed';
+import { secureMediaUrl } from '../utils/mediaUrl';
 
 const EMPTY_COPY = {
   overview: '한국관광공사 TourAPI에서 수집한 행사 정보입니다. 상세 개요가 확인되는 대로 자동 반영됩니다.',
@@ -59,11 +61,11 @@ export default function FestivalDetailScreen({
   fallbackImageUrl?: string;
 }) {
   useAppState();
+  const { width } = useWindowDimensions();
   const known = findFallbackFestival(contentId, fallbackTitle);
   const [detail, setDetail] = useState<TourDetail | null>(null);
   const [course, setCourse] = useState<FestivalCourse | null>(null);
   const [guideFocus, setGuideFocus] = useState<'all' | '역사체험' | '전통시장 먹거리' | '캠핑장/숙박' | null>(null);
-
   useEffect(() => {
     let cancelled = false;
     const seed = {
@@ -98,7 +100,12 @@ export default function FestivalDetailScreen({
               : (fallbackAddress || known?.location_name || data.address),
             mapX,
             mapY,
-            firstImage: data.firstImage || fallbackImageUrl || known?.image_url || data.firstImage,
+            firstImage: festivalListHeroUrl(known, {
+              imageUrl: fallbackImageUrl || data.firstImage,
+              address: fallbackAddress || data.address,
+              metro: fallbackMetro,
+              title: fallbackTitle || data.title,
+            }) || secureMediaUrl(data.firstImage),
             eventStartDate: data.eventStartDate || known?.start_date,
             eventEndDate: data.eventEndDate || known?.end_date,
           });
@@ -106,7 +113,12 @@ export default function FestivalDetailScreen({
       })
       .catch(() => {
         if (!cancelled) {
-          const image = fallbackImageUrl || known?.image_url || festivalImageFor(fallbackTitle, fallbackAddress, fallbackMetro);
+          const image = festivalListHeroUrl(known, {
+            imageUrl: fallbackImageUrl,
+            address: fallbackAddress,
+            metro: fallbackMetro,
+            title: fallbackTitle,
+          });
           setDetail({
             contentId,
             contentTypeId: contentTypeId ?? (fallbackKind === 'food' ? '39' : '15'),
@@ -158,7 +170,13 @@ export default function FestivalDetailScreen({
 
   const isRestaurant = detail.contentTypeId === '39' || contentTypeId === '39' || fallbackKind === 'food' || detail.category === '먹거리';
   const favorited = isFavorite(`tour-${detail.contentId}`);
-  const hero = detail.images[0]?.originUrl ?? detail.firstImage;
+  const fallbackHero = festivalListHeroUrl(known, {
+    imageUrl: fallbackImageUrl,
+    address: fallbackAddress || detail.address,
+    metro: fallbackMetro,
+    title: fallbackTitle || detail.title,
+  });
+  const hero = fallbackHero || secureMediaUrl(detail.images[0]?.originUrl ?? detail.firstImage);
   const hasMap = detail.mapX !== 0 && detail.mapY !== 0;
   const resolvedTel = detail.tel || fallbackTel;
   const callUrl = telHref(resolvedTel);
@@ -170,21 +188,24 @@ export default function FestivalDetailScreen({
   );
   const fee = detail.fee?.trim() || EMPTY_COPY.fee;
   const address = detail.address?.trim() || EMPTY_COPY.address;
-  const slides = detail.images.length ? detail.images : hero ? [{ originUrl: hero }] : [];
+  const slides = (detail.images.length ? detail.images : hero ? [{ originUrl: hero }] : [])
+    .map((img) => ({ ...img, originUrl: secureMediaUrl(img.originUrl) || fallbackHero }))
+    .filter((img) => img.originUrl);
+  const heroSlides = slides.length ? slides : [{ originUrl: fallbackHero }];
+
+  const heroUri = heroSlides[0]?.originUrl || fallbackHero;
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 36 }}>
-      {slides.length ? (
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-          {slides.map((img) => (
-            <Image key={img.originUrl} source={{ uri: img.originUrl }} style={styles.hero} />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={[styles.hero, styles.heroFallback]}>
-          <Text style={styles.heroFallbackText}>대표 이미지 준비 중</Text>
-        </View>
-      )}
+      <View style={[styles.hero, { width }]}>
+        <SafeFestivalImage
+          uri={heroUri}
+          title={detail.title || '대표 이미지 준비 중'}
+          location={fallbackAddress || detail.address}
+          metro={fallbackMetro}
+          style={styles.heroImage}
+        />
+      </View>
 
       <View style={styles.body}>
         <Text style={styles.source}>한국관광공사 TourAPI 4.0</Text>
@@ -309,9 +330,10 @@ export default function FestivalDetailScreen({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F3F4F6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6' },
-  hero: { width: '100%' as unknown as number, height: 220, backgroundColor: '#E5E7EB' },
-  heroFallback: { width: '100%', alignItems: 'center', justifyContent: 'center' },
-  heroFallbackText: { color: '#6B7280', fontWeight: '700' },
+  hero: { width: 360, height: 220, backgroundColor: '#93C5FD', overflow: 'hidden' },
+  heroImage: { width: '100%', height: 220 },
+  heroFallback: { width: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1E6FEA' },
+  heroFallbackText: { color: '#fff', fontWeight: '800', fontSize: 16, paddingHorizontal: 24, textAlign: 'center' },
   body: { padding: 16, gap: 10 },
   source: { fontSize: 11, fontWeight: '800', color: '#2563EB' },
   tag: {

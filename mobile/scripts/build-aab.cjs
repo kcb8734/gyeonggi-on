@@ -28,6 +28,7 @@ const {
   patchExpoModulesCoreForCompileSdk36,
   patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
+const { copyLauncherIcons } = require('../plugins/withAndroidLauncherIcon');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -37,6 +38,42 @@ const defaultKeystore = path.join(credDir, 'upload.keystore');
 const outDir = path.join(root, 'dist', 'android');
 const gradleAab = path.join(root, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 const copiedAab = path.join(outDir, 'app-release.aab');
+const rootAab = path.join(repo, 'app-release.aab');
+
+function log(message) {
+  process.stdout.write(`${message}\n`);
+}
+
+function fail(message, code = 1) {
+  process.stderr.write(`\n[build:aab] ${message}\n`);
+  process.exit(code);
+}
+
+/** AAB proto 매니페스트에서 versionName / versionCode 를 읽는다. */
+function readAabIdentity(aabPath) {
+  const result = spawnSync('unzip', ['-p', aabPath, 'base/manifest/AndroidManifest.xml'], { encoding: 'buffer' });
+  if (result.status !== 0) {
+    throw new Error(`AAB 매니페스트를 읽지 못했습니다: ${aabPath}`);
+  }
+  const text = result.stdout.toString('latin1');
+  const name = text.match(/versionName\x1a.([0-9]+(?:\.[0-9]+)*)/);
+  const code = text.match(/versionCode\x1a.([0-9]+)/);
+  return {
+    versionName: name ? name[1] : null,
+    versionCode: code ? Number(code[1]) : null,
+  };
+}
+
+function assertAabIdentity(aabPath, versionName, versionCode) {
+  const actual = readAabIdentity(aabPath);
+  if (String(actual.versionName) !== String(versionName) || Number(actual.versionCode) !== Number(versionCode)) {
+    fail(
+      `AAB 버전이 app.json 과 다릅니다. 파일=${aabPath} 실제=${actual.versionName}/${actual.versionCode} 기대=${versionName}/${versionCode}. Play에 이미 올라간 옛 AAB를 쓰지 마세요.`,
+    );
+  }
+  log(`[build:aab] verified ${aabPath} versionName=${actual.versionName} versionCode=${actual.versionCode}`);
+  return actual;
+}
 
 function log(message) {
   process.stdout.write(`${message}\n`);
@@ -192,6 +229,14 @@ function ensureSdk36Gradle() {
   }
 }
 
+function ensureLauncherIcons() {
+  const copied = copyLauncherIcons(root);
+  if (!copied) {
+    fail('첨부 6 런처 mipmap을 android/app/src/main/res 에 복사하지 못했습니다.');
+  }
+  log(`[build:aab] launcher icons copied=${copied}`);
+}
+
 function ensureSplashColor() {
   const file = path.join(root, 'android', 'app', 'src', 'main', 'res', 'values', 'colors.xml');
   if (!fs.existsSync(file)) return;
@@ -220,6 +265,20 @@ function restoreExpoStartScripts() {
     changed = true;
   }
   if (changed) fs.writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
+function ensureAppVersion(versionName, versionCode) {
+  const gradle = path.join(root, 'android', 'app', 'build.gradle');
+  if (!fs.existsSync(gradle)) fail('android/app/build.gradle 이 없습니다.');
+  let source = fs.readFileSync(gradle, 'utf8');
+  const next = source
+    .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+    .replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
+  if (next === source && !new RegExp(`versionCode\\s+${versionCode}`).test(source)) {
+    fail(`build.gradle 에 versionCode ${versionCode} 를 쓰지 못했습니다.`);
+  }
+  fs.writeFileSync(gradle, next);
+  log(`[build:aab] android/app/build.gradle versionName=${versionName} versionCode=${versionCode}`);
 }
 
 function applyReleaseSigning(signing) {
@@ -275,7 +334,9 @@ function main() {
   writeLocalProperties(sdk);
   applyReleaseSigning(signing);
   ensureSplashColor();
+  ensureLauncherIcons();
   ensureSdk36Gradle();
+  ensureAppVersion(versionName, versionCode);
   restoreExpoStartScripts();
 
   const gradlew = path.join(root, 'android', 'gradlew');
@@ -286,16 +347,25 @@ function main() {
   });
 
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
+  assertAabIdentity(gradleAab, versionName, versionCode);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
+  const versionedAab = path.join(outDir, `onandon-${versionName}-vc${versionCode}.aab`);
+  fs.copyFileSync(gradleAab, versionedAab);
+  fs.copyFileSync(gradleAab, rootAab);
+  assertAabIdentity(copiedAab, versionName, versionCode);
+  assertAabIdentity(rootAab, versionName, versionCode);
   const stat = fs.statSync(copiedAab);
   log('\n=== AAB 빌드 완료 ===');
   log(`Gradle 산출물: ${gradleAab}`);
   log(`복사본:         ${copiedAab}`);
+  log(`버전 파일:      ${versionedAab}`);
+  log(`루트 복사본:    ${rootAab}`);
   log(`크기:           ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
+  log(`주의: 저장소 루트의 예전 app-release.aab를 올리지 마세요. 방금 빌드한 onandon-${versionName}-vc${versionCode}.aab 를 확인하세요.`);
 }
 
 main();

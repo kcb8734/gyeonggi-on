@@ -1,19 +1,21 @@
 import React from 'react';
 import {
-  Image,
   Linking,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import SafeFestivalImage from './SafeFestivalImage';
 import type { HomeFestival, HomePromotion } from '../../types/home';
 import { isFavorite, isScheduled } from '../../stores/appStore';
 import { ddayLabel, formatRange } from '../../utils/date';
 import { formatTel, telHref } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
+import { festivalListHeroUrl } from '../../utils/festivalFeed';
 import ModalExitButton from './ModalExitButton';
 
 interface Props {
@@ -40,6 +42,7 @@ export default function FestivalDetailPopup({
   onIssue,
 }: Props) {
   const scrollRef = React.useRef<ScrollView>(null);
+  const { width } = useWindowDimensions();
   React.useEffect(() => {
     setImeModalLock(Boolean(festival));
     return () => setImeModalLock(false);
@@ -57,6 +60,7 @@ export default function FestivalDetailPopup({
   const inquiry = festival.inquiryTel || festival.tel;
   const callUrl = telHref(inquiry);
   const telLabel = formatTel(inquiry) || inquiry;
+  const heroUri = festivalListHeroUrl(festival);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -66,11 +70,15 @@ export default function FestivalDetailPopup({
           <View style={styles.handle} />
           <ModalExitButton onPress={onClose} />
           <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
-            {festival.image_url ? (
-              <Image source={{ uri: festival.image_url }} style={styles.hero} />
-            ) : (
-              <View style={[styles.hero, styles.fallback]} />
-            )}
+            <View style={[styles.hero, { width }]}>
+              <SafeFestivalImage
+                uri={heroUri}
+                title={festival.title}
+                location={festival.location_name}
+                metro={festival.metro || festival.regionalZone}
+                style={styles.heroImage}
+              />
+            </View>
             <View style={styles.body}>
               <View style={styles.row}>
                 <Text style={styles.dday}>{ddayLabel(festival.start_date, festival.end_date)}</Text>
@@ -170,8 +178,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
   },
-  hero: { width: '100%', height: 170, backgroundColor: '#E5E7EB' },
-  fallback: { backgroundColor: '#CBD5E1' },
+  hero: { width: '100%', height: 180, backgroundColor: '#93C5FD', overflow: 'hidden' },
+  heroImage: { width: '100%', height: 180 },
+  fallback: { backgroundColor: '#1E6FEA', alignItems: 'center', justifyContent: 'center' },
+  fallbackText: { color: '#fff', fontWeight: '800', fontSize: 16, paddingHorizontal: 20, textAlign: 'center' },
   body: { padding: 16, paddingBottom: 28 },
   row: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   dday: {
