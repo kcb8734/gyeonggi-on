@@ -125,3 +125,19 @@ test('searchFestival2 returns Daegu fallback instead of Gyeonggi', async () => {
     else process.env.TOUR_API_SERVICE_KEY = prev;
   }
 });
+
+test('searchFestival2 allowBuiltin false does not inject builtin samples', async () => {
+  const prev = process.env.TOUR_API_SERVICE_KEY;
+  process.env.TOUR_API_SERVICE_KEY = 'test-key';
+  const fetchImpl = async () => ({ ok: false, status: 429, json: async () => ({}) });
+  try {
+    const { liveTourFestivals, searchFestival2 } = await import('./tourLive.js');
+    const result = await searchFestival2({ metro: 'JEJU', month: 3, year: 2024, allowBuiltin: false }, fetchImpl);
+    assert.equal(result.festivals.length, 0);
+    assert.equal(result.source, 'none');
+    assert.deepEqual(liveTourFestivals(result), []);
+  } finally {
+    if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
+    else process.env.TOUR_API_SERVICE_KEY = prev;
+  }
+});

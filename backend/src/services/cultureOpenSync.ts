@@ -76,7 +76,9 @@ export async function syncOpenCultureEvents(
     let categories = mergeCategoryCounts(...results.map((row) => row.categories || []));
     const live = await tryQuery(
       `SELECT COALESCE(NULLIF(TRIM(category), ''), '기타') AS name, COUNT(*)::int AS count
-       FROM festivals GROUP BY 1 ORDER BY count DESC, name ASC`,
+       FROM festivals
+       WHERE LOWER(COALESCE(source, '')) NOT IN ('sample', 'fallback')
+       GROUP BY 1 ORDER BY count DESC, name ASC`,
     );
     if (live?.rows?.length) categories = live.rows as Array<{ name: string; count: number }>;
     return {

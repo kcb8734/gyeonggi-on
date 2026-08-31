@@ -203,6 +203,11 @@ export async function persistTourFestivals(items, options = {}) {
   try {
     await client.query('BEGIN');
     for (const item of rows) {
+      const itemSource = String(item && item.source || source || 'tour').toLowerCase();
+      if (itemSource === 'sample' || itemSource === 'fallback') {
+        skipped += 1;
+        continue;
+      }
       const contentId = String(item && item.contentId || '').trim();
       const title = String(item && item.title || '').trim();
       const start = festivalDateYmd(item && (item.eventStartDate || item.start_date))
@@ -393,6 +398,7 @@ export async function listFestivalCategoryCounts() {
     const result = await db.query(
       `SELECT COALESCE(NULLIF(TRIM(category), ''), '기타') AS name, COUNT(*)::int AS count
        FROM festivals
+       WHERE LOWER(COALESCE(source, '')) NOT IN ('sample', 'fallback')
        GROUP BY 1
        ORDER BY count DESC, name ASC`,
     );

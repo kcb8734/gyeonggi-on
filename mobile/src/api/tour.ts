@@ -28,7 +28,7 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
     category: item.category,
     image_url: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address, zone),
     is_trending: Boolean(item.firstImage),
-    source: 'tour',
+    source: item.source === 'fallback' || item.source === 'sample' ? item.source : 'tour',
     tel: item.tel,
     description: item.overview,
     fee: item.fee,
@@ -79,6 +79,7 @@ function previewFestivals(areaCode?: string): TourFestival[] {
     overview: item.description ?? `${item.title} 상세 개요`,
     fee: item.fee ?? '현장 문의',
     areaCode: region.code,
+    source: 'fallback',
   }));
 }
 
@@ -99,9 +100,11 @@ export async function fetchTourFestivals(params?: {
       },
     });
     if (res.data?.data?.length) {
+      const live = res.data.source === 'fallback' || res.data.source === 'sample';
       return res.data.data.map((item) => ({
         ...item,
         firstImage: secureMediaUrl(item.firstImage) || festivalImageFor(item.title, item.address, regionByAreaCode(item.areaCode).id),
+        source: live || item.source === 'fallback' || item.source === 'sample' ? 'fallback' : item.source,
       }));
     }
   } catch {

@@ -60,6 +60,18 @@ test('preferPersistedFestivalList does not bury DB rows under dummy fallbacks', 
   assert.ok(empty.length > 0);
 });
 
+test('TourAPI builtin fallback source does not override municipal rows', () => {
+  const listed = [
+    { ...fest('ggc-2', '오페라박물관 야외음악회'), source: 'ggc', start_date: '2026-10-01' },
+  ];
+  const tour = [
+    { ...fest('builtin-1', '수원화성문화제'), source: 'fallback', start_date: '2026-08-19' },
+  ];
+  const merged = preferPersistedFestivalList(listed, tour, []);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].source, 'ggc');
+});
+
 test('17개 권역 축제 폴백이 모두 채워져 있다', () => {
   const zones = Object.keys(REGION_FESTIVAL_FALLBACKS);
   assert.ok(zones.length >= 17);

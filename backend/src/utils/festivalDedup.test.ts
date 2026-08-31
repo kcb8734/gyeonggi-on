@@ -12,3 +12,12 @@ test('TourAPI is master and unique municipal festivals remain', () => {
   assert.ok(merged.some((row) => String(row.title).includes('마포')));
   assert.equal(merged.filter((row) => String(row.title).includes('수원화성')).length, 1);
 });
+
+test('fallback-stamped TourAPI rows are dropped', () => {
+  const merged = mergeFestivalMasters(
+    [{ title: '오페라박물관 야외음악회', source: 'ggc' }],
+    [{ title: '수원화성문화제', source: 'fallback' }],
+  );
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].source, 'ggc');
+});

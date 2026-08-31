@@ -47,3 +47,13 @@ test('sample rows are dropped and dissimilar titles are kept', () => {
     { title: '이천쌀문화축제', start_date: '2026-10-22', location_name: '이천' },
   ), false);
 });
+
+test('builtin TourAPI fallback rows do not hide unique municipal festivals', () => {
+  const merged = mergeFestivalMasters(
+    [{ title: '오페라박물관 야외음악회', source: 'ggc', contentId: 'ggc-2', start_date: '2026-10-01' }],
+    [{ title: '수원화성문화제', source: 'fallback', contentId: 'builtin-1', start_date: '2026-08-19' }],
+  );
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].source, 'ggc');
+  assert.equal(merged[0].title, '오페라박물관 야외음악회');
+});

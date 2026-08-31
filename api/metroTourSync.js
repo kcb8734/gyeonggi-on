@@ -33,11 +33,15 @@ export async function syncTourMetroEvents(query = {}) {
       month: query.month,
       year: query.year,
       numOfRows: query.numOfRows || 80,
+      allowBuiltin: false,
     });
-    const items = (result.festivals || []).map((item) => ({
-      ...item,
-      metro: item.metro || result.metro || metro,
-    }));
+    const items = (result.festivals || [])
+      .filter((item) => String(item.source || '').toLowerCase() !== 'fallback' && String(item.source || '').toLowerCase() !== 'sample')
+      .map((item) => ({
+        ...item,
+        metro: item.metro || result.metro || metro,
+        source: 'tour',
+      }));
     if (!items.length) {
       console.error('[tour-sync] empty', {
         metro: metro || 'ALL',
