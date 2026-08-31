@@ -1,5 +1,5 @@
 import { persistTourFestivals, listFestivalCategoryCounts, writeTourSyncLog } from './festivalDbSync.js';
-import { fetchXml } from './openApiFetch.js';
+import { fetchXml, logOpenApiEmpty } from './openApiFetch.js';
 import { countCategories, parseGgCultureXml, toPersistableFestival } from './ggCultureXml.js';
 
 export const GG_CULTURE_API_NAME = 'GGCULTUREVENTSTUS';
@@ -39,7 +39,25 @@ export async function fetchGgCulturePage(page = 1, size = 1000, fetchImpl = fetc
       return { ok: false, code: String(got.status), message: `HTTP ${got.status}`, total: 0, rows: [] };
     }
     if (!parsed.ok) {
-      console.error('[GGCULTUREVENTSTUS] parse/result', { code: parsed.code, message: parsed.message, hasKey: true });
+      logOpenApiEmpty('GGCULTUREVENTSTUS', {
+        code: parsed.code,
+        message: parsed.message,
+        hasKey: true,
+        httpStatus: got.status,
+        xmlBytes: String(got.xml || '').length,
+        parsedRows: parsed.rows.length,
+        preview: got.xml,
+      });
+    } else if (!parsed.rows.length) {
+      logOpenApiEmpty('GGCULTUREVENTSTUS', {
+        code: parsed.code || 'EMPTY',
+        message: parsed.message || '파싱된 <row>가 없습니다.',
+        hasKey: true,
+        httpStatus: got.status,
+        xmlBytes: String(got.xml || '').length,
+        parsedRows: 0,
+        preview: got.xml,
+      });
     }
     return parsed;
   } catch (err) {
@@ -101,6 +119,15 @@ export async function syncGgCultureEvents(options = {}) {
     };
   }
   const items = collected.rows.map(toPersistableFestival).filter(Boolean);
+  if (collected.ok && collected.rows.length && !items.length) {
+    logOpenApiEmpty('GGCULTUREVENTSTUS', {
+      code: 'MAP_EMPTY',
+      message: 'XML row는 있으나 persist 매핑 결과가 0건입니다.',
+      hasKey: true,
+      parsedRows: collected.rows.length,
+      mappedRows: 0,
+    });
+  }
   const persist = await persistTourFestivals(items, { source: 'ggc' });
   const categories = persist.ok
     ? await listFestivalCategoryCounts()

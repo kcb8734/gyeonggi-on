@@ -30,11 +30,14 @@ test('listedMetroForRow maps open-data sources onto 17 metros', () => {
   assert.equal(rowMatchesMetro({ source: 'seoul', title: '서울빛초롱축제' }, 'GYEONGGI'), false);
 });
 
-test('mergeHomeFestivalRows keeps DB rows first', () => {
-  const db = [{ title: '수원화성문화제', contentId: 'ggc-1', source: 'ggc' }];
-  const tour = [{ title: '수원화성문화제', contentId: 'tour-1', source: 'tour' }, { title: '가평 자라섬 재즈페스티벌', contentId: 'tour-2' }];
+test('mergeHomeFestivalRows keeps TourAPI as master over municipal duplicates', () => {
+  const db = [{ title: '수원화성문화제', contentId: 'ggc-1', source: 'ggc', start_date: '2026-08-19', location_name: '수원' }];
+  const tour = [
+    { title: '수원화성문화제', contentId: 'tour-1', source: 'tour', start_date: '2026-08-19', location_name: '경기도 수원시' },
+    { title: '가평 자라섬 재즈페스티벌', contentId: 'tour-2', source: 'tour', start_date: '2026-08-22', location_name: '가평' },
+  ];
   const merged = mergeHomeFestivalRows(db, tour);
-  assert.equal(merged[0].source, 'ggc');
+  assert.equal(merged[0].source, 'tour');
   assert.equal(merged.length, 2);
 });
 

@@ -1,8 +1,8 @@
-import { persistTourFestivals, listFestivalCategoryCounts } from './festivalDbSync.js';
-import { buildFallbackFestivals, FALLBACK_SYNC_MIN, fallbackSyncPayload } from './cultureSyncFallback.js';
+import { listFestivalCategoryCounts } from './festivalDbSync.js';
 import { syncGgCultureEvents } from './ggCultureSync.js';
 import { syncIfacCultureEvents } from './ifacCultureSync.js';
 import { syncSeoulCultureEvents } from './seoulCultureSync.js';
+import { syncTourMetroEvents } from './metroTourSync.js';
 import { mergeCategoryCounts } from './seoulCultureXml.js';
 
 function sourceHint(query = {}) {
@@ -17,85 +17,83 @@ function withBudget(options = {}) {
   };
 }
 
-async function applySampleFallback(reason) {
-  const items = buildFallbackFestivals(FALLBACK_SYNC_MIN);
-  console.error('[culture-sync] using sample fallback', {
-    reason: reason || 'live empty',
-    items: items.length,
-  });
-  const persist = await persistTourFestivals(items, { source: 'sample' });
-  const payload = fallbackSyncPayload(items, persist);
-  if (persist.ok) {
-    const live = await listFestivalCategoryCounts();
-    if (live.length) payload.categories = live;
-  }
-  return payload;
-}
-
-async function runLive(query = {}, options = {}) {
-  const hint = sourceHint(query);
-  const wantSeoul = !hint || hint === 'all' || hint === 'seoul' || hint === 'culturaleventinfo' || hint === 'open';
-  const wantGg = !hint || hint === 'all' || hint === 'gg' || hint === 'ggc' || hint === 'ggculture' || hint === 'open';
-  const wantIfac = !hint || hint === 'all' || hint === 'ifac' || hint === 'incheon' || hint === 'open';
-  console.log('[culture-sync] start', {
-    hint: hint || 'all',
-    seoul: wantSeoul,
-    gyeonggi: wantGg,
-    incheon: wantIfac,
-    hasSeoulKey: Boolean(process.env.SEOUL_CULTURE_API_KEY || process.env.SEOUL_OPENAPI_KEY),
-    hasGgKey: Boolean(process.env.GG_CULTURE_API_KEY || process.env.GGCULTURE_API_KEY || process.env.GG_OPENAPI_KEY),
-    hasIfacKey: Boolean(process.env.INCHEON_API_KEY || process.env.IFAC_API_KEY || process.env.INCHEON_CULTURE_API_KEY),
-  });
-  const jobs = [];
-  if (wantSeoul) jobs.push(syncSeoulCultureEvents(withBudget(options.seoul || {})));
-  if (wantGg) jobs.push(syncGgCultureEvents(withBudget(options.gg || {})));
-  if (wantIfac) jobs.push(syncIfacCultureEvents(withBudget(options.ifac || {})));
-  const results = jobs.length ? await Promise.all(jobs) : [];
-  if (!results.length) {
-    return applySampleFallback('unsupported source');
-  }
+function summarize(results) {
   const fetched = results.reduce((sum, row) => sum + Number(row.fetched || 0), 0);
   const upserted = results.reduce((sum, row) => sum + Number(row.upserted || 0), 0);
   const skipped = results.reduce((sum, row) => sum + Number(row.skipped || 0), 0);
   const failed = results.reduce((sum, row) => sum + Number(row.failed || 0), 0);
   const persisted = results.some((row) => row.persisted);
-  const success = results.some((row) => row.success);
-  console.log('[culture-sync] live done', {
-    fetched,
-    upserted,
-    failed,
-    persisted,
-    success,
-    sources: results.map((row) => ({ api: row.targetApi, fetched: row.fetched, message: row.message })),
-  });
-  if (!success || fetched < FALLBACK_SYNC_MIN) {
-    const fallback = await applySampleFallback(success ? `fetched=${fetched}` : results.map((row) => row.message).join(' '));
-    fallback.sources = results;
-    fallback.fetched = Math.max(fallback.fetched, fetched);
-    return fallback;
-  }
-  let categories = mergeCategoryCounts(...results.map((row) => row.categories || []));
-  if (persisted) {
-    const live = await listFestivalCategoryCounts();
-    if (live.length) categories = live;
-  }
+  const success = results.some((row) => row.success || Number(row.fetched || 0) > 0);
+  return { fetched, upserted, skipped, failed, persisted, success };
+}
+
+function livePayload(results, extra = {}) {
+  const stats = summarize(results);
   const labels = results.filter((row) => row.success || row.fetched).map((row) => row.sourceLabel).filter(Boolean);
   const apis = results.map((row) => row.targetApi).filter(Boolean);
   return {
-    success: true,
+    success: stats.success,
+    fallback: false,
     source: apis.join('+') || 'none',
-    sourceLabel: labels.join(' · ') || '서울시·경기도·인천 문화행사 OpenAPI',
-    targetApi: apis[0] || 'culturalEventInfo',
-    fetched,
-    upserted,
-    skipped,
-    persisted,
-    failed,
-    categories,
-    count: categories.reduce((sum, row) => sum + Number(row.count || 0), 0) || upserted || fetched,
+    sourceLabel: labels.join(' · ') || 'TourAPI · 서울시 · 경기도 · 인천 문화행사 OpenAPI',
+    targetApi: apis[0] || 'searchFestival2',
+    fetched: stats.fetched,
+    upserted: stats.upserted,
+    skipped: stats.skipped,
+    persisted: stats.persisted,
+    failed: stats.failed,
+    categories: extra.categories || [],
+    count: extra.count || stats.upserted || stats.fetched,
     sources: results,
-    message: results.map((row) => row.message).filter(Boolean).join(' '),
+    message: results.map((row) => row.message).filter(Boolean).join(' ') || extra.message || '공공 API 수집 결과를 반영했습니다.',
   };
+}
+
+async function runLive(query = {}, options = {}) {
+  const hint = sourceHint(query);
+  const wantTour = !hint || hint === 'all' || hint === 'open' || hint === 'tour';
+  const wantSeoul = !hint || hint === 'all' || hint === 'seoul' || hint === 'culturaleventinfo' || hint === 'open';
+  const wantGg = !hint || hint === 'all' || hint === 'gg' || hint === 'ggc' || hint === 'ggculture' || hint === 'open';
+  const wantIfac = !hint || hint === 'all' || hint === 'ifac' || hint === 'incheon' || hint === 'open';
+  console.log('[culture-sync] start', {
+    hint: hint || 'all',
+    tour: wantTour,
+    seoul: wantSeoul,
+    gyeonggi: wantGg,
+    incheon: wantIfac,
+    hasTourKey: Boolean(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY),
+    hasSeoulKey: Boolean(process.env.SEOUL_CULTURE_API_KEY || process.env.SEOUL_OPENAPI_KEY),
+    hasGgKey: Boolean(process.env.GG_CULTURE_API_KEY || process.env.GGCULTURE_API_KEY || process.env.GG_OPENAPI_KEY),
+    hasIfacKey: Boolean(process.env.INCHEON_API_KEY || process.env.IFAC_API_KEY || process.env.INCHEON_CULTURE_API_KEY),
+  });
+  const jobs = [];
+  if (wantTour) jobs.push(syncTourMetroEvents({ areaCode: 'all', numOfRows: 80 }));
+  if (wantSeoul) jobs.push(syncSeoulCultureEvents(withBudget(options.seoul || {})));
+  if (wantGg) jobs.push(syncGgCultureEvents(withBudget(options.gg || {})));
+  if (wantIfac) jobs.push(syncIfacCultureEvents(withBudget(options.ifac || {})));
+  const results = jobs.length ? await Promise.all(jobs) : [];
+  if (!results.length) {
+    return livePayload([], { message: '지원하지 않는 수집 소스입니다.' });
+  }
+  const stats = summarize(results);
+  console.log('[culture-sync] live done', {
+    fetched: stats.fetched,
+    upserted: stats.upserted,
+    failed: stats.failed,
+    persisted: stats.persisted,
+    success: stats.success,
+    fallback: false,
+    sources: results.map((row) => ({ api: row.targetApi, fetched: row.fetched, code: row.code, message: row.message })),
+  });
+  let categories = mergeCategoryCounts(...results.map((row) => row.categories || []));
+  if (stats.persisted) {
+    const live = await listFestivalCategoryCounts();
+    if (live.length) categories = live;
+  }
+  const payload = livePayload(results, { categories });
+  payload.count = categories.reduce((sum, row) => sum + Number(row.count || 0), 0) || payload.upserted || payload.fetched;
+  payload.categories = categories;
+  return payload;
 }
 
 export async function syncOpenCultureEvents(query = {}, options = {}) {
@@ -109,8 +107,9 @@ export async function syncOpenCultureEvents(query = {}, options = {}) {
       }),
     ]);
   } catch (err) {
-    console.error('[culture-sync] live aborted', err && err.message ? err.message : err);
-    return applySampleFallback(err && err.message ? err.message : 'live aborted');
+    const message = err && err.message ? err.message : 'live aborted';
+    console.error('[culture-sync] live aborted', { message, fallback: false });
+    return livePayload([], { message: `공공 API 수집이 중단되었습니다. ${message}` });
   } finally {
     if (timer) clearTimeout(timer);
   }

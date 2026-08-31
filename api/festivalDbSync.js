@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { METRO_LOCALITIES, REGION_META, metroSourcePrefix, normalizeMetroId } from './metroLocalities.js';
+import { mergeFestivalMasters } from './festivalDedup.js';
 
 const require = createRequire(import.meta.url);
 
@@ -70,19 +71,7 @@ export function rowMatchesMetro(row, metro) {
 }
 
 export function mergeHomeFestivalRows(...groups) {
-  const out = [];
-  const seen = new Set();
-  for (const group of groups) {
-    for (const item of group || []) {
-      const title = String(item && item.title || '').trim();
-      const id = String(item && (item.contentId || item.id || item.tour_content_id) || '').trim();
-      const key = title ? `title:${title}` : id;
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      out.push(item);
-    }
-  }
-  return out;
+  return mergeFestivalMasters(...groups);
 }
 
 export function inferMetro(address, metro) {
@@ -325,11 +314,26 @@ const LIST_SQL_WITH_METRO = `SELECT
          mu.metro_region
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       WHERE LOWER(COALESCE(f.source, '')) <> 'sample'
+         AND (
+           $1 = 'ALL'
+           OR COALESCE(mu.metro_region, '') = $1
+           OR ($1 = 'SEOUL' AND LOWER(COALESCE(f.source, '')) = 'seoul')
+           OR ($1 = 'GYEONGGI' AND LOWER(COALESCE(f.source, '')) IN ('ggc', 'gg'))
+           OR ($1 = 'INCHEON' AND LOWER(COALESCE(f.source, '')) IN ('ifac', 'incheon'))
+         )
        ORDER BY
-         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         CASE LOWER(COALESCE(f.source, ''))
+           WHEN 'tour' THEN 0
+           WHEN 'seoul' THEN 1
+           WHEN 'ggc' THEN 1
+           WHEN 'ifac' THEN 1
+           WHEN 'incheon' THEN 1
+           ELSE 2
+         END,
          f.is_trending DESC,
          f.start_date DESC NULLS LAST
-       LIMIT 400`;
+       LIMIT 500`;
 
 const LIST_SQL_BASIC = `SELECT
          f.title, f.location_name, f.latitude, f.longitude,
@@ -338,11 +342,28 @@ const LIST_SQL_BASIC = `SELECT
          mu.name AS municipality_name
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       WHERE LOWER(COALESCE(f.source, '')) <> 'sample'
        ORDER BY
-         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         CASE LOWER(COALESCE(f.source, ''))
+           WHEN 'tour' THEN 0
+           WHEN 'seoul' THEN 1
+           WHEN 'ggc' THEN 1
+           WHEN 'ifac' THEN 1
+           WHEN 'incheon' THEN 1
+           ELSE 2
+         END,
          f.is_trending DESC,
          f.start_date DESC NULLS LAST
-       LIMIT 400`;
+       LIMIT 500`;
+
+function keepListedRow(row, zone) {
+  if (!zone || zone === 'ALL') return true;
+  const source = String(row.source || '').toLowerCase();
+  if (zone === 'SEOUL' && source === 'seoul') return true;
+  if (zone === 'GYEONGGI' && (source === 'ggc' || source === 'gg')) return true;
+  if (zone === 'INCHEON' && (source === 'ifac' || source === 'incheon')) return true;
+  return row.metro === zone;
+}
 
 export async function listPersistedFestivals(metro = 'GYEONGGI') {
   const db = getPool();
@@ -351,14 +372,14 @@ export async function listPersistedFestivals(metro = 'GYEONGGI') {
   try {
     let result;
     try {
-      result = await db.query(LIST_SQL_WITH_METRO);
+      result = await db.query(LIST_SQL_WITH_METRO, [zone]);
     } catch {
       result = await db.query(LIST_SQL_BASIC);
     }
-    return (result.rows || [])
+    const mapped = (result.rows || [])
       .map((row) => rowToHomeFestival(row, zone))
-      .filter((row) => !zone || zone === 'ALL' || row.metro === zone)
-      .slice(0, 200);
+      .filter((row) => keepListedRow(row, zone));
+    return mergeFestivalMasters(mapped).slice(0, 300);
   } catch (err) {
     console.error('[festival-db-list]', err && err.message ? err.message : err);
     return [];

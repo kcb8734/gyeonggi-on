@@ -31,6 +31,20 @@ test('listed festivals stay first but still merge missing TourAPI rows', () => {
   assert.equal(merged.map((item) => item.id).join(','), 'tour-1,tour-2');
 });
 
+test('TourAPI master hides municipal duplicates but keeps unique local events', () => {
+  const listed = [
+    { ...fest('ggc-1', '제60회 수원화성문화제'), source: 'ggc', start_date: '2026-08-20', location_name: '수원' },
+    { ...fest('ggc-2', '오페라박물관 야외음악회'), source: 'ggc', start_date: '2026-10-01', location_name: '과천' },
+  ];
+  const tour = [
+    { ...fest('tour-1', '수원화성문화제'), source: 'tour', start_date: '2026-08-19', location_name: '경기도 수원시' },
+  ];
+  const merged = preferPersistedFestivalList(listed, tour, []);
+  assert.equal(merged.find((row) => row.title.includes('수원화성'))?.source, 'tour');
+  assert.ok(merged.some((row) => row.title.includes('오페라박물관')));
+  assert.equal(merged.filter((row) => row.title.includes('수원화성')).length, 1);
+});
+
 test('GYEONGGI fallbacks keep the home list populated', () => {
   assert.ok((REGION_FESTIVAL_FALLBACKS.GYEONGGI?.length ?? 0) >= 5);
   const merged = mergeFestivalSources([], [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI);

@@ -3,6 +3,7 @@ import { pool } from '../db/pool';
 import { syncOpenCultureEvents } from '../services/cultureOpenSync';
 import { AREA_CODE_BY_METRO, REGION_LABEL, normalizeMetroId } from '../constants/metroLocalities';
 import { collectGyeonggiFestivals, collectRegionFestivals, syncNationwideFestivals, tourItemsToHome, upsertTourFestivals } from '../services/festivalSyncService';
+import { festivalDateYmd, mergeFestivalMasters } from '../utils/festivalDedup';
 import { toNumber } from '../utils/geo';
 
 function cronAuthorized(req: Request): boolean {
@@ -10,24 +11,6 @@ function cronAuthorized(req: Request): boolean {
   if (!secret) return true;
   const header = String(req.headers.authorization || '');
   return header === `Bearer ${secret}`;
-}
-
-export function festivalDateYmd(value: unknown): string {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const y = value.getUTCFullYear();
-    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(value.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  const text = String(value ?? '').trim();
-  if (!text) return '';
-  const iso = text.match(/(\d{4}-\d{2}-\d{2})/);
-  if (iso) return iso[1];
-  const dotted = text.match(/(\d{4})[./](\d{1,2})[./](\d{1,2})/);
-  if (dotted) return `${dotted[1]}-${dotted[2].padStart(2, '0')}-${dotted[3].padStart(2, '0')}`;
-  const digits = text.replace(/\D/g, '');
-  if (digits.length >= 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
-  return '';
 }
 
 export function listedMetroForRow(row: Record<string, unknown>, fallback = 'GYEONGGI') {
@@ -81,11 +64,26 @@ const LIST_SQL_WITH_METRO = `SELECT
          mu.metro_region
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       WHERE LOWER(COALESCE(f.source, '')) <> 'sample'
+         AND (
+           $1 = 'ALL'
+           OR COALESCE(mu.metro_region, '') = $1
+           OR ($1 = 'SEOUL' AND LOWER(COALESCE(f.source, '')) = 'seoul')
+           OR ($1 = 'GYEONGGI' AND LOWER(COALESCE(f.source, '')) IN ('ggc', 'gg'))
+           OR ($1 = 'INCHEON' AND LOWER(COALESCE(f.source, '')) IN ('ifac', 'incheon'))
+         )
        ORDER BY
-         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         CASE LOWER(COALESCE(f.source, ''))
+           WHEN 'tour' THEN 0
+           WHEN 'seoul' THEN 1
+           WHEN 'ggc' THEN 1
+           WHEN 'ifac' THEN 1
+           WHEN 'incheon' THEN 1
+           ELSE 2
+         END,
          f.is_trending DESC,
          f.start_date DESC NULLS LAST
-       LIMIT 400`;
+       LIMIT 500`;
 
 const LIST_SQL_BASIC = `SELECT
          f.id, f.title, f.location_name, f.latitude, f.longitude,
@@ -94,28 +92,44 @@ const LIST_SQL_BASIC = `SELECT
          mu.name AS municipality_name
        FROM festivals f
        LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       WHERE LOWER(COALESCE(f.source, '')) <> 'sample'
        ORDER BY
-         CASE WHEN LOWER(COALESCE(f.source, '')) IN ('seoul', 'ggc', 'ifac', 'incheon') THEN 0 ELSE 1 END,
+         CASE LOWER(COALESCE(f.source, ''))
+           WHEN 'tour' THEN 0
+           WHEN 'seoul' THEN 1
+           WHEN 'ggc' THEN 1
+           WHEN 'ifac' THEN 1
+           WHEN 'incheon' THEN 1
+           ELSE 2
+         END,
          f.is_trending DESC,
          f.start_date DESC NULLS LAST
-       LIMIT 400`;
+       LIMIT 500`;
 
-/** GET /api/festivals — 백오피스 수집분(서울·경기·인천 포함)을 홈 카드에 내려준다 */
+function keepListedRow(row: { source?: unknown; metro?: unknown }, zone: string) {
+  if (!zone || zone === 'ALL') return true;
+  const source = String(row.source || '').toLowerCase();
+  if (zone === 'SEOUL' && source === 'seoul') return true;
+  if (zone === 'GYEONGGI' && (source === 'ggc' || source === 'gg')) return true;
+  if (zone === 'INCHEON' && (source === 'ifac' || source === 'incheon')) return true;
+  return row.metro === zone;
+}
+
+/** GET /api/festivals — TourAPI를 마스터로 두고 서울·경기·인천 고유 행사를 함께 내려준다 */
 export const listSyncedFestivals = async (req: Request, res: Response) => {
   const metro = normalizeMetroId(String(req.query.metro || 'GYEONGGI'));
   try {
     let rows: Array<Record<string, unknown>> = [];
     try {
-      const result = await pool.query(LIST_SQL_WITH_METRO);
+      const result = await pool.query(LIST_SQL_WITH_METRO, [metro]);
       rows = result.rows as Array<Record<string, unknown>>;
     } catch {
       const result = await pool.query(LIST_SQL_BASIC);
       rows = result.rows as Array<Record<string, unknown>>;
     }
-    const festivals = rows
-      .map((row) => toListedFestival(row, metro))
-      .filter((row) => !metro || metro === 'ALL' || row.metro === metro)
-      .slice(0, 200);
+    const festivals = mergeFestivalMasters(
+      rows.map((row) => toListedFestival(row, metro)).filter((row) => keepListedRow(row, metro)),
+    ).slice(0, 300);
     if (festivals.length) {
       return res.json({
         success: true,

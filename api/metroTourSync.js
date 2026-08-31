@@ -38,6 +38,15 @@ export async function syncTourMetroEvents(query = {}) {
       ...item,
       metro: item.metro || result.metro || metro,
     }));
+    if (!items.length) {
+      console.error('[tour-sync] empty', {
+        metro: metro || 'ALL',
+        source: result.source,
+        areaCode: nationwide ? 'all' : (query.areaCode || AREA_CODE_BY_METRO[metro]),
+        hasKey: true,
+        message: result.message || 'TourAPI 검색 결과가 0건입니다.',
+      });
+    }
     const persist = await persistTourFestivals(items, { source: 'tour', metro: nationwide ? undefined : metro });
     const categories = persist.ok ? await listFestivalCategoryCounts() : [];
     await writeTourSyncLog({

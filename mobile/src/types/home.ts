@@ -15,7 +15,7 @@ export interface HomeFestival {
   is_trending?: boolean;
   contentId?: string;
   contentTypeId?: string;
-  source?: 'tour' | 'db' | 'gov';
+  source?: 'tour' | 'db' | 'gov' | 'seoul' | 'ggc' | 'ifac' | 'incheon' | 'muni' | 'sample';
   regionalZone?: string;
   metro?: string;
   areaCode?: string;
