@@ -99,16 +99,21 @@ export function municipalityFromAddress(address, metro) {
     const name = localityName(row);
     return name && hay.includes(name);
   });
-  if (hit) return localityName(hit);
+  if (hit) return localityName(hit).slice(0, 50);
   if (zone === 'SEOUL') return '서울특별시';
   if (zone === 'GYEONGGI') return '경기도';
-  return REGION_META[zone]?.label?.replace(/온$/, '') || zone;
+  return String(REGION_META[zone]?.label?.replace(/온$/, '') || zone).slice(0, 50);
 }
 
 export function municipalityRegionCode(name, metro) {
   const zone = inferMetro(name, metro);
   const prefix = metroSourcePrefix(zone);
-  return `${prefix}_${String(name || '').replace(/\s+/g, '')}`.slice(0, 40);
+  return `${prefix}_${String(name || '').replace(/\s+/g, '')}`.slice(0, 20);
+}
+
+export function clipFestivalTel(value) {
+  const text = String(value || '').trim();
+  return text ? text.slice(0, 50) : null;
 }
 
 function loadPg() {
@@ -257,7 +262,7 @@ export async function persistTourFestivals(items, options = {}) {
           item.firstImage || item.image_url || null,
           Boolean(item.firstImage || item.image_url),
           contentId.slice(0, 40),
-          item.tel || null,
+          clipFestivalTel(item.tel),
           rowSource,
         ],
       );

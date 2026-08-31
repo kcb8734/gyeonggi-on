@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { festivalDateYmd, listedMetroForRow, listPersistedFestivals, mergeHomeFestivalRows, municipalityFromAddress, municipalityRegionCode, persistTourFestivals, rowMatchesMetro } from './festivalDbSync.js';
+import { clipFestivalTel, festivalDateYmd, listedMetroForRow, listPersistedFestivals, mergeHomeFestivalRows, municipalityFromAddress, municipalityRegionCode, persistTourFestivals, rowMatchesMetro } from './festivalDbSync.js';
 
 test('municipalityFromAddress maps Gyeonggi cities', () => {
   assert.equal(municipalityFromAddress('경기도 수원시 팔달구 정조로 825'), '수원시');
@@ -39,6 +39,14 @@ test('mergeHomeFestivalRows keeps TourAPI as master over municipal duplicates', 
   const merged = mergeHomeFestivalRows(db, tour);
   assert.equal(merged[0].source, 'tour');
   assert.equal(merged.length, 2);
+});
+
+test('persist clips tel and municipality codes to schema limits', () => {
+  assert.equal(clipFestivalTel(''), null);
+  assert.equal(clipFestivalTel('031-228-3675'), '031-228-3675');
+  const longTel = '경기도자미술관(이천) 031-645-0730 경기도자박물관(광주) 031-799-1500 경기생활도자미술관(여주) 031-887-8252';
+  assert.equal(clipFestivalTel(longTel).length, 50);
+  assert.ok(municipalityRegionCode('수원시').length <= 20);
 });
 
 test('persistTourFestivals is a no-op without DATABASE_URL', async () => {

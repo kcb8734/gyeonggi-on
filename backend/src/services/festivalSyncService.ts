@@ -140,7 +140,7 @@ export async function upsertTourFestivals(items: TourFestival[]): Promise<{ upse
         item.firstImage ?? null,
         Boolean(item.firstImage),
         item.contentId,
-        item.tel ?? null,
+        String(item.tel || '').trim().slice(0, 50) || null,
       ],
     );
     upserted += 1;

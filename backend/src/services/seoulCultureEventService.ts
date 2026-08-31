@@ -115,7 +115,7 @@ async function upsertSeoulFestivals(items: PersistableSeoulFestival[]) {
         item.firstImage || null,
         Boolean(item.firstImage),
         item.contentId.slice(0, 40),
-        item.tel || null,
+        String(item.tel || '').trim().slice(0, 50) || null,
         'seoul',
       ],
     );
