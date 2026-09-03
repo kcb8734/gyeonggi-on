@@ -52,6 +52,10 @@ export async function fetchIfacCulturePage(page = 1, size = 80, fetchImpl = fetc
       const got = await fetchXml(buildIfacCultureUrl(host, key, page, size, range), fetchImpl, {
         label: 'ifac-culture',
         timeoutMs: 7000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; OnAndonPlus/1.0; +https://www.kdanji.com)',
+          Referer: 'https://ifac.or.kr/',
+        },
       });
       const parsed = parseIfacCultureXml(got.xml);
       if (!got.ok && parsed.ok) {
