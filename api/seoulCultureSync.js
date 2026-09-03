@@ -8,7 +8,7 @@ export const SEOUL_CULTURE_API_HOSTS = [
   'http://openapi.seoul.go.kr:8088',
 ];
 export const SEOUL_CULTURE_API_BASE = SEOUL_CULTURE_API_HOSTS[1];
-export const DEFAULT_SEOUL_CULTURE_API_KEY = '61794c4e756b63623132304c79785a44';
+export const DEFAULT_SEOUL_CULTURE_API_KEY = '4b63445a616b6362323166754e7a43';
 
 export function seoulCultureApiKey() {
   if (Object.prototype.hasOwnProperty.call(process.env, 'SEOUL_CULTURE_API_KEY')) {

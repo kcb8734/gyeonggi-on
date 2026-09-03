@@ -1,7 +1,8 @@
 import { listFestivalCategoryCounts } from './festivalDbSync.js';
 import { syncGgCultureEvents } from './ggCultureSync.js';
 import { syncIfacCultureEvents } from './ifacCultureSync.js';
-import { syncSeoulCultureEvents } from './seoulCultureSync.js';
+import { seoulCultureApiKey, syncSeoulCultureEvents } from './seoulCultureSync.js';
+import { ifacCultureApiKey } from './ifacCultureSync.js';
 import { syncTourMetroEvents } from './metroTourSync.js';
 import { mergeCategoryCounts } from './seoulCultureXml.js';
 
@@ -62,9 +63,9 @@ async function runLive(query = {}, options = {}) {
     gyeonggi: wantGg,
     incheon: wantIfac,
     hasTourKey: Boolean(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY),
-    hasSeoulKey: Boolean(process.env.SEOUL_CULTURE_API_KEY || process.env.SEOUL_OPENAPI_KEY),
+    hasSeoulKey: Boolean(seoulCultureApiKey()),
     hasGgKey: Boolean(process.env.GG_CULTURE_API_KEY || process.env.GGCULTURE_API_KEY || process.env.GG_OPENAPI_KEY),
-    hasIfacKey: Boolean(process.env.INCHEON_API_KEY || process.env.IFAC_API_KEY || process.env.INCHEON_CULTURE_API_KEY),
+    hasIfacKey: Boolean(ifacCultureApiKey()),
   });
   const jobs = [];
   if (wantTour) jobs.push(syncTourMetroEvents({ areaCode: 'all', numOfRows: 80 }));

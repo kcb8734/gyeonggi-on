@@ -22,25 +22,34 @@ export async function loadOpenSourceBoard() {
   return decorateOpenSources(catalogOpenSources(), { sourceCounts, sourceMetroCounts, logs });
 }
 
+function syncBudget(query = {}) {
+  const pageSize = Number(query.pageSize || query.numOfRows || 40);
+  return {
+    pageSize: Math.min(80, Math.max(10, Number.isFinite(pageSize) ? pageSize : 40)),
+    maxPages: 1,
+  };
+}
+
 export async function dispatchOpenDataSync(query = {}) {
   const hint = String(query.source || query.api || '').toLowerCase();
   const metro = normalizeMetroId(query.metro);
+  const budget = syncBudget(query);
   if (hint === 'tour' || hint === 'tourapi' || hint === 'searchfestival2') {
     return syncTourMetroEvents(query);
   }
   if (hint === 'seoul' || hint === 'culturaleventinfo') {
-    return syncSeoulCultureEvents({ pageSize: 80, maxPages: 1 });
+    return syncSeoulCultureEvents(budget);
   }
   if (hint === 'gg' || hint === 'ggc' || hint === 'ggculture') {
-    return syncGgCultureEvents({ pageSize: 80, maxPages: 1 });
+    return syncGgCultureEvents(budget);
   }
   if (hint === 'ifac' || hint === 'incheon') {
-    return syncIfacCultureEvents({ pageSize: 80, maxPages: 1 });
+    return syncIfacCultureEvents(budget);
   }
   if (hint === 'muni' || hint === 'municipal' || hint === 'local') {
-    if (metro === 'SEOUL') return syncSeoulCultureEvents({ pageSize: 80, maxPages: 1 });
-    if (metro === 'GYEONGGI') return syncGgCultureEvents({ pageSize: 80, maxPages: 1 });
-    if (metro === 'INCHEON') return syncIfacCultureEvents({ pageSize: 80, maxPages: 1 });
+    if (metro === 'SEOUL') return syncSeoulCultureEvents(budget);
+    if (metro === 'GYEONGGI') return syncGgCultureEvents(budget);
+    if (metro === 'INCHEON') return syncIfacCultureEvents(budget);
     return syncMunicipalCultureEvents(metro);
   }
   return syncOpenCultureEvents(query);

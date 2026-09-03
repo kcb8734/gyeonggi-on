@@ -148,24 +148,20 @@ function getPool() {
   return pool;
 }
 
-async function ensureMunicipalityId(client, address, metro) {
+async function ensureMunicipalityId(client, address, metro, cache) {
   const zone = inferMetro(address, metro);
   const name = municipalityFromAddress(address, zone);
   const regionCode = municipalityRegionCode(name, zone);
+  const cacheKey = `${regionCode}|${name}|${zone}`;
+  if (cache && cache.has(cacheKey)) return cache.get(cacheKey);
   const existing = await client.query(
     'SELECT id FROM municipalities WHERE name = $1 OR region_code = $2 LIMIT 1',
     [name, regionCode],
   );
   if (existing.rowCount) {
-    try {
-      await client.query(
-        'UPDATE municipalities SET metro_region = COALESCE($2, metro_region) WHERE id = $1',
-        [existing.rows[0].id, zone],
-      );
-    } catch {
-      // metro_region 컬럼이 없는 구스키마는 건너뛴다.
-    }
-    return existing.rows[0].id;
+    const id = existing.rows[0].id;
+    if (cache) cache.set(cacheKey, id);
+    return id;
   }
   try {
     const inserted = await client.query(
@@ -177,7 +173,9 @@ async function ensureMunicipalityId(client, address, metro) {
        RETURNING id`,
       [name, regionCode, zone],
     );
-    return inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+    const id = inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+    if (id && cache) cache.set(cacheKey, id);
+    return id;
   } catch {
     const inserted = await client.query(
       `INSERT INTO municipalities (name, region_code, budget_balance)
@@ -186,8 +184,46 @@ async function ensureMunicipalityId(client, address, metro) {
        RETURNING id`,
       [name, regionCode],
     );
-    return inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+    const id = inserted.rows[0] && inserted.rows[0].id ? inserted.rows[0].id : null;
+    if (id && cache) cache.set(cacheKey, id);
+    return id;
   }
+}
+
+const FESTIVAL_INSERT_COLS = 14;
+const FESTIVAL_UPSERT_CHUNK = 20;
+
+export function festivalInsertPlaceholders(rowCount) {
+  return Array.from({ length: rowCount }, (_, index) => {
+    const base = index * FESTIVAL_INSERT_COLS;
+    const slots = Array.from({ length: FESTIVAL_INSERT_COLS }, (__slot, col) => `$${base + col + 1}`);
+    return `(${slots.join(', ')})`;
+  }).join(', ');
+}
+
+async function insertFestivalChunk(client, valueRows) {
+  if (!valueRows.length) return;
+  await client.query(
+    `INSERT INTO festivals (
+       municipality_id, title, description, start_date, end_date,
+       location_name, latitude, longitude, category, image_url, is_trending,
+       tour_content_id, tel, source
+     ) VALUES ${festivalInsertPlaceholders(valueRows.length)}
+     ON CONFLICT (tour_content_id) DO UPDATE SET
+       title = EXCLUDED.title,
+       description = COALESCE(EXCLUDED.description, festivals.description),
+       start_date = EXCLUDED.start_date,
+       end_date = EXCLUDED.end_date,
+       location_name = EXCLUDED.location_name,
+       latitude = EXCLUDED.latitude,
+       longitude = EXCLUDED.longitude,
+       category = EXCLUDED.category,
+       image_url = COALESCE(EXCLUDED.image_url, festivals.image_url),
+       is_trending = EXCLUDED.is_trending,
+       tel = COALESCE(EXCLUDED.tel, festivals.tel),
+       source = EXCLUDED.source`,
+    valueRows.flat(),
+  );
 }
 
 export async function persistTourFestivals(items, options = {}) {
@@ -203,10 +239,11 @@ export async function persistTourFestivals(items, options = {}) {
     };
   }
   const client = await db.connect();
+  const municipalityCache = new Map();
   let upserted = 0;
   let skipped = 0;
+  const prepared = [];
   try {
-    await client.query('BEGIN');
     for (const item of rows) {
       const itemSource = String(item && item.source || source || 'tour').toLowerCase();
       if (itemSource === 'sample' || itemSource === 'fallback') {
@@ -224,51 +261,29 @@ export async function persistTourFestivals(items, options = {}) {
       const end = festivalDateYmd(item && (item.eventEndDate || item.end_date)) || start;
       const address = String(item && (item.address || item.location_name) || '');
       const metro = inferMetro(`${address} ${title}`, item.metro || item.regionalZone || options.metro || source);
-      const municipalityId = await ensureMunicipalityId(client, `${address} ${title}`, metro);
-      const rowSource = String(item.source || source || 'tour').slice(0, 20);
-      await client.query(
-        `INSERT INTO festivals (
-           municipality_id, title, description, start_date, end_date,
-           location_name, latitude, longitude, category, image_url, is_trending,
-           tour_content_id, tel, source
-         ) VALUES (
-           $1, $2, $3, $4, $5,
-           $6, $7, $8, $9, $10, $11,
-           $12, $13, $14
-         )
-         ON CONFLICT (tour_content_id) DO UPDATE SET
-           title = EXCLUDED.title,
-           description = COALESCE(EXCLUDED.description, festivals.description),
-           start_date = EXCLUDED.start_date,
-           end_date = EXCLUDED.end_date,
-           location_name = EXCLUDED.location_name,
-           latitude = EXCLUDED.latitude,
-           longitude = EXCLUDED.longitude,
-           category = EXCLUDED.category,
-           image_url = COALESCE(EXCLUDED.image_url, festivals.image_url),
-           is_trending = EXCLUDED.is_trending,
-           tel = COALESCE(EXCLUDED.tel, festivals.tel),
-           source = EXCLUDED.source`,
-        [
-          municipalityId,
-          title.slice(0, 100),
-          item.overview || item.description || null,
-          start,
-          end,
-          address.slice(0, 150) || null,
-          item.mapY || item.latitude || null,
-          item.mapX || item.longitude || null,
-          String(item.category || '문화/예술').slice(0, 30),
-          item.firstImage || item.image_url || null,
-          Boolean(item.firstImage || item.image_url),
-          contentId.slice(0, 40),
-          clipFestivalTel(item.tel),
-          rowSource,
-        ],
-      );
-      upserted += 1;
+      const municipalityId = await ensureMunicipalityId(client, `${address} ${title}`, metro, municipalityCache);
+      prepared.push([
+        municipalityId,
+        title.slice(0, 100),
+        item.overview || item.description || null,
+        start,
+        end,
+        address.slice(0, 150) || null,
+        item.mapY || item.latitude || null,
+        item.mapX || item.longitude || null,
+        String(item.category || '문화/예술').slice(0, 30),
+        item.firstImage || item.image_url || null,
+        Boolean(item.firstImage || item.image_url),
+        contentId.slice(0, 40),
+        clipFestivalTel(item.tel),
+        String(item.source || source || 'tour').slice(0, 20),
+      ]);
     }
-    await client.query('COMMIT');
+    for (let index = 0; index < prepared.length; index += FESTIVAL_UPSERT_CHUNK) {
+      const chunk = prepared.slice(index, index + FESTIVAL_UPSERT_CHUNK);
+      await insertFestivalChunk(client, chunk);
+      upserted += chunk.length;
+    }
     return {
       ok: true,
       upserted: upserted,
@@ -276,8 +291,15 @@ export async function persistTourFestivals(items, options = {}) {
       message: 'DB에 ' + upserted + '건을 반영했습니다.',
     };
   } catch (err) {
-    try { await client.query('ROLLBACK'); } catch (_roll) { /* ignore */ }
     console.error('[festival-db-sync]', err && err.message ? err.message : err);
+    if (upserted > 0) {
+      return {
+        ok: true,
+        upserted: upserted,
+        skipped: skipped + (prepared.length - upserted),
+        message: 'DB에 ' + upserted + '건을 반영했습니다. 이후 구간에서 실패했습니다.',
+      };
+    }
     return {
       ok: false,
       upserted: 0,

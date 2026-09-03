@@ -34,3 +34,4 @@ lerna-debug.log*
 .vercel
 /app-release.aab
 *.aab
+.env.local
