@@ -35,6 +35,8 @@ const repo = path.resolve(root, '..');
 const credDir = path.join(root, 'credentials', 'android');
 const propsPath = path.join(credDir, 'keystore.properties');
 const defaultKeystore = path.join(credDir, 'upload.keystore');
+/** Play Console에 등록된 업로드 인증서 SHA1. 이 값과 다른 키로 서명하면 업로드가 거부된다. */
+const PLAY_UPLOAD_CERT_SHA1 = '59:F3:C0:0C:4E:8D:CA:A1:7D:F7:79:54:59:08:A7:39:D0:C3:8F:B0';
 const outDir = path.join(root, 'dist', 'android');
 const gradleAab = path.join(root, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 const copiedAab = path.join(outDir, 'app-release.aab');
@@ -116,6 +118,53 @@ function writeProps(file, rows) {
   fs.writeFileSync(file, `${body}\n`);
 }
 
+function readAabCertSha1(aabPath) {
+  const rsa = spawnSync('unzip', ['-p', aabPath, 'META-INF/UPLOAD.RSA'], { encoding: 'buffer' });
+  if (rsa.status !== 0 || !rsa.stdout || !rsa.stdout.length) {
+    throw new Error(`AAB 서명 인증서를 읽지 못했습니다: ${aabPath}`);
+  }
+  const tmpRsa = path.join(os.tmpdir(), `aab-upload-${Date.now()}.rsa`);
+  const tmpPem = `${tmpRsa}.pem`;
+  fs.writeFileSync(tmpRsa, rsa.stdout);
+  try {
+    const pem = spawnSync('openssl', ['pkcs7', '-inform', 'DER', '-in', tmpRsa, '-print_certs'], { encoding: 'buffer' });
+    if (pem.status !== 0) throw new Error('openssl pkcs7 변환 실패');
+    fs.writeFileSync(tmpPem, pem.stdout);
+    const fp = spawnSync('openssl', ['x509', '-noout', '-fingerprint', '-sha1', '-in', tmpPem], { encoding: 'utf8' });
+    if (fp.status !== 0) throw new Error('openssl fingerprint 실패');
+    const match = String(fp.stdout || '').match(/([0-9A-F]{2}(?::[0-9A-F]{2}){19})/i);
+    if (!match) throw new Error(`fingerprint 파싱 실패: ${fp.stdout}`);
+    return match[1].toUpperCase();
+  } finally {
+    try { fs.unlinkSync(tmpRsa); } catch (_err) { /* ignore */ }
+    try { fs.unlinkSync(tmpPem); } catch (_err) { /* ignore */ }
+  }
+}
+
+function assertAabUploadCert(aabPath) {
+  const actual = readAabCertSha1(aabPath);
+  if (actual !== PLAY_UPLOAD_CERT_SHA1) {
+    fail(
+      `AAB 업로드 인증서 SHA1이 Play 등록 키와 다릅니다. 실제=${actual} 기대=${PLAY_UPLOAD_CERT_SHA1}. 이 파일을 Play에 올리지 마세요. ANDROID_KEYSTORE_FILE에 등록된 업로드 키스토어를 지정하세요.`,
+    );
+  }
+  log(`[build:aab] verified upload cert SHA1=${actual}`);
+  return actual;
+}
+
+function keystoreCertSha1(signing) {
+  const listed = spawnSync(
+    'keytool',
+    ['-list', '-v', '-keystore', signing.storeFile, '-storepass', signing.storePassword, '-alias', signing.keyAlias],
+    { encoding: 'utf8' },
+  );
+  const match = String(listed.stdout || '').match(/SHA1:\s*([0-9A-F]{2}(?::[0-9A-F]{2}){19})/i);
+  if (listed.status !== 0 || !match) {
+    fail('업로드 키스토어 SHA1을 확인하지 못했습니다. 파일·비밀번호·별칭을 확인하세요.');
+  }
+  return match[1].toUpperCase();
+}
+
 function ensureKeystore() {
   const existing = readProps(propsPath);
   const storeFile = process.env.ANDROID_KEYSTORE_FILE || existing.storeFile || defaultKeystore;
@@ -123,27 +172,24 @@ function ensureKeystore() {
   const keyAlias = process.env.ANDROID_KEY_ALIAS || existing.keyAlias || 'upload';
   const keyPassword = process.env.ANDROID_KEY_PASSWORD || existing.keyPassword || storePassword;
   if (fs.existsSync(storeFile) && storePassword && keyAlias && keyPassword) {
+    const signing = { storeFile, storePassword, keyAlias, keyPassword };
+    const sha1 = keystoreCertSha1(signing);
+    if (sha1 !== PLAY_UPLOAD_CERT_SHA1) {
+      fail(
+        `키스토어 SHA1이 Play 업로드 키와 다릅니다. 실제=${sha1} 기대=${PLAY_UPLOAD_CERT_SHA1}. 이 키로 서명하지 않습니다.`,
+      );
+    }
     writeProps(propsPath, { storeFile, storePassword, keyAlias, keyPassword });
-    return { storeFile, storePassword, keyAlias, keyPassword };
+    log(`[build:aab] keystore SHA1=${sha1}`);
+    return signing;
   }
-  if (!storePassword) {
-    const generated = `onandon-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
-    log('[build:aab] 기존 키스토어가 없어 업로드 키를 새로 만듭니다. 이 파일을 Play Console과 이후 업데이트에 반드시 보관하세요.');
-    fs.mkdirSync(path.dirname(storeFile), { recursive: true });
-    run('keytool', [
-      '-genkeypair', '-v', '-storetype', 'PKCS12',
-      '-keystore', storeFile,
-      '-alias', keyAlias,
-      '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000',
-      '-storepass', generated, '-keypass', generated,
-      '-dname', 'CN=OnAndOn Plus, OU=Mobile, O=kdanji, L=Suwon, ST=Gyeonggi, C=KR',
-    ], root);
-    writeProps(propsPath, { storeFile, storePassword: generated, keyAlias, keyPassword: generated });
-    log(`[build:aab] 키스토어: ${storeFile}`);
-    log(`[build:aab] 속성 파일: ${propsPath} (gitignore, Play 업로드 키로 보관)`);
-    return { storeFile, storePassword: generated, keyAlias, keyPassword: generated };
+  if (fs.existsSync(storeFile) && !storePassword) {
+    fail('업로드 키스토어 파일은 있으나 비밀번호가 없습니다. ANDROID_KEYSTORE_PASSWORD 또는 credentials/android/keystore.properties 를 넣으세요. Play 등록 키를 덮어쓰지 않습니다.');
   }
-  fail('키스토어 파일을 찾을 수 없습니다. ANDROID_KEYSTORE_FILE 또는 credentials/android/upload.keystore 를 확인하세요.');
+  fail(
+    'Play 업로드 키스토어가 없습니다. 새 키를 만들면 Play가 SHA1 불일치로 거부합니다. '
+    + `기대 SHA1=${PLAY_UPLOAD_CERT_SHA1}. ANDROID_KEYSTORE_FILE / ANDROID_KEYSTORE_PASSWORD 를 제공하세요.`,
+  );
 }
 
 function sdkHome() {
@@ -348,6 +394,7 @@ function main() {
 
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
   assertAabIdentity(gradleAab, versionName, versionCode);
+  assertAabUploadCert(gradleAab);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
   const versionedAab = path.join(outDir, `onandon-${versionName}-vc${versionCode}.aab`);
