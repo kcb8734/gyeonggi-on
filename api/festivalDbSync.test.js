@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { clipFestivalTel, festivalDateYmd, listedMetroForRow, listPersistedFestivals, mergeHomeFestivalRows, municipalityFromAddress, municipalityRegionCode, persistTourFestivals, rowMatchesMetro } from './festivalDbSync.js';
+import { clipFestivalTel, festivalDateYmd, festivalInsertPlaceholders, listedMetroForRow, listPersistedFestivals, mergeHomeFestivalRows, municipalityFromAddress, municipalityRegionCode, persistTourFestivals, rowMatchesMetro } from './festivalDbSync.js';
 
 test('municipalityFromAddress maps Gyeonggi cities', () => {
   assert.equal(municipalityFromAddress('경기도 수원시 팔달구 정조로 825'), '수원시');
@@ -47,6 +47,12 @@ test('persist clips tel and municipality codes to schema limits', () => {
   const longTel = '경기도자미술관(이천) 031-645-0730 경기도자박물관(광주) 031-799-1500 경기생활도자미술관(여주) 031-887-8252';
   assert.equal(clipFestivalTel(longTel).length, 50);
   assert.ok(municipalityRegionCode('수원시').length <= 20);
+});
+
+test('festivalInsertPlaceholders builds parameterized multi-row values', () => {
+  assert.equal(festivalInsertPlaceholders(1), '($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)');
+  assert.match(festivalInsertPlaceholders(2), /\$15, \$16/);
+  assert.match(festivalInsertPlaceholders(2), /\$28\)$/);
 });
 
 test('persistTourFestivals is a no-op without DATABASE_URL', async () => {
