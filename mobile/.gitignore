@@ -7,5 +7,10 @@ web-build/
 credentials/android/*.keystore
 credentials/android/keystore.properties
 credentials/android/*.rejected-*
+credentials/android/*.pem
+credentials/android/*-note.txt
+credentials/android/backup/
+upload-keystore.jks
 *.jks
+*.p12
 *.log

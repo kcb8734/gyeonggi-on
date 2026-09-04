@@ -37,7 +37,8 @@ test('build:aab logs versionName and versionCode from app.json', () => {
   assert.match(source, /onandon-\$\{versionName\}-vc\$\{versionCode\}\.aab/);
   assert.match(source, /rootAab/);
   assert.match(source, /PLAY_UPLOAD_CERT_SHA1/);
-  assert.match(source, /59:F3:C0:0C:4E:8D:CA:A1:7D:F7:79:54:59:08:A7:39:D0:C3:8F:B0/);
+  assert.match(source, /E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F/);
+  assert.match(source, /upload-keystore\.jks/);
   assert.match(source, /assertAabUploadCert/);
   assert.match(source, /keystoreCertSha1/);
   assert.doesNotMatch(source, /기존 키스토어가 없어 업로드 키를 새로 만듭니다/);

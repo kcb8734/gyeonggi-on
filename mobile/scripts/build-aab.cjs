@@ -34,9 +34,15 @@ const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
 const credDir = path.join(root, 'credentials', 'android');
 const propsPath = path.join(credDir, 'keystore.properties');
-const defaultKeystore = path.join(credDir, 'upload.keystore');
-/** Play Console에 등록된 업로드 인증서 SHA1. 이 값과 다른 키로 서명하면 업로드가 거부된다. */
-const PLAY_UPLOAD_CERT_SHA1 = '59:F3:C0:0C:4E:8D:CA:A1:7D:F7:79:54:59:08:A7:39:D0:C3:8F:B0';
+const defaultKeystoreCandidates = [
+  path.join(credDir, 'upload-keystore.jks'),
+  path.join(credDir, 'upload.keystore'),
+];
+function defaultKeystorePath() {
+  return defaultKeystoreCandidates.find((file) => fs.existsSync(file)) || defaultKeystoreCandidates[0];
+}
+/** Play Console에 재설정 접수된 업로드 인증서 SHA1. 2026-09-06 16:52 UTC 이후 유효. */
+const PLAY_UPLOAD_CERT_SHA1 = 'E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F';
 const outDir = path.join(root, 'dist', 'android');
 const gradleAab = path.join(root, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 const copiedAab = path.join(outDir, 'app-release.aab');
@@ -167,7 +173,7 @@ function keystoreCertSha1(signing) {
 
 function ensureKeystore() {
   const existing = readProps(propsPath);
-  const storeFile = process.env.ANDROID_KEYSTORE_FILE || existing.storeFile || defaultKeystore;
+  const storeFile = process.env.ANDROID_KEYSTORE_FILE || existing.storeFile || defaultKeystorePath();
   const storePassword = process.env.ANDROID_KEYSTORE_PASSWORD || existing.storePassword;
   const keyAlias = process.env.ANDROID_KEY_ALIAS || existing.keyAlias || 'upload';
   const keyPassword = process.env.ANDROID_KEY_PASSWORD || existing.keyPassword || storePassword;
