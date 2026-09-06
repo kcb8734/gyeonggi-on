@@ -1,5 +1,10 @@
 import { AREA_CODE_BY_METRO, REGION_LABEL, REGION_META } from './metroLocalities.js';
 import { tourServiceKey } from './tourLive.js';
+import {
+  dataGoKrServiceKey,
+  hasMunicipalDefault,
+  municipalDefaultSpec,
+} from './metroCultureDefaults.js';
 
 export const METRO_IDS = Object.keys(REGION_META);
 
@@ -50,13 +55,18 @@ export function municipalSlot(metro) {
   const names = municipalEnvNames(metro);
   const key = envFirst(names.key);
   const url = envFirst(names.url);
+  const sharedKey = Boolean(dataGoKrServiceKey());
+  const builtin = hasMunicipalDefault(metro);
+  const keyConfigured = key.set || (builtin && sharedKey);
+  const urlConfigured = url.set || builtin;
   return {
     metro,
-    keyEnv: key.name,
-    urlEnv: url.name,
-    keyConfigured: key.set,
-    urlConfigured: url.set,
-    ready: key.set && url.set,
+    keyEnv: key.set ? key.name : (builtin ? 'NTS_SERVICE_KEY' : key.name),
+    urlEnv: url.set ? url.name : (builtin ? `${String(metro || '').toUpperCase()}_CULTURE_API_URL` : url.name),
+    keyConfigured,
+    urlConfigured,
+    ready: keyConfigured && urlConfigured,
+    builtin,
   };
 }
 
@@ -132,16 +142,16 @@ export function catalogOpenSources() {
 
   const muniMetros = METRO_IDS.filter((metro) => metro !== 'SEOUL' && metro !== 'GYEONGGI' && metro !== 'INCHEON').map((metro) => {
     const slot = municipalSlot(metro);
+    const spec = municipalDefaultSpec(metro);
     return {
       id: `muni-${metro}`,
       kind: 'muni-slot',
       metro,
-      label: `${REGION_LABEL[metro]} 지자체 OpenAPI`,
+      label: spec?.label ? `${spec.label} OpenAPI` : `${REGION_LABEL[metro]} 지자체 OpenAPI`,
       targetApi: `${metro}_CULTURE`,
-      description: slot.ready
-        ? `${slot.urlEnv} 로 수집`
-        : `${slot.urlEnv} · ${slot.keyEnv} 를 넣으면 수집됩니다`,
-      envHint: `${slot.urlEnv}, ${slot.keyEnv}`,
+      description: spec?.description
+        || (slot.ready ? `${slot.urlEnv} 로 수집` : `${slot.urlEnv} · ${slot.keyEnv} 를 넣으면 수집됩니다`),
+      envHint: slot.builtin ? 'NTS_SERVICE_KEY' : `${slot.urlEnv}, ${slot.keyEnv}`,
       keyConfigured: slot.keyConfigured,
       urlConfigured: slot.urlConfigured,
       collectable: slot.ready,

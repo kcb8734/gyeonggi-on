@@ -58,3 +58,19 @@ test('generic municipal rows map Korean festival fields', () => {
   assert.equal(items[0].metro, 'BUSAN');
   assert.ok(items[0].contentId);
 });
+
+test('builtin Busan/Gyeongnam/Ulsan/Sejong slots use NTS_SERVICE_KEY', () => {
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  const prevData = process.env.DATA_GO_KR_SERVICE_KEY;
+  process.env.NTS_SERVICE_KEY = 'test-shared-key';
+  process.env.DATA_GO_KR_SERVICE_KEY = '';
+  const catalog = catalogOpenSources();
+  for (const metro of ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG']) {
+    const row = catalog.muniMetros.find((item) => item.metro === metro);
+    assert.equal(row?.collectable, true, metro);
+    assert.equal(row?.envHint, 'NTS_SERVICE_KEY');
+  }
+  assert.equal(catalog.muniMetros.find((item) => item.metro === 'DAEGU')?.collectable, false);
+  process.env.NTS_SERVICE_KEY = prevNts;
+  process.env.DATA_GO_KR_SERVICE_KEY = prevData;
+});

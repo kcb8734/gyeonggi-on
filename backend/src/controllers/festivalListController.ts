@@ -18,6 +18,10 @@ export function listedMetroForRow(row: Record<string, unknown>, fallback = 'GYEO
   const hay = `${row.location_name || ''} ${row.municipality_name || ''} ${row.title || ''} ${row.description || ''}`;
   if (source === 'seoul') return 'SEOUL';
   if (source === 'ggc') return 'GYEONGGI';
+  if (source === 'muni' && (row.metro || row.metro_region || row.regionalZone)) {
+    const zone = String(row.metro || row.metro_region || row.regionalZone || '').toUpperCase();
+    if (zone && zone !== 'ALL' && zone !== 'TOUR' && zone !== 'MUNI') return zone;
+  }
   if (source === 'ifac' || source === 'incheon') {
     if (hay.includes('서울')) return 'SEOUL';
     if (hay.includes('경기')) return 'GYEONGGI';
@@ -208,7 +212,10 @@ export const runFestivalSync = async (req: Request, res: Response) => {
     }
     const urlEnv = `${metro}_CULTURE_API_URL`;
     const keyEnv = `${metro}_CULTURE_API_KEY`;
-    const ready = Boolean(String(process.env[urlEnv] || '').trim() && String(process.env[keyEnv] || '').trim());
+    const builtin = ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG'].includes(metro);
+    const sharedKey = Boolean(String(process.env.NTS_SERVICE_KEY || process.env.DATA_GO_KR_SERVICE_KEY || '').trim());
+    const ready = Boolean(String(process.env[urlEnv] || '').trim() && String(process.env[keyEnv] || '').trim())
+      || (builtin && (Boolean(String(process.env[keyEnv] || '').trim()) || sharedKey));
     if (!ready) {
       return res.status(200).json({
         success: false,
