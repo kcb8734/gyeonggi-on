@@ -24,6 +24,7 @@ function sourceRank(source?: string | null) {
   if (value === 'seoul') return 1;
   if (value === 'ggc' || value === 'gg') return 2;
   if (value === 'ifac' || value === 'incheon') return 3;
+  if (value === 'muni') return 4;
   if (value === 'sample' || value === 'fallback') return 90;
   return 20;
 }

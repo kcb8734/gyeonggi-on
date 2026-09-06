@@ -61,11 +61,23 @@ test('GET /api/admin/dashboard includes open data sources', async () => {
 });
 
 test('POST /api/festivals/sync?source=muni&metro=BUSAN tells how to enable the slot', async () => {
+  const prevUrl = process.env.BUSAN_CULTURE_API_URL;
+  const prevKey = process.env.BUSAN_CULTURE_API_KEY;
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  const prevData = process.env.DATA_GO_KR_SERVICE_KEY;
+  process.env.BUSAN_CULTURE_API_URL = '';
+  process.env.BUSAN_CULTURE_API_KEY = '';
+  process.env.NTS_SERVICE_KEY = '';
+  process.env.DATA_GO_KR_SERVICE_KEY = '';
   const result = await invoke({ method: 'POST', url: '/api/festivals/sync?source=muni&metro=BUSAN' });
   assert.equal(result.status, 200);
   const body = result.body as { message?: string; ready?: boolean; fetched?: number };
-  assert.match(String(body.message), /BUSAN_CULTURE_API/);
+  assert.match(String(body.message), /BUSAN_CULTURE_API|NTS_SERVICE_KEY/);
   assert.equal(body.fetched, 0);
+  process.env.BUSAN_CULTURE_API_URL = prevUrl;
+  process.env.BUSAN_CULTURE_API_KEY = prevKey;
+  process.env.NTS_SERVICE_KEY = prevNts;
+  process.env.DATA_GO_KR_SERVICE_KEY = prevData;
 });
 
 test('POST /api/festivals/sync?source=ifac asks for INCHEON_API_KEY when unset', async () => {

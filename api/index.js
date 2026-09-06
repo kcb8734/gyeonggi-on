@@ -342,7 +342,11 @@ async function syncFestivalsLive(req, res) {
     || sourceHint === 'seoul' || sourceHint === 'culturaleventinfo'
     || sourceHint === 'gg' || sourceHint === 'ggc' || sourceHint === 'ggculture'
     || sourceHint === 'ifac' || sourceHint === 'incheon'
-    || sourceHint === 'muni' || sourceHint === 'municipal' || sourceHint === 'local';
+    || sourceHint === 'muni' || sourceHint === 'municipal' || sourceHint === 'local' || sourceHint === 'metro4'
+    || sourceHint === 'busan' || sourceHint === 'bsart' || sourceHint === 'bsartservice'
+    || sourceHint === 'gyeongnam' || sourceHint === 'gn' || sourceHint === 'gyeongnamculture'
+    || sourceHint === 'ulsan' || sourceHint === 'ulsanfestival'
+    || sourceHint === 'sejong' || sourceHint === 'sjfestival';
   try {
     if (wantDispatch) {
       const collected = await dispatchOpenDataSync(query);
