@@ -3,13 +3,13 @@ import { AREA_CODE_BY_METRO, REGION_LABEL, REGION_META } from '../constants/metr
 const METRO_IDS = Object.keys(REGION_META);
 const BUILTIN_MUNI_METROS = new Set(['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG']);
 const BUILTIN_MUNI_LABEL: Record<string, string> = {
-  BUSAN: '부산시 문화예술 OpenAPI',
+  BUSAN: '부산시 축제정보 OpenAPI',
   GYEONGNAM: '경상남도 문화행사 OpenAPI',
   ULSAN: '울산광역시 축제 OpenAPI',
   SEJONG: '세종특별자치시 축제 OpenAPI',
 };
 const BUILTIN_MUNI_DESC: Record<string, string> = {
-  BUSAN: 'apis.data.go.kr/6260000/BsArtService · 폐기 시 FestivalService/getFestivalKr',
+  BUSAN: 'apis.data.go.kr/6260000/FestivalService/getFestivalKr',
   GYEONGNAM: 'apis.data.go.kr/6480000/gyeongnamculture/gyeongnamcultureList',
   ULSAN: 'apis.data.go.kr/6310000/ulsanfestival/getUlsanfestivalList',
   SEJONG: 'apis.data.go.kr/5690000/sjFestival/sj_00000360',

@@ -31,10 +31,32 @@ function pick(row, keys) {
   return '';
 }
 
-function ymd(raw) {
-  const digits = String(raw || '').replace(/\D/g, '');
+function ymd(raw, yearHint = '') {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  const iso = value.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const dotted = value.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);
+  if (dotted) return `${dotted[1]}-${dotted[2].padStart(2, '0')}-${dotted[3].padStart(2, '0')}`;
+  if (yearHint) {
+    const md = value.match(/(\d{1,2})\.\s*(\d{1,2})/);
+    if (md) return `${yearHint}-${md[1].padStart(2, '0')}-${md[2].padStart(2, '0')}`;
+  }
+  const digits = value.replace(/\D/g, '');
   if (digits.length >= 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
   return '';
+}
+
+function periodRange(...raws) {
+  for (const raw of raws) {
+    const text = String(raw || '').trim();
+    if (!text) continue;
+    const parts = text.split(/\s*[~～]\s*/);
+    const start = ymd(parts[0]);
+    const end = ymd(parts[1] || '', start.slice(0, 4)) || start;
+    if (start) return { start, end };
+  }
+  return { start: '', end: '' };
 }
 
 function decodeXml(value) {
@@ -133,23 +155,26 @@ export function rowsToFestivals(rows, metro) {
   const prefix = zone.slice(0, 3).toLowerCase();
   return (rows || []).map((row, index) => {
     const title = pick(row, [
-      'title', 'TITLE', 'MAIN_TITLE', 'nm', 'eventNm', 'EVENT_NM',
-      'fstvlNm', 'FSTVL_NM', 'name', 'NAME', 'cntntsSj',
-    ]);
-    const start = ymd(pick(row, [
-      'eventStartDate', 'BEGIN_DE', 'fstvlStartDate', 'FSTVL_BEGIN_DE', 'STRTDATE',
-      'startDate', 'start_date', 'eventStartDe', 'opnBgngDt', 'fstvlBgngYmd',
-      'bgngYmd', 'op_st_dt', 'USAGE_DAY',
-    ])) || new Date().toISOString().slice(0, 10);
+      'MAIN_TITLE', 'fstvlNm', 'FSTVL_NM', 'nm', 'eventNm', 'EVENT_NM',
+      'title', 'TITLE', 'name', 'NAME', 'cntntsSj',
+    ]).replace(/\(한\s*,?\s*영[\s\S]*\)$/g, '').trim();
+    const period = periodRange(pick(row, ['USAGE_DAY_WEEK_AND_TIME', 'USAGE_DAY']));
+    const start = period.start
+      || ymd(pick(row, [
+        'eventStartDate', 'BEGIN_DE', 'fstvlStartDate', 'FSTVL_BEGIN_DE', 'STRTDATE',
+        'startDate', 'start_date', 'eventStartDe', 'opnBgngDt', 'fstvlBgngYmd',
+        'bgngYmd', 'op_st_dt',
+      ]))
+      || new Date().toISOString().slice(0, 10);
     const end = ymd(pick(row, [
       'eventEndDate', 'END_DE', 'fstvlEndDate', 'FSTVL_END_DE', 'END_DATE',
       'endDate', 'end_date', 'eventEndDe', 'opnEndDt', 'fstvlEndYmd',
       'endYmd', 'op_ed_dt',
-    ])) || start;
+    ])) || period.end || start;
     const address = withRegionPrefix(pick(row, [
-      'address', 'rdnmadr', 'lnmadr', 'roadNmAddr', 'lotnoAddr', 'ADDR',
-      'PLACE', 'place', 'plc', 'place_nm', 'eventPlace', 'FSTVL_PLACE',
-      'location', 'adres', 'sigungu', 'sig',
+      'address', 'rdnmadr', 'lnmadr', 'roadNmAddr', 'lotnoAddr', 'ADDR1', 'ADDR',
+      'MAIN_PLACE', 'PLACE', 'place', 'plc', 'place_nm', 'eventPlace', 'FSTVL_PLACE',
+      'location', 'adres', 'GUGUN_NM', 'sigungu', 'sig',
     ]), zone);
     const contentId = pick(row, [
       'contentId', 'contentid', 'fstvlId', 'id', 'CULTCODE', 'seq',

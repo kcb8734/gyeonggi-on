@@ -7,7 +7,7 @@ import {
   syncMunicipalCultureEvents,
   xmlRows,
 } from './metroCultureGeneric.js';
-import { hintMetroFromSource, municipalCultureUrls } from './metroCultureDefaults.js';
+import { expandMunicipalOperationUrl, hintMetroFromSource, municipalCultureUrls } from './metroCultureDefaults.js';
 
 const ULSAN_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <rfcOpenApi><header><resultCode>00</resultCode><resultMsg>success</resultMsg></header>
@@ -61,8 +61,25 @@ const BUSAN_THEME_XML = `<?xml version="1.0" encoding="UTF-8"?>
   <place_nm>부산시민회관</place_nm>
 </item></items></body>`;
 
+const BUSAN_FESTIVAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<response><header><resultCode>00</resultCode><resultMsg>NORMAL_CODE</resultMsg></header>
+<body><items><item>
+  <MAIN_TITLE>부산바다축제(한,영, 중간,중번,일)</MAIN_TITLE>
+  <TITLE>부산하면 여름, 여름하면 부산바다축제!</TITLE>
+  <UC_SEQ>71</UC_SEQ>
+  <LAT>35.151604</LAT>
+  <LNG>129.11713</LNG>
+  <MAIN_PLACE>다대포 해수욕장 일원</MAIN_PLACE>
+  <GUGUN_NM>수영구</GUGUN_NM>
+  <CNTCT_TEL>051-713-5000</CNTCT_TEL>
+  <MAIN_IMG_NORMAL>https://www.visitbusan.net/uploadImgs/files/cntnts/20191213191711585_ttiel</MAIN_IMG_NORMAL>
+  <USAGE_DAY_WEEK_AND_TIME>2025. 8. 1. ~ 8. 3.</USAGE_DAY_WEEK_AND_TIME>
+  <ITEMCNTNTS>부산의 대표 여름축제</ITEMCNTNTS>
+</item></items></body></response>`;
+
 test('hintMetroFromSource maps the four municipal sources', () => {
   assert.equal(hintMetroFromSource('busan'), 'BUSAN');
+  assert.equal(hintMetroFromSource('festivalservice'), 'BUSAN');
   assert.equal(hintMetroFromSource('gyeongnam'), 'GYEONGNAM');
   assert.equal(hintMetroFromSource('ulsan'), 'ULSAN');
   assert.equal(hintMetroFromSource('sejong'), 'SEJONG');
@@ -100,13 +117,21 @@ test('rowsToFestivals maps Ulsan, Sejong, Gyeongnam and Busan fields', () => {
   assert.equal(gyeongnam.contentId, '41240187');
   assert.match(gyeongnam.address, /경상남도|합천/);
 
-  const busan = rowsToFestivals(parseMunicipalPayload(BUSAN_THEME_XML).rows, 'BUSAN')[0];
-  assert.equal(busan.title, '디에이드 전국투어콘서트 [부산]');
-  assert.equal(busan.eventStartDate, '2020-03-01');
-  assert.equal(busan.contentId, '2020020019');
+  const busanTheme = rowsToFestivals(parseMunicipalPayload(BUSAN_THEME_XML).rows, 'BUSAN')[0];
+  assert.equal(busanTheme.title, '디에이드 전국투어콘서트 [부산]');
+  assert.equal(busanTheme.eventStartDate, '2020-03-01');
+  assert.equal(busanTheme.contentId, '2020020019');
+
+  const busan = rowsToFestivals(parseMunicipalPayload(BUSAN_FESTIVAL_XML).rows, 'BUSAN')[0];
+  assert.equal(busan.title, '부산바다축제');
+  assert.equal(busan.eventStartDate, '2025-08-01');
+  assert.equal(busan.eventEndDate, '2025-08-03');
+  assert.equal(busan.contentId, '71');
+  assert.match(busan.address, /다대포|부산/);
+  assert.ok(busan.firstImage.includes('visitbusan.net'));
 });
 
-test('syncMunicipalCultureEvents skips retired Busan URL and uses the next XML', async () => {
+test('syncMunicipalCultureEvents uses FestivalService/getFestivalKr', async () => {
   const prevNts = process.env.NTS_SERVICE_KEY;
   process.env.NTS_SERVICE_KEY = 'test-shared-key';
   const urls = [];
@@ -114,25 +139,24 @@ test('syncMunicipalCultureEvents skips retired Busan URL and uses the next XML',
     pageSize: 10,
     fetchImpl: async (url) => {
       urls.push(String(url));
-      if (String(url).includes('BsArtService')) {
-        return {
-          ok: false,
-          status: 400,
-          text: async () => '<cmmMsgHeader><errMsg>NO_OPENAPI_SERVICE_ERROR</errMsg><returnAuthMsg>해당 오픈API 서비스가 없거나 폐기됨</returnAuthMsg><returnReasonCode>12</returnReasonCode></cmmMsgHeader>',
-        };
-      }
-      return { ok: true, status: 200, text: async () => BUSAN_THEME_XML };
+      return { ok: true, status: 200, text: async () => BUSAN_FESTIVAL_XML };
     },
   });
   assert.equal(result.success, true);
   assert.equal(result.fetched, 1);
   assert.equal(result.metro, 'BUSAN');
-  assert.ok(urls.some((url) => url.includes('BsArtService')));
-  assert.ok(urls.some((url) => url.includes('FestivalService') || url.includes('BusanCultureThemeService')));
+  assert.ok(urls.every((url) => url.includes('FestivalService/getFestivalKr')));
   process.env.NTS_SERVICE_KEY = prevNts;
 });
 
-test('municipalCultureUrls keeps the user Busan service first', () => {
-  const urls = municipalCultureUrls('BUSAN');
-  assert.equal(urls[0], 'https://apis.data.go.kr/6260000/BsArtService');
+test('municipalCultureUrls expands FestivalService to getFestivalKr', () => {
+  assert.equal(
+    expandMunicipalOperationUrl('https://apis.data.go.kr/6260000/FestivalService'),
+    'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr',
+  );
+  assert.equal(municipalCultureUrls('BUSAN')[0], 'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr');
+  assert.equal(
+    municipalCultureUrls('BUSAN', 'https://apis.data.go.kr/6260000/FestivalService')[0],
+    'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr',
+  );
 });

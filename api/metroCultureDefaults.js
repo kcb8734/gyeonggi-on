@@ -4,12 +4,10 @@ export const BUILTIN_MUNI_METROS = ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG'];
 
 export const MUNICIPAL_CULTURE_DEFAULTS = {
   BUSAN: {
-    label: '부산시 문화예술',
-    description: 'apis.data.go.kr/6260000/BsArtService · 폐기 시 FestivalService/getFestivalKr',
+    label: '부산시 축제정보',
+    description: 'apis.data.go.kr/6260000/FestivalService/getFestivalKr',
     urls: [
-      'https://apis.data.go.kr/6260000/BsArtService',
       'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr',
-      'https://apis.data.go.kr/6260000/BusanCultureThemeService/getBusanCultureTheme',
     ],
     pageStyle: 'pageNo',
     timeoutMs: 8000,
@@ -73,13 +71,20 @@ export function municipalDefaultSpec(metro) {
   return MUNICIPAL_CULTURE_DEFAULTS[String(metro || '').toUpperCase()] || null;
 }
 
+export function expandMunicipalOperationUrl(url) {
+  const trimmed = String(url || '').trim().replace(/\/+$/, '');
+  if (/\/FestivalService$/i.test(trimmed)) return `${trimmed}/getFestivalKr`;
+  return trimmed;
+}
+
 export function municipalCultureUrls(metro, configuredUrl = '') {
   const spec = municipalDefaultSpec(metro);
   const urls = [];
-  const extra = String(configuredUrl || '').trim();
+  const extra = expandMunicipalOperationUrl(configuredUrl);
   if (extra) urls.push(extra);
   for (const url of spec?.urls || []) {
-    if (!urls.includes(url)) urls.push(url);
+    const next = expandMunicipalOperationUrl(url);
+    if (next && !urls.includes(next)) urls.push(next);
   }
   return urls;
 }
@@ -118,7 +123,7 @@ export function injectServiceKey(rawUrl, key) {
 
 export function hintMetroFromSource(hint) {
   const value = String(hint || '').toLowerCase();
-  if (value === 'busan' || value === 'bsart' || value === 'bsartservice') return 'BUSAN';
+  if (value === 'busan' || value === 'bsart' || value === 'bsartservice' || value === 'festivalservice' || value === 'getfestivalkr') return 'BUSAN';
   if (value === 'gyeongnam' || value === 'gn' || value === 'gyeongnamculture') return 'GYEONGNAM';
   if (value === 'ulsan' || value === 'ulsanfestival') return 'ULSAN';
   if (value === 'sejong' || value === 'sjfestival') return 'SEJONG';
