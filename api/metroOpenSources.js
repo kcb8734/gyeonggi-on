@@ -57,16 +57,19 @@ export function municipalSlot(metro) {
   const url = envFirst(names.url);
   const sharedKey = Boolean(dataGoKrServiceKey());
   const builtin = hasMunicipalDefault(metro);
-  const keyConfigured = key.set || (builtin && sharedKey);
+  const spec = municipalDefaultSpec(metro);
+  const noKey = spec?.auth === 'none';
+  const keyConfigured = key.set || noKey || (builtin && sharedKey);
   const urlConfigured = url.set || builtin;
   return {
     metro,
-    keyEnv: key.set ? key.name : (builtin ? 'NTS_SERVICE_KEY' : key.name),
+    keyEnv: noKey ? '인증 없음' : (key.set ? key.name : (builtin ? 'NTS_SERVICE_KEY' : key.name)),
     urlEnv: url.set ? url.name : (builtin ? `${String(metro || '').toUpperCase()}_CULTURE_API_URL` : url.name),
     keyConfigured,
     urlConfigured,
     ready: keyConfigured && urlConfigured,
     builtin,
+    noKey,
   };
 }
 
@@ -151,7 +154,7 @@ export function catalogOpenSources() {
       targetApi: `${metro}_CULTURE`,
       description: spec?.description
         || (slot.ready ? `${slot.urlEnv} 로 수집` : `${slot.urlEnv} · ${slot.keyEnv} 를 넣으면 수집됩니다`),
-      envHint: slot.builtin ? 'NTS_SERVICE_KEY' : `${slot.urlEnv}, ${slot.keyEnv}`,
+      envHint: slot.noKey ? '인증 없음' : (slot.builtin ? 'NTS_SERVICE_KEY' : `${slot.urlEnv}, ${slot.keyEnv}`),
       keyConfigured: slot.keyConfigured,
       urlConfigured: slot.urlConfigured,
       collectable: slot.ready,

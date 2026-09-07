@@ -1,6 +1,6 @@
-/** 부산·경남·울산·세종 data.go.kr 문화/축제 OpenAPI. 인증키는 NTS_SERVICE_KEY 를 쓴다. */
+/** 부산·경남·울산·세종 data.go.kr + 제주 놀다 OpenAPI. data.go.kr 인증키는 NTS_SERVICE_KEY. */
 
-export const BUILTIN_MUNI_METROS = ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG'];
+export const BUILTIN_MUNI_METROS = ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG', 'JEJU'];
 
 export const MUNICIPAL_CULTURE_DEFAULTS = {
   BUSAN: {
@@ -40,6 +40,17 @@ export const MUNICIPAL_CULTURE_DEFAULTS = {
     pageStyle: 'sejong',
     timeoutMs: 8000,
   },
+  JEJU: {
+    label: '제주특별자치도 전시문화행사',
+    description: 'www.jejunolda.com/api/event',
+    urls: [
+      'https://www.jejunolda.com/api/event/',
+      'http://www.jejunolda.com/api/event/',
+    ],
+    pageStyle: 'jeju',
+    timeoutMs: 8000,
+    auth: 'none',
+  },
 };
 
 const REGION_PREFIX = {
@@ -47,6 +58,7 @@ const REGION_PREFIX = {
   GYEONGNAM: '경상남도',
   ULSAN: '울산광역시',
   SEJONG: '세종특별자치시',
+  JEJU: '제주특별자치도',
 };
 
 export function dataGoKrServiceKey() {
@@ -74,6 +86,7 @@ export function municipalDefaultSpec(metro) {
 export function expandMunicipalOperationUrl(url) {
   const trimmed = String(url || '').trim().replace(/\/+$/, '');
   if (/\/FestivalService$/i.test(trimmed)) return `${trimmed}/getFestivalKr`;
+  if (/jejunolda\.com\/api\/event$/i.test(trimmed)) return `${trimmed}/`;
   return trimmed;
 }
 
@@ -97,6 +110,10 @@ export function regionAddressPrefix(metro) {
   return REGION_PREFIX[String(metro || '').toUpperCase()] || '';
 }
 
+export function municipalAuthNone(metro) {
+  return municipalDefaultSpec(metro)?.auth === 'none';
+}
+
 export function applyMunicipalPaging(rawUrl, metro, page, size) {
   const next = new URL(rawUrl);
   const spec = municipalDefaultSpec(metro);
@@ -104,6 +121,9 @@ export function applyMunicipalPaging(rawUrl, metro, page, size) {
     next.searchParams.set('pageIndex', String(page));
     next.searchParams.set('pageUnit', String(size));
     if (!next.searchParams.get('dataTy')) next.searchParams.set('dataTy', 'xml');
+  } else if (spec?.pageStyle === 'jeju') {
+    next.searchParams.set('page', String(page));
+    next.searchParams.set('pageSize', String(size));
   } else {
     next.searchParams.set('pageNo', String(page));
     next.searchParams.set('numOfRows', String(size));
@@ -113,6 +133,7 @@ export function applyMunicipalPaging(rawUrl, metro, page, size) {
 
 export function injectServiceKey(rawUrl, key) {
   if (!rawUrl) return '';
+  if (!key) return String(rawUrl);
   if (String(rawUrl).includes('{KEY}')) return String(rawUrl).replace('{KEY}', encodeURIComponent(key));
   const next = new URL(rawUrl);
   if (!next.searchParams.get('serviceKey') && !next.searchParams.get('ServiceKey') && !next.searchParams.get('KEY') && !next.searchParams.get('key')) {
@@ -127,5 +148,6 @@ export function hintMetroFromSource(hint) {
   if (value === 'gyeongnam' || value === 'gn' || value === 'gyeongnamculture') return 'GYEONGNAM';
   if (value === 'ulsan' || value === 'ulsanfestival') return 'ULSAN';
   if (value === 'sejong' || value === 'sjfestival') return 'SEJONG';
+  if (value === 'jeju' || value === 'jejunolda' || value === 'jejuevent' || value === 'jeju-event') return 'JEJU';
   return '';
 }
