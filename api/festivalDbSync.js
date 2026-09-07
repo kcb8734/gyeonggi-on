@@ -235,10 +235,11 @@ export async function persistTourFestivals(items, options = {}) {
       message: 'DATABASE_URL이 없어 실시간 TourAPI 목록만 반환합니다.',
     };
   }
-  const client = await db.connect();
+  let client = null;
   let upserted = 0;
   let skipped = 0;
   try {
+    client = await db.connect();
     await client.query('BEGIN');
     for (const item of rows) {
       const itemSource = String(item && item.source || source || 'tour').toLowerCase();
@@ -318,7 +319,7 @@ export async function persistTourFestivals(items, options = {}) {
       message: err && err.message ? err.message : 'DB 동기화에 실패했습니다.',
     };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
