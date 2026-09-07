@@ -135,7 +135,7 @@ test('목 fetch로 월별 달력·일자 목록·상세를 모아 동기화한�
     fetchImpl,
     year: 2026,
     month: 9,
-    maxDetails: 2,
+    maxDetails: 1,
     delayMs: 0,
     concurrency: 1,
   });

@@ -248,8 +248,9 @@ export async function collectKfesCalendar(options = {}) {
   const month = Number(options.month) || stamp.month;
   const dayOffset = Math.min(80, Math.max(10, Number(options.offset) || 50));
   const concurrency = Math.min(6, Math.max(1, Number(options.concurrency) || 4));
-  const maxDetails = Math.min(20, Math.max(0, Number(options.maxDetails ?? options.details ?? 8)));
-  const delayMs = Math.min(2000, Math.max(0, Number(options.delayMs ?? 400)));
+  const maxDetails = Math.min(40, Math.max(0, Number(options.maxDetails ?? options.details ?? 24)));
+  const delayMs = Math.min(2000, Math.max(0, Number(options.delayMs ?? 0)));
+  const detailConcurrency = Math.min(4, Math.max(1, Number(options.detailConcurrency) || 3));
 
   const monthGot = await fetchKfes(`${KFES_MONTH_URL}?year=${year}&month=${month}`, fetchImpl, { timeoutMs: 8000 });
   const monthParsed = parseKfesCalendarMonth(monthGot.text);
@@ -299,18 +300,37 @@ export async function collectKfesCalendar(options = {}) {
     };
   }
 
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+  const missingScore = (row) => {
+    let n = 0;
+    if (!row.fstvlUtztfareInfo) n += 1;
+    if (!(row.fstvlAspcsNm || row.fstvlMngtNm)) n += 1;
+    if (!row.fstvlHmpgUrl) n += 1;
+    if (!(row.fstvlAspcsTelno || row.fstvlMngtTelno)) n += 1;
+    return n;
+  };
+  const rankDetail = (row) => {
+    const start = festivalDateYmd(row.fstvlBgngDe);
+    const end = festivalDateYmd(row.fstvlEndDe) || start;
+    const startsToday = start === today ? 0 : 1;
+    const ongoing = start && end && start <= today && today <= end ? 0 : 1;
+    return startsToday * 10 + ongoing;
+  };
   const extrasById = {};
-  const needDetail = merged.filter((row) => {
-    const fee = row.fstvlUtztfareInfo;
-    const organizer = row.fstvlAspcsNm || row.fstvlMngtNm;
-    const homepage = row.fstvlHmpgUrl;
-    const tel = row.fstvlAspcsTelno || row.fstvlMngtTelno;
-    return !fee || !organizer || !homepage || !tel;
-  }).slice(0, maxDetails);
+  const needDetail = merged
+    .filter((row) => missingScore(row) > 0)
+    .sort((a, b) => {
+      const diff = rankDetail(a) - rankDetail(b);
+      if (diff) return diff;
+      return missingScore(b) - missingScore(a);
+    })
+    .slice(0, maxDetails);
 
   for (let i = 0; i < needDetail.length; i += 1) {
-    if (i > 0) await sleep(delayMs);
-    const row = needDetail[i];
+    extrasById[String(needDetail[i].fstvlCntntsId || '')] = null;
+  }
+  await mapPool(needDetail, detailConcurrency, async (row, index) => {
+    if (delayMs && index > 0) await sleep(delayMs);
     const id = String(row.fstvlCntntsId || '');
     try {
       const got = await fetchKfes(kfesDetailUrl(id), fetchImpl, {
@@ -321,7 +341,8 @@ export async function collectKfesCalendar(options = {}) {
     } catch (err) {
       extrasById[id] = { error: err && err.message ? err.message : String(err) };
     }
-  }
+    return extrasById[id];
+  });
 
   const items = merged.map((row) => toPersistableKfesFestival(row, extrasById[row.fstvlCntntsId] || {})).filter(Boolean);
   return {
@@ -408,6 +429,7 @@ export async function syncKfesCalendar(options = {}) {
     fetched: collected.items.length,
     unique: collected.unique,
     detailed: collected.detailed,
+    detailedTitles: (collected.items || []).filter((row) => row.fee || row.official_url).slice(0, 8).map((row) => row.title),
     upserted: persist.upserted,
     skipped: persist.skipped,
     persisted: persist.ok,
