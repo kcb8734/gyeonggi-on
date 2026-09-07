@@ -77,12 +77,14 @@ const BUSAN_FESTIVAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
   <ITEMCNTNTS>부산의 대표 여름축제</ITEMCNTNTS>
 </item></items></body></response>`;
 
-test('hintMetroFromSource maps the four municipal sources', () => {
+test('hintMetroFromSource maps the municipal sources', () => {
   assert.equal(hintMetroFromSource('busan'), 'BUSAN');
   assert.equal(hintMetroFromSource('festivalservice'), 'BUSAN');
   assert.equal(hintMetroFromSource('gyeongnam'), 'GYEONGNAM');
   assert.equal(hintMetroFromSource('ulsan'), 'ULSAN');
   assert.equal(hintMetroFromSource('sejong'), 'SEJONG');
+  assert.equal(hintMetroFromSource('jeju'), 'JEJU');
+  assert.equal(hintMetroFromSource('jejunolda'), 'JEJU');
 });
 
 test('xmlRows reads item and list records', () => {
@@ -159,4 +161,73 @@ test('municipalCultureUrls expands FestivalService to getFestivalKr', () => {
     municipalCultureUrls('BUSAN', 'https://apis.data.go.kr/6260000/FestivalService')[0],
     'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr',
   );
+});
+
+const JEJU_JSON = JSON.stringify({
+  resultCode: '00',
+  resultMsg: 'success',
+  message: null,
+  query: { page: 1, pageSize: 10, rows: 1, pages: 1 },
+  items: [{
+    seq: 7050,
+    name: '오늘 - 이경진전',
+    tel: '064-755-0006',
+    category: '001',
+    categoryName: '전시회',
+    payName: '무료',
+    locName: '실내',
+    start: 1622473200000,
+    end: 1624978800000,
+    time: '7:00 ~ 22:00',
+    addr1: '제주특별자치도 제주시 연삼로 316',
+    addr2: '2층',
+    location: '델문도 뮤지엄',
+    intro: '<p>행사 소개를 입력하세요...</p>',
+    cover: '82194f4f-d95f-4fb6-8903-5a502e2714dd_t.jpg',
+    x: 126.5312,
+    y: 33.4996,
+  }],
+});
+
+test('Jeju nolda JSON maps items, KST timestamps and cover URL', () => {
+  const parsed = parseMunicipalPayload(`\n\n${JEJU_JSON}`);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.rows[0].name, '오늘 - 이경진전');
+  const jeju = rowsToFestivals(parsed.rows, 'JEJU')[0];
+  assert.equal(jeju.title, '오늘 - 이경진전');
+  assert.equal(jeju.contentId, '7050');
+  assert.equal(jeju.eventStartDate, '2021-06-01');
+  assert.equal(jeju.eventEndDate, '2021-06-30');
+  assert.equal(jeju.category, '전시회');
+  assert.equal(jeju.location_name, '델문도 뮤지엄');
+  assert.match(jeju.address, /연삼로 316/);
+  assert.match(jeju.address, /2층/);
+  assert.equal(jeju.firstImage, 'https://www.jejunolda.com/files/event/82194f4f-d95f-4fb6-8903-5a502e2714dd_t.jpg');
+  assert.equal(jeju.overview, '행사 소개를 입력하세요...');
+  assert.equal(jeju.metro, 'JEJU');
+  assert.ok(jeju.mapY > 33);
+});
+
+test('millisecond timestamps are not sliced as YYYYMMDD', () => {
+  const row = rowsToFestivals([{ name: 'JAZZ IN JEJU 2026', start: 1789398000000, end: 1789398000000, seq: 16845 }], 'JEJU')[0];
+  assert.equal(row.eventStartDate, '2026-09-15');
+  assert.notEqual(row.eventStartDate, '1789-39-80');
+});
+
+test('syncMunicipalCultureEvents fetches Jeju without a service key', async () => {
+  const urls = [];
+  const result = await syncMunicipalCultureEvents('JEJU', {
+    pageSize: 40,
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      return { ok: true, status: 200, text: async () => JEJU_JSON };
+    },
+  });
+  assert.equal(result.success, true);
+  assert.equal(result.fetched, 1);
+  assert.equal(result.metro, 'JEJU');
+  assert.ok(urls[0].includes('jejunolda.com/api/event'));
+  assert.ok(urls[0].includes('page=1'));
+  assert.ok(urls[0].includes('pageSize=40'));
+  assert.equal(urls[0].includes('serviceKey'), false);
 });

@@ -212,10 +212,11 @@ export const runFestivalSync = async (req: Request, res: Response) => {
     }
     const urlEnv = `${metro}_CULTURE_API_URL`;
     const keyEnv = `${metro}_CULTURE_API_KEY`;
-    const builtin = ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG'].includes(metro);
+    const builtin = ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG', 'JEJU'].includes(metro);
+    const noKey = metro === 'JEJU';
     const sharedKey = Boolean(String(process.env.NTS_SERVICE_KEY || process.env.DATA_GO_KR_SERVICE_KEY || '').trim());
     const ready = Boolean(String(process.env[urlEnv] || '').trim() && String(process.env[keyEnv] || '').trim())
-      || (builtin && (Boolean(String(process.env[keyEnv] || '').trim()) || sharedKey));
+      || (builtin && (noKey || Boolean(String(process.env[keyEnv] || '').trim()) || sharedKey));
     if (!ready) {
       return res.status(200).json({
         success: false,

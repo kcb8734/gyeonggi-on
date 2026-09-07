@@ -53,7 +53,7 @@ export async function dispatchOpenDataSync(query = {}) {
     return {
       success: results.some((row) => row.success),
       source: 'muni',
-      sourceLabel: '부산·경남·울산·세종 지자체 OpenAPI',
+      sourceLabel: '부산·경남·울산·세종·제주 지자체 OpenAPI',
       targetApi: results.map((row) => row.targetApi).filter(Boolean).join('+'),
       fetched,
       upserted,

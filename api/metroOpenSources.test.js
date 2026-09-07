@@ -74,3 +74,24 @@ test('builtin Busan/Gyeongnam/Ulsan/Sejong slots use NTS_SERVICE_KEY', () => {
   process.env.NTS_SERVICE_KEY = prevNts;
   process.env.DATA_GO_KR_SERVICE_KEY = prevData;
 });
+
+test('Jeju nolda slot is collectable without a service key', () => {
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  const prevData = process.env.DATA_GO_KR_SERVICE_KEY;
+  const prevUrl = process.env.JEJU_CULTURE_API_URL;
+  const prevKey = process.env.JEJU_CULTURE_API_KEY;
+  process.env.NTS_SERVICE_KEY = '';
+  process.env.DATA_GO_KR_SERVICE_KEY = '';
+  process.env.JEJU_CULTURE_API_URL = '';
+  process.env.JEJU_CULTURE_API_KEY = '';
+  const catalog = catalogOpenSources();
+  const jeju = catalog.muniMetros.find((item) => item.metro === 'JEJU');
+  assert.equal(jeju?.collectable, true);
+  assert.equal(jeju?.envHint, '인증 없음');
+  assert.match(String(jeju?.description), /jejunolda/);
+  assert.equal(catalog.muniMetros.find((item) => item.metro === 'BUSAN')?.collectable, false);
+  process.env.NTS_SERVICE_KEY = prevNts;
+  process.env.DATA_GO_KR_SERVICE_KEY = prevData;
+  process.env.JEJU_CULTURE_API_URL = prevUrl;
+  process.env.JEJU_CULTURE_API_KEY = prevKey;
+});

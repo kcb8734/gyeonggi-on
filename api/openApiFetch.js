@@ -24,7 +24,7 @@ export async function fetchXml(url, fetchImpl = fetch, options = {}) {
   const safeUrl = redactOpenApiUrl(url);
   try {
     const res = await fetchImpl(url, {
-      headers: { Accept: 'application/xml,text/xml,*/*' },
+      headers: { Accept: 'application/json,application/xml,text/xml,*/*' },
       signal: AbortSignal.timeout(timeoutMs),
     });
     const xml = await res.text();

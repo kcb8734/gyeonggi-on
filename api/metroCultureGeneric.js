@@ -6,6 +6,7 @@ import {
   applyMunicipalPaging,
   injectServiceKey,
   municipalApiKey,
+  municipalAuthNone,
   municipalCultureUrls,
   municipalDefaultSpec,
   regionAddressPrefix,
@@ -31,6 +32,21 @@ function pick(row, keys) {
   return '';
 }
 
+function kstYmd(ms) {
+  const at = Number(ms);
+  if (!Number.isFinite(at) || at <= 0) return '';
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(at));
+  } catch {
+    return new Date(at + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+}
+
 function ymd(raw, yearHint = '') {
   const value = String(raw || '').trim();
   if (!value) return '';
@@ -43,6 +59,8 @@ function ymd(raw, yearHint = '') {
     if (md) return `${yearHint}-${md[1].padStart(2, '0')}-${md[2].padStart(2, '0')}`;
   }
   const digits = value.replace(/\D/g, '');
+  if (digits.length === 13) return kstYmd(Number(digits));
+  if (digits.length === 10) return kstYmd(Number(digits) * 1000);
   if (digits.length >= 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
   return '';
 }
@@ -92,6 +110,10 @@ export function xmlRows(xml) {
     }
     return row;
   });
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function jsonItems(payload) {
@@ -144,10 +166,20 @@ function withRegionPrefix(address, metro) {
   const value = String(address || '').trim();
   if (!prefix) return value;
   if (!value) return prefix;
-  if (value.includes(prefix) || value.includes(prefix.replace('광역시', '')) || value.includes(prefix.replace('특별자치시', '')) || value.includes(prefix.replace('도', ''))) {
+  if (value.includes(prefix) || value.includes(prefix.replace('광역시', '')) || value.includes(prefix.replace('특별자치시', '')) || value.includes(prefix.replace('특별자치도', '')) || value.includes(prefix.replace('도', ''))) {
     return value;
   }
   return `${prefix} ${value}`;
+}
+
+function absoluteImage(raw, metro) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  if (String(metro || '').toUpperCase() === 'JEJU') {
+    return `https://www.jejunolda.com/files/event/${value.replace(/^\/+/, '')}`;
+  }
+  return value;
 }
 
 export function rowsToFestivals(rows, metro) {
@@ -163,19 +195,22 @@ export function rowsToFestivals(rows, metro) {
       || ymd(pick(row, [
         'eventStartDate', 'BEGIN_DE', 'fstvlStartDate', 'FSTVL_BEGIN_DE', 'STRTDATE',
         'startDate', 'start_date', 'eventStartDe', 'opnBgngDt', 'fstvlBgngYmd',
-        'bgngYmd', 'op_st_dt',
+        'bgngYmd', 'op_st_dt', 'start',
       ]))
       || new Date().toISOString().slice(0, 10);
     const end = ymd(pick(row, [
       'eventEndDate', 'END_DE', 'fstvlEndDate', 'FSTVL_END_DE', 'END_DATE',
       'endDate', 'end_date', 'eventEndDe', 'opnEndDt', 'fstvlEndYmd',
-      'endYmd', 'op_ed_dt',
+      'endYmd', 'op_ed_dt', 'end',
     ])) || period.end || start;
-    const address = withRegionPrefix(pick(row, [
-      'address', 'rdnmadr', 'lnmadr', 'roadNmAddr', 'lotnoAddr', 'ADDR1', 'ADDR',
+    const street = pick(row, [
+      'address', 'rdnmadr', 'lnmadr', 'roadNmAddr', 'lotnoAddr', 'ADDR1', 'addr1', 'ADDR',
       'MAIN_PLACE', 'PLACE', 'place', 'plc', 'place_nm', 'eventPlace', 'FSTVL_PLACE',
       'location', 'adres', 'GUGUN_NM', 'sigungu', 'sig',
-    ]), zone);
+    ]);
+    const detail = pick(row, ['addr2', 'ADDR2']);
+    const address = withRegionPrefix(detail && street && !street.includes(detail) ? `${street} ${detail}` : street, zone);
+    const venue = pick(row, ['location', 'MAIN_PLACE', 'place', 'plc', 'place_nm']);
     const contentId = pick(row, [
       'contentId', 'contentid', 'fstvlId', 'id', 'CULTCODE', 'seq',
       'unqId', 'entid', 'res_no', 'UC_SEQ',
@@ -185,15 +220,18 @@ export function rowsToFestivals(rows, metro) {
       contentId: String(contentId).slice(0, 40),
       title,
       address,
-      location_name: address,
+      location_name: venue || address,
       eventStartDate: start,
       eventEndDate: end,
-      firstImage: pick(row, ['firstImage', 'IMAGE_URL', 'MAIN_IMG', 'MAIN_IMG_NORMAL', 'imageUrl', 'fstvlCo', 'imgUrl']),
-      mapY: Number(pick(row, ['mapY', 'LAT', 'latitude', 'lat', 'la']) || 0) || undefined,
-      mapX: Number(pick(row, ['mapX', 'LOT', 'LNG', 'longitude', 'lng', 'lon', 'lo']) || 0) || undefined,
+      firstImage: absoluteImage(pick(row, [
+        'firstImage', 'IMAGE_URL', 'MAIN_IMG', 'MAIN_IMG_NORMAL', 'imageUrl', 'fstvlCo', 'imgUrl',
+        'cover', 'coverThumb',
+      ]), zone),
+      mapY: Number(pick(row, ['mapY', 'LAT', 'latitude', 'lat', 'la', 'y']) || 0) || undefined,
+      mapX: Number(pick(row, ['mapX', 'LOT', 'LNG', 'longitude', 'lng', 'lon', 'lo', 'x']) || 0) || undefined,
       tel: pick(row, ['tel', 'TELNO_INFO', 'phone', 'INQUIRY', 'rprsTelno', 'telno', 'CNTCT_TEL']),
-      category: pick(row, ['category', 'CATEGORY_NM', 'CODENAME', 'realmName', 'dvsn1Nm']) || '문화/예술',
-      overview: pick(row, ['overview', 'auspcInstt', 'program', 'eventCn', 'cn', 'contents', 'intr', 'ITEMCNTNTS']),
+      category: pick(row, ['categoryName', 'category', 'CATEGORY_NM', 'CODENAME', 'realmName', 'dvsn1Nm']) || '문화/예술',
+      overview: stripHtml(pick(row, ['overview', 'auspcInstt', 'program', 'eventCn', 'cn', 'contents', 'intr', 'ITEMCNTNTS', 'intro'])),
       metro: zone,
       source: 'muni',
     };
@@ -201,7 +239,21 @@ export function rowsToFestivals(rows, metro) {
 }
 
 export function parseMunicipalPayload(raw) {
-  const xml = String(raw || '');
+  const xml = String(raw || '').replace(/^\uFEFF/, '').trim();
+  if (xml.startsWith('{') || xml.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(xml);
+      const rows = jsonItems(parsed);
+      const code = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? text(parsed.resultCode) : '';
+      const msg = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? text(parsed.resultMsg || parsed.message) : '';
+      const fault = code && !/^(00|0|NORMAL SERVICE|success)$/i.test(code)
+        ? { code, message: msg || 'OpenAPI 오류' }
+        : null;
+      return { rows, fault, ok: rows.length > 0 };
+    } catch {
+      return { rows: [], fault: { code: 'JSON', message: 'JSON 응답을 읽지 못했습니다.' }, ok: false };
+    }
+  }
   const fault = openApiFault(xml);
   let rows = xmlRows(xml);
   if (!rows.length) {
@@ -241,7 +293,7 @@ export async function fetchMunicipalCulturePage(metro, options = {}) {
   let last = { ok: false, rows: [], fault: { code: 'NO_URL', message: `${zone} 문화 OpenAPI URL이 없습니다.` }, url: '' };
 
   for (const raw of urls) {
-    const withKey = injectServiceKey(raw, key);
+    const withKey = municipalAuthNone(zone) ? raw : injectServiceKey(raw, key);
     const url = applyMunicipalPaging(withKey, zone, page, size);
     try {
       const got = await fetchXml(url, fetchImpl, { label: `${zone}_CULTURE`, timeoutMs });
