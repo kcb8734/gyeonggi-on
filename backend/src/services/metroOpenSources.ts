@@ -1,6 +1,22 @@
 import { AREA_CODE_BY_METRO, REGION_LABEL, REGION_META } from '../constants/metroLocalities';
 
 const METRO_IDS = Object.keys(REGION_META);
+const BUILTIN_MUNI_METROS = new Set(['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG', 'JEJU']);
+const BUILTIN_MUNI_LABEL: Record<string, string> = {
+  BUSAN: '부산시 축제정보 OpenAPI',
+  GYEONGNAM: '경상남도 문화행사 OpenAPI',
+  ULSAN: '울산광역시 축제 OpenAPI',
+  SEJONG: '세종특별자치시 축제 OpenAPI',
+  JEJU: '제주특별자치도 전시문화행사 OpenAPI',
+};
+const BUILTIN_MUNI_DESC: Record<string, string> = {
+  BUSAN: 'apis.data.go.kr/6260000/FestivalService/getFestivalKr',
+  GYEONGNAM: 'apis.data.go.kr/6480000/gyeongnamculture/gyeongnamcultureList',
+  ULSAN: 'apis.data.go.kr/6310000/ulsanfestival/getUlsanfestivalList',
+  SEJONG: 'apis.data.go.kr/5690000/sjFestival/sj_00000360',
+  JEJU: 'www.jejunolda.com/api/event (인증 없음)',
+};
+const BUILTIN_MUNI_NO_KEY = new Set(['JEJU']);
 
 function envSet(name: string) {
   return Boolean(String(process.env[name] || '').trim());
@@ -33,16 +49,19 @@ export function catalogOpenSources() {
   const muniMetros = METRO_IDS.filter((metro) => metro !== 'SEOUL' && metro !== 'GYEONGGI' && metro !== 'INCHEON').map((metro) => {
     const urlEnv = `${metro}_CULTURE_API_URL`;
     const keyEnv = `${metro}_CULTURE_API_KEY`;
-    const ready = envSet(urlEnv) && envSet(keyEnv);
+    const builtin = BUILTIN_MUNI_METROS.has(metro);
+    const noKey = BUILTIN_MUNI_NO_KEY.has(metro);
+    const keyConfigured = envSet(keyEnv) || noKey || (builtin && (envSet('NTS_SERVICE_KEY') || envSet('DATA_GO_KR_SERVICE_KEY')));
+    const ready = (envSet(urlEnv) && envSet(keyEnv)) || (builtin && (noKey || keyConfigured));
     return {
       id: `muni-${metro}`,
       kind: 'muni-slot',
       metro,
-      label: `${REGION_LABEL[metro]} 지자체 OpenAPI`,
+      label: BUILTIN_MUNI_LABEL[metro] || `${REGION_LABEL[metro]} 지자체 OpenAPI`,
       targetApi: `${metro}_CULTURE`,
-      description: ready ? `${urlEnv} 로 수집` : `${urlEnv} · ${keyEnv} 를 넣으면 수집됩니다`,
-      envHint: `${urlEnv}, ${keyEnv}`,
-      keyConfigured: envSet(keyEnv),
+      description: BUILTIN_MUNI_DESC[metro] || (ready ? `${urlEnv} 로 수집` : `${urlEnv} · ${keyEnv} 를 넣으면 수집됩니다`),
+      envHint: noKey ? '인증 없음' : (builtin ? 'NTS_SERVICE_KEY' : `${urlEnv}, ${keyEnv}`),
+      keyConfigured,
       collectable: ready,
       syncQuery: { source: 'muni', metro },
       count: 0,

@@ -342,7 +342,13 @@ async function syncFestivalsLive(req, res) {
     || sourceHint === 'seoul' || sourceHint === 'culturaleventinfo'
     || sourceHint === 'gg' || sourceHint === 'ggc' || sourceHint === 'ggculture'
     || sourceHint === 'ifac' || sourceHint === 'incheon'
-    || sourceHint === 'muni' || sourceHint === 'municipal' || sourceHint === 'local';
+    || sourceHint === 'muni' || sourceHint === 'municipal' || sourceHint === 'local' || sourceHint === 'metro4'
+    || sourceHint === 'busan' || sourceHint === 'bsart' || sourceHint === 'bsartservice'
+    || sourceHint === 'festivalservice' || sourceHint === 'getfestivalkr'
+    || sourceHint === 'gyeongnam' || sourceHint === 'gn' || sourceHint === 'gyeongnamculture'
+    || sourceHint === 'ulsan' || sourceHint === 'ulsanfestival'
+    || sourceHint === 'sejong' || sourceHint === 'sjfestival'
+    || sourceHint === 'jeju' || sourceHint === 'jejunolda' || sourceHint === 'jejuevent' || sourceHint === 'jeju-event';
   try {
     if (wantDispatch) {
       const collected = await dispatchOpenDataSync(query);
@@ -841,6 +847,26 @@ async function handler(req, res) {
     const tourDetail = path.match(/\/api\/tour\/detail\/([^/?\s]+)/i);
     if (tourDetail) {
       await getTourDetail(req, res, decodeURIComponent(tourDetail[1]));
+      return;
+    }
+    if (/\/api\/events\/jeju/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        const collected = await dispatchOpenDataSync({ ...readQuery(req), source: 'jeju', metro: 'JEJU' });
+        send(res, 200, {
+          ...collected,
+          success: Boolean(collected.success),
+          count: Number(collected.fetched || collected.upserted || 0),
+          data: collected.festivals || collected.data || [],
+          metro: 'JEJU',
+        }, corsHeaders(req));
+      } catch (err) {
+        send(res, 500, {
+          success: false,
+          message: '제주 문화행사 데이터를 불러오는 중 오류가 발생했습니다.',
+          error: err && err.message ? err.message : String(err),
+        }, corsHeaders(req));
+      }
       return;
     }
     if (/\/api\/festivals\/?(\?|$)/i.test(path) || /\/api\/festivals["\s]/i.test(path) || /(^|[^\w])\/api\/festivals([^\w]|$)/i.test(path)) {

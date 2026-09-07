@@ -26,6 +26,8 @@ test('listedMetroForRow maps open-data sources onto 17 metros', () => {
   assert.equal(listedMetroForRow({ source: 'ggc', title: '수원화성문화제', location_name: '수원' }), 'GYEONGGI');
   assert.equal(listedMetroForRow({ source: 'ifac', location_name: '인천종합문화예술회관', municipality_name: '남동구' }), 'INCHEON');
   assert.equal(listedMetroForRow({ source: 'ifac', location_name: '서초구', municipality_name: '서울특별시' }), 'SEOUL');
+  assert.equal(listedMetroForRow({ source: 'muni', metro: 'ULSAN', title: '간절곶 해맞이 축제' }), 'ULSAN');
+  assert.equal(listedMetroForRow({ source: 'muni', metro: 'SEJONG', location_name: '세종호수공원' }), 'SEJONG');
   assert.equal(rowMatchesMetro({ source: 'ggc', title: '수원화성문화제' }, 'GYEONGGI'), true);
   assert.equal(rowMatchesMetro({ source: 'seoul', title: '서울빛초롱축제' }, 'GYEONGGI'), false);
 });

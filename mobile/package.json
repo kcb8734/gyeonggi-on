@@ -10,6 +10,8 @@
     "export:web": "node scripts/export-web.cjs",
     "build:web": "node scripts/export-web.cjs",
     "build:aab": "node scripts/build-aab.cjs",
+    "keystore:encode": "node scripts/play-keystore.cjs encode",
+    "keystore:backup": "node scripts/play-keystore.cjs backup",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

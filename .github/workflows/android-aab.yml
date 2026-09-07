@@ -1,0 +1,40 @@
+# Play 업로드용 AAB. 저장소에 키스토어를 넣지 않고 GitHub Secrets만 사용한다.
+# Secrets:
+#   ANDROID_KEYSTORE_BASE64
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS          (기본값 upload)
+#   ANDROID_KEY_PASSWORD       (없으면 PASSWORD와 동일)
+name: Android AAB
+on:
+  workflow_dispatch:
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Restore Play upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: node scripts/play-keystore.cjs restore
+      - name: Install and bundle
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/mobile/credentials/android/upload-keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          npm ci
+          npm run build:aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onandon-aab
+          path: |
+            mobile/dist/android/onandon-*.aab
+            mobile/dist/android/app-release.aab
+          if-no-files-found: error

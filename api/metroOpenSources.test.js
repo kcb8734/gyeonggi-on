@@ -58,3 +58,40 @@ test('generic municipal rows map Korean festival fields', () => {
   assert.equal(items[0].metro, 'BUSAN');
   assert.ok(items[0].contentId);
 });
+
+test('builtin Busan/Gyeongnam/Ulsan/Sejong slots use NTS_SERVICE_KEY', () => {
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  const prevData = process.env.DATA_GO_KR_SERVICE_KEY;
+  process.env.NTS_SERVICE_KEY = 'test-shared-key';
+  process.env.DATA_GO_KR_SERVICE_KEY = '';
+  const catalog = catalogOpenSources();
+  for (const metro of ['BUSAN', 'GYEONGNAM', 'ULSAN', 'SEJONG']) {
+    const row = catalog.muniMetros.find((item) => item.metro === metro);
+    assert.equal(row?.collectable, true, metro);
+    assert.equal(row?.envHint, 'NTS_SERVICE_KEY');
+  }
+  assert.equal(catalog.muniMetros.find((item) => item.metro === 'DAEGU')?.collectable, false);
+  process.env.NTS_SERVICE_KEY = prevNts;
+  process.env.DATA_GO_KR_SERVICE_KEY = prevData;
+});
+
+test('Jeju nolda slot is collectable without a service key', () => {
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  const prevData = process.env.DATA_GO_KR_SERVICE_KEY;
+  const prevUrl = process.env.JEJU_CULTURE_API_URL;
+  const prevKey = process.env.JEJU_CULTURE_API_KEY;
+  process.env.NTS_SERVICE_KEY = '';
+  process.env.DATA_GO_KR_SERVICE_KEY = '';
+  process.env.JEJU_CULTURE_API_URL = '';
+  process.env.JEJU_CULTURE_API_KEY = '';
+  const catalog = catalogOpenSources();
+  const jeju = catalog.muniMetros.find((item) => item.metro === 'JEJU');
+  assert.equal(jeju?.collectable, true);
+  assert.equal(jeju?.envHint, '인증 없음');
+  assert.match(String(jeju?.description), /jejunolda/);
+  assert.equal(catalog.muniMetros.find((item) => item.metro === 'BUSAN')?.collectable, false);
+  process.env.NTS_SERVICE_KEY = prevNts;
+  process.env.DATA_GO_KR_SERVICE_KEY = prevData;
+  process.env.JEJU_CULTURE_API_URL = prevUrl;
+  process.env.JEJU_CULTURE_API_KEY = prevKey;
+});

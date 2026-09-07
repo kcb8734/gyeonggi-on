@@ -34,3 +34,7 @@ lerna-debug.log*
 .vercel
 /app-release.aab
 *.aab
+*.jks
+*.p12
+upload-keystore.jks
+upload_certificate.pem

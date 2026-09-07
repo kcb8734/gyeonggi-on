@@ -1,0 +1,233 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  openApiFault,
+  parseMunicipalPayload,
+  rowsToFestivals,
+  syncMunicipalCultureEvents,
+  xmlRows,
+} from './metroCultureGeneric.js';
+import { expandMunicipalOperationUrl, hintMetroFromSource, municipalCultureUrls } from './metroCultureDefaults.js';
+
+const ULSAN_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rfcOpenApi><header><resultCode>00</resultCode><resultMsg>success</resultMsg></header>
+<body><totalCount>1</totalCount><data>
+<list>
+  <unqId>14</unqId>
+  <dvsn1Nm>축제</dvsn1Nm>
+  <title><![CDATA[간절곶 해맞이 축제]]></title>
+  <roadNmAddr><![CDATA[울산광역시 울주군 서생면 간절곶1길 39-2]]></roadNmAddr>
+  <rprsTelno>052-204-0315</rprsTelno>
+  <lot>129.360441</lot>
+  <lat>35.3589245</lat>
+  <cn><![CDATA[한반도에서 가장 먼저 해가 뜨는 곳]]></cn>
+  <fstvlBgngYmd>2025-12-31</fstvlBgngYmd>
+  <fstvlEndYmd>2026-01-01</fstvlEndYmd>
+  <plc><![CDATA[울주군 서생면 간절곶 공원 일원]]></plc>
+</list>
+</data></body></rfcOpenApi>`;
+
+const SEJONG_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss><header><resultCode><![CDATA[00]]></resultCode><resultMsg><![CDATA[NORMAL SERVICE]]></resultMsg></header>
+<body><items><item>
+  <nm><![CDATA[세종축제]]></nm>
+  <place><![CDATA[세종호수공원]]></place>
+  <bgngYmd><![CDATA[2022-10-07]]></bgngYmd>
+  <endYmd><![CDATA[2022-10-10]]></endYmd>
+  <cn><![CDATA[세종대왕의 업적과 정신]]></cn>
+  <roadNmAddr><![CDATA[세종특별자치시 세종 호수공원길 155]]></roadNmAddr>
+  <la><![CDATA[36.4985667000]]></la>
+  <lo><![CDATA[127.2715118000]]></lo>
+</item></items></body></rss>`;
+
+const GYEONGNAM_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<body><items><item>
+  <entid>41240187</entid>
+  <title>초계향교 추기석전대제 봉행</title>
+  <contents>춘기석전대제 봉행</contents>
+  <start_date>2020-02-24</start_date>
+  <end_date>2020-02-24</end_date>
+  <place>초계향교 대성전</place>
+  <tel>055-930-3173</tel>
+  <sigungu>합천군</sigungu>
+</item></items></body>`;
+
+const BUSAN_THEME_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<body><items><item>
+  <res_no>2020020019</res_no>
+  <title>디에이드 전국투어콘서트 [부산]</title>
+  <op_st_dt>2020-03-01</op_st_dt>
+  <op_ed_dt>2020-03-01</op_ed_dt>
+  <place_nm>부산시민회관</place_nm>
+</item></items></body>`;
+
+const BUSAN_FESTIVAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<response><header><resultCode>00</resultCode><resultMsg>NORMAL_CODE</resultMsg></header>
+<body><items><item>
+  <MAIN_TITLE>부산바다축제(한,영, 중간,중번,일)</MAIN_TITLE>
+  <TITLE>부산하면 여름, 여름하면 부산바다축제!</TITLE>
+  <UC_SEQ>71</UC_SEQ>
+  <LAT>35.151604</LAT>
+  <LNG>129.11713</LNG>
+  <MAIN_PLACE>다대포 해수욕장 일원</MAIN_PLACE>
+  <GUGUN_NM>수영구</GUGUN_NM>
+  <CNTCT_TEL>051-713-5000</CNTCT_TEL>
+  <MAIN_IMG_NORMAL>https://www.visitbusan.net/uploadImgs/files/cntnts/20191213191711585_ttiel</MAIN_IMG_NORMAL>
+  <USAGE_DAY_WEEK_AND_TIME>2025. 8. 1. ~ 8. 3.</USAGE_DAY_WEEK_AND_TIME>
+  <ITEMCNTNTS>부산의 대표 여름축제</ITEMCNTNTS>
+</item></items></body></response>`;
+
+test('hintMetroFromSource maps the municipal sources', () => {
+  assert.equal(hintMetroFromSource('busan'), 'BUSAN');
+  assert.equal(hintMetroFromSource('festivalservice'), 'BUSAN');
+  assert.equal(hintMetroFromSource('gyeongnam'), 'GYEONGNAM');
+  assert.equal(hintMetroFromSource('ulsan'), 'ULSAN');
+  assert.equal(hintMetroFromSource('sejong'), 'SEJONG');
+  assert.equal(hintMetroFromSource('jeju'), 'JEJU');
+  assert.equal(hintMetroFromSource('jejunolda'), 'JEJU');
+});
+
+test('xmlRows reads item and list records', () => {
+  assert.equal(xmlRows(ULSAN_XML)[0].title, '간절곶 해맞이 축제');
+  assert.equal(xmlRows(SEJONG_XML)[0].nm, '세종축제');
+  assert.equal(xmlRows(GYEONGNAM_XML)[0].entid, '41240187');
+});
+
+test('openApiFault detects retired Busan BsArtService', () => {
+  const xml = '<cmmMsgHeader><errMsg>NO_OPENAPI_SERVICE_ERROR</errMsg><returnAuthMsg>해당 오픈API 서비스가 없거나 폐기됨</returnAuthMsg><returnReasonCode>12</returnReasonCode></cmmMsgHeader>';
+  const fault = openApiFault(xml);
+  assert.equal(fault.code, '12');
+  assert.match(fault.message, /폐기/);
+});
+
+test('rowsToFestivals maps Ulsan, Sejong, Gyeongnam and Busan fields', () => {
+  const ulsan = rowsToFestivals(parseMunicipalPayload(ULSAN_XML).rows, 'ULSAN')[0];
+  assert.equal(ulsan.title, '간절곶 해맞이 축제');
+  assert.equal(ulsan.eventStartDate, '2025-12-31');
+  assert.equal(ulsan.contentId, '14');
+  assert.equal(ulsan.metro, 'ULSAN');
+  assert.match(ulsan.address, /울산/);
+
+  const sejong = rowsToFestivals(parseMunicipalPayload(SEJONG_XML).rows, 'SEJONG')[0];
+  assert.equal(sejong.title, '세종축제');
+  assert.equal(sejong.eventStartDate, '2022-10-07');
+  assert.equal(sejong.eventEndDate, '2022-10-10');
+  assert.ok(sejong.mapY > 36);
+
+  const gyeongnam = rowsToFestivals(parseMunicipalPayload(GYEONGNAM_XML).rows, 'GYEONGNAM')[0];
+  assert.equal(gyeongnam.title, '초계향교 추기석전대제 봉행');
+  assert.equal(gyeongnam.contentId, '41240187');
+  assert.match(gyeongnam.address, /경상남도|합천/);
+
+  const busanTheme = rowsToFestivals(parseMunicipalPayload(BUSAN_THEME_XML).rows, 'BUSAN')[0];
+  assert.equal(busanTheme.title, '디에이드 전국투어콘서트 [부산]');
+  assert.equal(busanTheme.eventStartDate, '2020-03-01');
+  assert.equal(busanTheme.contentId, '2020020019');
+
+  const busan = rowsToFestivals(parseMunicipalPayload(BUSAN_FESTIVAL_XML).rows, 'BUSAN')[0];
+  assert.equal(busan.title, '부산바다축제');
+  assert.equal(busan.eventStartDate, '2025-08-01');
+  assert.equal(busan.eventEndDate, '2025-08-03');
+  assert.equal(busan.contentId, '71');
+  assert.match(busan.address, /다대포|부산/);
+  assert.ok(busan.firstImage.includes('visitbusan.net'));
+});
+
+test('syncMunicipalCultureEvents uses FestivalService/getFestivalKr', async () => {
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  process.env.NTS_SERVICE_KEY = 'test-shared-key';
+  const urls = [];
+  const result = await syncMunicipalCultureEvents('BUSAN', {
+    pageSize: 10,
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      return { ok: true, status: 200, text: async () => BUSAN_FESTIVAL_XML };
+    },
+  });
+  assert.equal(result.success, true);
+  assert.equal(result.fetched, 1);
+  assert.equal(result.metro, 'BUSAN');
+  assert.ok(urls.every((url) => url.includes('FestivalService/getFestivalKr')));
+  process.env.NTS_SERVICE_KEY = prevNts;
+});
+
+test('municipalCultureUrls expands FestivalService to getFestivalKr', () => {
+  assert.equal(
+    expandMunicipalOperationUrl('https://apis.data.go.kr/6260000/FestivalService'),
+    'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr',
+  );
+  assert.equal(municipalCultureUrls('BUSAN')[0], 'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr');
+  assert.equal(
+    municipalCultureUrls('BUSAN', 'https://apis.data.go.kr/6260000/FestivalService')[0],
+    'https://apis.data.go.kr/6260000/FestivalService/getFestivalKr',
+  );
+});
+
+const JEJU_JSON = JSON.stringify({
+  resultCode: '00',
+  resultMsg: 'success',
+  message: null,
+  query: { page: 1, pageSize: 10, rows: 1, pages: 1 },
+  items: [{
+    seq: 7050,
+    name: '오늘 - 이경진전',
+    tel: '064-755-0006',
+    category: '001',
+    categoryName: '전시회',
+    payName: '무료',
+    locName: '실내',
+    start: 1622473200000,
+    end: 1624978800000,
+    time: '7:00 ~ 22:00',
+    addr1: '제주특별자치도 제주시 연삼로 316',
+    addr2: '2층',
+    location: '델문도 뮤지엄',
+    intro: '<p>행사 소개를 입력하세요...</p>',
+    cover: '82194f4f-d95f-4fb6-8903-5a502e2714dd_t.jpg',
+    x: 126.5312,
+    y: 33.4996,
+  }],
+});
+
+test('Jeju nolda JSON maps items, KST timestamps and cover URL', () => {
+  const parsed = parseMunicipalPayload(`\n\n${JEJU_JSON}`);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.rows[0].name, '오늘 - 이경진전');
+  const jeju = rowsToFestivals(parsed.rows, 'JEJU')[0];
+  assert.equal(jeju.title, '오늘 - 이경진전');
+  assert.equal(jeju.contentId, '7050');
+  assert.equal(jeju.eventStartDate, '2021-06-01');
+  assert.equal(jeju.eventEndDate, '2021-06-30');
+  assert.equal(jeju.category, '전시회');
+  assert.equal(jeju.location_name, '델문도 뮤지엄');
+  assert.match(jeju.address, /연삼로 316/);
+  assert.match(jeju.address, /2층/);
+  assert.equal(jeju.firstImage, 'https://www.jejunolda.com/files/event/82194f4f-d95f-4fb6-8903-5a502e2714dd_t.jpg');
+  assert.equal(jeju.overview, '행사 소개를 입력하세요...');
+  assert.equal(jeju.metro, 'JEJU');
+  assert.ok(jeju.mapY > 33);
+});
+
+test('millisecond timestamps are not sliced as YYYYMMDD', () => {
+  const row = rowsToFestivals([{ name: 'JAZZ IN JEJU 2026', start: 1789398000000, end: 1789398000000, seq: 16845 }], 'JEJU')[0];
+  assert.equal(row.eventStartDate, '2026-09-15');
+  assert.notEqual(row.eventStartDate, '1789-39-80');
+});
+
+test('syncMunicipalCultureEvents fetches Jeju without a service key', async () => {
+  const urls = [];
+  const result = await syncMunicipalCultureEvents('JEJU', {
+    pageSize: 40,
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      return { ok: true, status: 200, text: async () => JEJU_JSON };
+    },
+  });
+  assert.equal(result.success, true);
+  assert.equal(result.fetched, 1);
+  assert.equal(result.metro, 'JEJU');
+  assert.ok(urls[0].includes('jejunolda.com/api/event'));
+  assert.ok(urls[0].includes('page=1'));
+  assert.ok(urls[0].includes('pageSize=40'));
+  assert.equal(urls[0].includes('serviceKey'), false);
+});

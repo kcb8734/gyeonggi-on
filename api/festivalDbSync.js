@@ -56,6 +56,10 @@ export function listedMetroForRow(row, fallback = 'GYEONGGI') {
   const hay = `${row && row.location_name || ''} ${row && row.municipality_name || ''} ${row && row.title || ''} ${row && row.description || ''}`;
   if (source === 'seoul') return 'SEOUL';
   if (source === 'ggc') return 'GYEONGGI';
+  if (source === 'muni' && row && (row.metro || row.metro_region || row.regionalZone)) {
+    const zone = String(row.metro || row.metro_region || row.regionalZone || '').toUpperCase();
+    if (zone && zone !== 'ALL' && zone !== 'TOUR' && zone !== 'MUNI') return zone;
+  }
   if (source === 'ifac' || source === 'incheon') {
     if (hay.includes('서울')) return 'SEOUL';
     if (hay.includes('경기')) return 'GYEONGGI';
