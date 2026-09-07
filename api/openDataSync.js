@@ -5,6 +5,7 @@ import { syncSeoulCultureEvents } from './seoulCultureSync.js';
 import { syncTourMetroEvents } from './metroTourSync.js';
 import { syncMunicipalCultureEvents } from './metroCultureGeneric.js';
 import { syncOpenCultureEvents } from './cultureOpenSync.js';
+import { syncKfesCalendar } from './kfesCalendarSync.js';
 import { BUILTIN_MUNI_METROS, hintMetroFromSource } from './metroCultureDefaults.js';
 import {
   listFestivalCategoryCounts,
@@ -38,6 +39,9 @@ export async function dispatchOpenDataSync(query = {}) {
   }
   if (hint === 'ifac' || hint === 'incheon') {
     return syncIfacCultureEvents({ pageSize: 80, maxPages: 1 });
+  }
+  if (hint === 'kfes' || hint === 'visitkorea' || hint === 'calendar' || hint === 'festivalcalendar' || hint.includes('구석구석')) {
+    return syncKfesCalendar(query);
   }
   const builtinMetro = hintMetroFromSource(hint);
   if (builtinMetro) return syncMunicipalCultureEvents(builtinMetro, { pageSize: 40 });

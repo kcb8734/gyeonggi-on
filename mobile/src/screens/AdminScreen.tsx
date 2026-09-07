@@ -186,6 +186,7 @@ function fallbackOpenSources() {
     { id: 'seoul', kind: 'muni', metro: 'SEOUL', label: '서울시 문화행사', targetApi: 'culturalEventInfo', description: 'openapi.seoul.go.kr', envHint: 'SEOUL_CULTURE_API_KEY', collectable: true, count: 0, lastStatus: '대기', syncQuery: { source: 'seoul' } },
     { id: 'ggc', kind: 'muni', metro: 'GYEONGGI', label: '경기도 문화행사', targetApi: 'GGCULTUREVENTSTUS', description: 'openapi.gg.go.kr', envHint: 'GG_CULTURE_API_KEY', collectable: true, count: 0, lastStatus: '대기', syncQuery: { source: 'ggc' } },
     { id: 'ifac', kind: 'muni', metro: 'INCHEON', label: '인천문화재단 문화예술행사', targetApi: 'ifac-culture', description: 'ifac.or.kr svid=culture', envHint: 'INCHEON_API_KEY', collectable: false, count: 0, lastStatus: '키없음', syncQuery: { source: 'ifac' } },
+    { id: 'kfes', kind: 'national', metro: 'ALL', label: '대한민국 구석구석 월별 축제', targetApi: 'festivalCalendarList', description: 'korean.visitkorea.or.kr kfes 축제캘린더', envHint: '인증 없음', collectable: true, count: 0, lastStatus: '대기', syncQuery: { source: 'kfes' } },
   ];
   const tourMetros: OpenSourceRow[] = METRO_REGIONS.map((region) => ({
     id: `tour-${region.id}`,
@@ -668,7 +669,7 @@ export default function AdminScreen() {
             <OpenSourceActions onAllCulture={handleSync} busy={syncBusy === 'culture'} />
           </View>
           <OpenSourceList
-            title="TourAPI 4.0 · 서울시 · 경기도 · 인천"
+            title="TourAPI 4.0 · 서울시 · 경기도 · 인천 · 구석구석"
             hint="국가·광역 공공 API 수집 현황입니다. 각 행에서 바로 수집할 수 있습니다."
             rows={(tour.sources?.national?.length ? tour.sources.national : fallbackOpenSources().national)}
             busyId={syncBusy}

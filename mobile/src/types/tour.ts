@@ -19,7 +19,7 @@ export interface TourFestival {
   fee?: string;
   eventPlace?: string;
   areaCode?: string;
-  source?: 'tour' | 'fallback' | 'sample';
+  source?: 'tour' | 'fallback' | 'sample' | 'kfes';
 }
 
 export interface TourPlace {
@@ -49,6 +49,8 @@ export interface TourDetail {
   address: string;
   tel?: string;
   homepage?: string;
+  organizer?: string;
+  source?: string;
   firstImage?: string;
   mapX: number;
   mapY: number;

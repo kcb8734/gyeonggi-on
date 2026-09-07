@@ -46,7 +46,7 @@ import {
   toHomeFestival,
   tourServiceKey,
 } from './tourLive.js';
-import { listFestivalCategoryCounts, listPersistedFestivals, listTourSyncLogs, mergeHomeFestivalRows, persistTourFestivals } from './festivalDbSync.js';
+import { listFestivalCategoryCounts, listPersistedFestivals, listTourSyncLogs, mergeHomeFestivalRows, persistTourFestivals, findPersistedFestivalByContentId, rowToTourDetail } from './festivalDbSync.js';
 import { syncOpenCultureEvents } from './cultureOpenSync.js';
 import { dispatchOpenDataSync, loadOpenSourceBoard } from './openDataSync.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
@@ -349,6 +349,8 @@ async function syncFestivalsLive(req, res) {
     || sourceHint === 'ulsan' || sourceHint === 'ulsanfestival'
     || sourceHint === 'sejong' || sourceHint === 'sjfestival'
     || sourceHint === 'jeju' || sourceHint === 'jejunolda' || sourceHint === 'jejuevent' || sourceHint === 'jeju-event'
+    || sourceHint === 'kfes' || sourceHint === 'visitkorea' || sourceHint === 'calendar' || sourceHint === 'festivalcalendar'
+    || sourceHint.includes('구석구석')
     || sourceHint === 'region' || sourceHint === 'metro-api' || sourceHint === 'metroapi';
   try {
     if (wantDispatch) {
@@ -493,10 +495,21 @@ async function getTourDetail(req, res, contentId) {
     return;
   }
   const query = readQuery(req);
+  const id = String(contentId || '').trim();
+  const persisted = await findPersistedFestivalByContentId(id).catch(() => null);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (isUuid && persisted) {
+    send(res, 200, { success: true, data: rowToTourDetail(persisted) }, headers);
+    return;
+  }
   try {
-    const detail = await getTourDetail2(contentId, query.contentTypeId);
+    const detail = await getTourDetail2(id, query.contentTypeId);
     send(res, 200, { success: true, data: detail }, headers);
   } catch (err) {
+    if (persisted) {
+      send(res, 200, { success: true, data: rowToTourDetail(persisted) }, headers);
+      return;
+    }
     send(res, 502, {
       success: false,
       message: err && err.message ? err.message : '관광 상세 조회에 실패했습니다.',
@@ -865,6 +878,25 @@ async function handler(req, res) {
         send(res, 500, {
           success: false,
           message: '제주 문화행사 데이터를 불러오는 중 오류가 발생했습니다.',
+          error: err && err.message ? err.message : String(err),
+        }, corsHeaders(req));
+      }
+      return;
+    }
+    if (/\/api\/events\/kfes/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        const collected = await dispatchOpenDataSync({ ...readQuery(req), source: 'kfes' });
+        send(res, 200, {
+          ...collected,
+          success: Boolean(collected.success),
+          count: Number(collected.fetched || collected.upserted || 0),
+          data: collected.festivals || collected.data || [],
+        }, corsHeaders(req));
+      } catch (err) {
+        send(res, 500, {
+          success: false,
+          message: '구석구석 축제 데이터를 불러오는 중 오류가 발생했습니다.',
           error: err && err.message ? err.message : String(err),
         }, corsHeaders(req));
       }

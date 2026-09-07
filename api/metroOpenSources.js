@@ -128,6 +128,18 @@ export function catalogOpenSources() {
       collectable: ifacKey,
       syncQuery: { source: 'ifac' },
     },
+    {
+      id: 'kfes',
+      kind: 'national',
+      metro: 'ALL',
+      label: '대한민국 구석구석 월별 축제',
+      targetApi: 'festivalCalendarList',
+      description: 'korean.visitkorea.or.kr kfes 축제캘린더 · 인증 없음',
+      envHint: '인증 없음',
+      keyConfigured: true,
+      collectable: true,
+      syncQuery: { source: 'kfes' },
+    },
   ];
 
   const tourMetros = METRO_IDS.map((metro) => ({
@@ -238,6 +250,7 @@ export function decorateOpenSources(catalog, stats = {}) {
     else if (row.id === 'ggc') count = bySource.ggc || 0;
     else if (row.id === 'ifac') count = bySource.ifac || 0;
     else if (row.id === 'tour') count = bySource.tour || 0;
+    else if (row.id === 'kfes') count = bySource.kfes || 0;
     else if (row.kind === 'tour-metro') count = byPair[`tour:${row.metro}`] || 0;
     else if (row.kind === 'muni-slot') count = byPair[`muni:${row.metro}`] || 0;
     const log = latest[row.id] || latest[row.targetApi];
@@ -270,6 +283,7 @@ export function matchLogToSource(targetApi, sourceIdHint) {
   if (/culturalEventInfo/i.test(api)) return 'seoul';
   if (/GGCULTURE/i.test(api)) return 'ggc';
   if (/ifac/i.test(api)) return 'ifac';
+  if (/festivalCalendar/i.test(api) || /kfes/i.test(api)) return 'kfes';
   const cultureMetro = METRO_IDS.find((id) => new RegExp(`^${id}_CULTURE$`, 'i').test(api));
   if (cultureMetro) return `muni-${cultureMetro}`;
   const tourMetro = METRO_IDS.find((id) => new RegExp(`searchFestival2:${id}$`, 'i').test(api));
