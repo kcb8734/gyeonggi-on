@@ -65,6 +65,9 @@ export function listedMetroForRow(row, fallback = 'GYEONGGI') {
     if (hay.includes('경기')) return 'GYEONGGI';
     return 'INCHEON';
   }
+  if (source === 'kfes' || source === 'visitkorea') {
+    return inferMetro(hay, row && (row.metro_region || row.metro || row.regionalZone));
+  }
   return inferMetro(hay, row && (row.metro_region || row.metro || row.regionalZone || fallback));
 }
 
@@ -118,6 +121,32 @@ export function municipalityRegionCode(name, metro) {
 export function clipFestivalTel(value) {
   const text = String(value || '').trim();
   return text ? text.slice(0, 50) : null;
+}
+
+export function formatFestivalExtras(overview, extras = {}) {
+  const lines = [];
+  if (extras.fee) lines.push(`이용요금: ${extras.fee}`);
+  if (extras.organizer) lines.push(`주최·주관: ${extras.organizer}`);
+  if (extras.homepage) lines.push(`홈페이지: ${extras.homepage}`);
+  if (extras.period) lines.push(`개최기간: ${extras.period}`);
+  const body = String(overview || '').trim();
+  if (!lines.length) return body || null;
+  return [body, '[온앤온+ 수집]', ...lines].filter(Boolean).join('\n').trim();
+}
+
+export function parseFestivalExtras(description) {
+  const text = String(description || '');
+  const pick = (label) => {
+    const match = text.match(new RegExp(`${label}:\\s*(.+)`));
+    return match ? match[1].trim() : '';
+  };
+  return {
+    overview: text.replace(/\n*\[온앤온\+ 수집\][\s\S]*$/, '').trim(),
+    fee: pick('이용요금'),
+    organizer: pick('주최·주관'),
+    homepage: pick('홈페이지'),
+    period: pick('개최기간'),
+  };
 }
 
 function loadPg() {
@@ -206,10 +235,11 @@ export async function persistTourFestivals(items, options = {}) {
       message: 'DATABASE_URL이 없어 실시간 TourAPI 목록만 반환합니다.',
     };
   }
-  const client = await db.connect();
+  let client = null;
   let upserted = 0;
   let skipped = 0;
   try {
+    client = await db.connect();
     await client.query('BEGIN');
     for (const item of rows) {
       const itemSource = String(item && item.source || source || 'tour').toLowerCase();
@@ -289,7 +319,7 @@ export async function persistTourFestivals(items, options = {}) {
       message: err && err.message ? err.message : 'DB 동기화에 실패했습니다.',
     };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -318,6 +348,57 @@ export function rowToHomeFestival(row, metro = 'GYEONGGI') {
     regionalZone: zone,
     metro: zone,
   };
+}
+
+export function rowToTourDetail(row) {
+  if (!row) return null;
+  const extras = parseFestivalExtras(row.description);
+  const image = row.image_url || '';
+  return {
+    contentId: String(row.tour_content_id || row.contentId || ''),
+    contentTypeId: '15',
+    title: row.title || '축제 상세',
+    overview: extras.overview || row.description || '',
+    address: row.location_name || '주소 확인 중',
+    tel: row.tel || undefined,
+    homepage: extras.homepage || undefined,
+    organizer: extras.organizer || undefined,
+    firstImage: image || undefined,
+    mapX: Number(row.longitude) || 0,
+    mapY: Number(row.latitude) || 0,
+    eventStartDate: festivalDateYmd(row.start_date) || undefined,
+    eventEndDate: festivalDateYmd(row.end_date) || undefined,
+    eventPlace: extras.period || undefined,
+    fee: extras.fee || undefined,
+    images: image ? [{ originUrl: image }] : [],
+    category: row.category || '문화/예술',
+    source: row.source || undefined,
+  };
+}
+
+export async function findPersistedFestivalByContentId(contentId) {
+  const db = getPool();
+  const id = String(contentId || '').trim();
+  if (!db || !id) return null;
+  try {
+    const result = await db.query(
+      `SELECT
+         f.title, f.location_name, f.latitude, f.longitude,
+         f.start_date, f.end_date, f.description, f.category, f.image_url,
+         f.tour_content_id, f.tel, f.source,
+         mu.name AS municipality_name,
+         mu.metro_region
+       FROM festivals f
+       LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       WHERE f.tour_content_id = $1
+       LIMIT 1`,
+      [id.slice(0, 40)],
+    );
+    return (result.rows && result.rows[0]) || null;
+  } catch (err) {
+    console.error('[festival-by-id]', err && err.message ? err.message : err);
+    return null;
+  }
 }
 
 const LIST_SQL_WITH_METRO = `SELECT

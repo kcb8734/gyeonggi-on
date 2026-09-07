@@ -28,6 +28,16 @@ const EMPTY_COPY = {
   tel: '전화번호 정보 없음',
 };
 
+function detailSourceLabel(detail?: TourDetail | null) {
+  const source = String(detail?.source || '').toLowerCase();
+  if (source === 'kfes' || source === 'visitkorea') return '대한민국 구석구석 축제캘린더';
+  if (source === 'seoul') return '서울시 문화행사';
+  if (source === 'ggc' || source === 'gg') return '경기도 문화행사';
+  if (source === 'ifac' || source === 'incheon') return '인천문화재단 문화예술행사';
+  if (source === 'muni') return '지자체 문화 OpenAPI';
+  return '한국관광공사 TourAPI 4.0';
+}
+
 function directionsUrl(lat: number, lng: number, title: string) {
   const query = encodeURIComponent(`${lat},${lng}(${title})`);
   if (Platform.OS === 'ios') return `maps://?daddr=${lat},${lng}&q=${encodeURIComponent(title)}`;
@@ -208,7 +218,7 @@ export default function FestivalDetailScreen({
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.source}>한국관광공사 TourAPI 4.0</Text>
+        <Text style={styles.source}>{detailSourceLabel(detail)}</Text>
         {detail.category ? <Text style={styles.tag}>{detail.category}</Text> : null}
         <Text style={styles.title}>{detail.title || '상세 정보'}</Text>
         {isRestaurant ? null : (
@@ -272,6 +282,13 @@ export default function FestivalDetailScreen({
           ) : null}
         </View>
 
+        {detail.organizer ? (
+          <View style={styles.card}>
+            <Text style={styles.label}>주최·주관</Text>
+            <Text style={styles.value}>{detail.organizer}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.card}>
           <Text style={styles.label}>전화번호</Text>
           <Text style={styles.value}>{telLabel}</Text>
@@ -282,6 +299,11 @@ export default function FestivalDetailScreen({
           ) : (
             <Text style={[styles.value, { marginTop: 8, color: '#6B7280' }]}>연결 가능한 번호가 없습니다</Text>
           )}
+          {detail.homepage ? (
+            <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(detail.homepage as string)}>
+              <Text style={styles.callText}>공식 홈페이지</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {hasMap ? (

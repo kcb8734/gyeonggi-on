@@ -3,14 +3,17 @@ import { test } from 'node:test';
 import { catalogOpenSources, decorateOpenSources, matchLogToSource, metroApiRows } from './metroOpenSources.js';
 import { rowsToFestivals } from './metroCultureGeneric.js';
 
-test('catalog includes TourAPI, Seoul, Gyeonggi, Incheon and 17 tour metros plus 14 muni slots', () => {
+test('catalog includes TourAPI, Seoul, Gyeonggi, Incheon, kfes and 17 tour metros plus 14 muni slots', () => {
   const catalog = catalogOpenSources();
-  assert.equal(catalog.national.length, 4);
+  assert.equal(catalog.national.length, 5);
   assert.equal(catalog.national[0].id, 'tour');
   assert.equal(catalog.national[1].id, 'seoul');
   assert.equal(catalog.national[2].id, 'ggc');
   assert.equal(catalog.national[3].id, 'ifac');
   assert.equal(catalog.national[3].syncQuery.source, 'ifac');
+  assert.equal(catalog.national[4].id, 'kfes');
+  assert.equal(catalog.national[4].syncQuery.source, 'kfes');
+  assert.equal(catalog.national[4].collectable, true);
   assert.equal(catalog.tourMetros.length, 17);
   assert.equal(catalog.muniMetros.length, 14);
   assert.ok(catalog.tourMetros.every((row) => row.syncQuery.source === 'tour' && row.syncQuery.metro));
@@ -45,6 +48,7 @@ test('decorateOpenSources maps DB counts onto national and metro rows', () => {
   assert.equal(matchLogToSource('culturalEventInfo'), 'seoul');
   assert.equal(matchLogToSource('searchFestival2:BUSAN'), 'tour-BUSAN');
   assert.equal(matchLogToSource('ifac-culture'), 'ifac');
+  assert.equal(matchLogToSource('festivalCalendarList'), 'kfes');
   assert.equal(matchLogToSource('BUSAN_CULTURE'), 'muni-BUSAN');
 });
 

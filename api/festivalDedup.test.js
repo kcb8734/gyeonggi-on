@@ -42,6 +42,8 @@ test('sample rows are dropped and dissimilar titles are kept', () => {
   assert.equal(merged.some((row) => row.source === 'sample'), false);
   assert.equal(merged.length, 2);
   assert.equal(sourceRank('tour') < sourceRank('seoul'), true);
+  assert.equal(sourceRank('tour') < sourceRank('kfes'), true);
+  assert.equal(sourceRank('kfes') > sourceRank('muni'), true);
   assert.equal(isSimilarFestival(
     { title: '수원화성문화제', start_date: '2026-08-19', location_name: '수원' },
     { title: '이천쌀문화축제', start_date: '2026-10-22', location_name: '이천' },

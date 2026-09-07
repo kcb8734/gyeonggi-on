@@ -45,6 +45,7 @@ export function sourceRank(source) {
   if (value === 'ggc' || value === 'gg' || value === 'ggculture') return 2;
   if (value === 'ifac' || value === 'incheon' || value === 'ifac-culture') return 3;
   if (value === 'muni') return 4;
+  if (value === 'kfes' || value === 'visitkorea' || value === 'festivalcalendar') return 5;
   if (value === 'sample' || value === 'fallback') return 90;
   return 20;
 }

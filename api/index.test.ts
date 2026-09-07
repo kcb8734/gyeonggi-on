@@ -55,7 +55,7 @@ test('GET /api/admin/dashboard includes open data sources', async () => {
   const result = await invoke({ method: 'GET', url: '/api/admin/dashboard' });
   assert.equal(result.status, 200);
   const data = (result.body as { data?: { tour?: { sources?: { national?: unknown[]; tourMetros?: unknown[]; muniMetros?: Array<{ metro?: string; collectable?: boolean }>; metroApis?: Array<{ metro?: string; syncQuery?: { source?: string } }> } } } }).data;
-  assert.equal(data?.tour?.sources?.national?.length, 4);
+  assert.equal(data?.tour?.sources?.national?.length, 5);
   assert.equal(data?.tour?.sources?.tourMetros?.length, 17);
   assert.equal(data?.tour?.sources?.muniMetros?.length, 14);
   assert.equal(data?.tour?.sources?.muniMetros?.find((row) => row.metro === 'JEJU')?.collectable, true);
