@@ -54,11 +54,13 @@ test('GET /api/festivals returns JSON with seoul/ggc-ready festival list', async
 test('GET /api/admin/dashboard includes open data sources', async () => {
   const result = await invoke({ method: 'GET', url: '/api/admin/dashboard' });
   assert.equal(result.status, 200);
-  const data = (result.body as { data?: { tour?: { sources?: { national?: unknown[]; tourMetros?: unknown[]; muniMetros?: Array<{ metro?: string; collectable?: boolean }> } } } }).data;
+  const data = (result.body as { data?: { tour?: { sources?: { national?: unknown[]; tourMetros?: unknown[]; muniMetros?: Array<{ metro?: string; collectable?: boolean }>; metroApis?: Array<{ metro?: string; syncQuery?: { source?: string } }> } } } }).data;
   assert.equal(data?.tour?.sources?.national?.length, 4);
   assert.equal(data?.tour?.sources?.tourMetros?.length, 17);
   assert.equal(data?.tour?.sources?.muniMetros?.length, 14);
   assert.equal(data?.tour?.sources?.muniMetros?.find((row) => row.metro === 'JEJU')?.collectable, true);
+  assert.equal(data?.tour?.sources?.metroApis?.length, 17);
+  assert.equal(data?.tour?.sources?.metroApis?.find((row) => row.metro === 'JEJU')?.syncQuery?.source, 'region');
 });
 
 test('POST /api/festivals/sync?source=muni&metro=BUSAN tells how to enable the slot', async () => {
@@ -97,6 +99,16 @@ test('POST /api/festivals/sync?source=ifac asks for INCHEON_API_KEY when unset',
   process.env.INCHEON_API_KEY = prev;
   process.env.IFAC_API_KEY = prevIfac;
   process.env.INCHEON_CULTURE_API_KEY = prevCulture;
+});
+
+test('POST /api/festivals/sync?source=region&metro=DAEGU immediately dispatches that metro', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/festivals/sync?source=region&metro=DAEGU' });
+  assert.equal(result.status, 200);
+  const body = result.body as { source?: string; metro?: string; message?: string; fetched?: number };
+  assert.equal(body.source, 'region');
+  assert.equal(body.metro, 'DAEGU');
+  assert.equal(typeof body.message, 'string');
+  assert.equal(typeof body.fetched, 'number');
 });
 
 test('POST /api/festivals/sync returns a sync payload', async () => {

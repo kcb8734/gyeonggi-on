@@ -10,7 +10,7 @@ import {
   WeightSlider,
 } from '../components/admin/AdminWidgets';
 import AdminCenterPanel from '../components/admin/AdminCenterPanel';
-import { OpenSourceActions, OpenSourceList, type OpenSourceRow } from '../components/admin/AdminOpenSources';
+import { MetroApiList, OpenSourceActions, OpenSourceList, metroApisFromSources, type OpenSourceRow } from '../components/admin/AdminOpenSources';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload, adminExcelCsv } from '../utils/csvDownload';
 import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
@@ -354,20 +354,37 @@ export default function AdminScreen() {
     const fetched = Number(data?.fetched ?? data?.upserted ?? 0);
     const upserted = Number(data?.upserted ?? fetched);
     const source = cleanSource(data?.sourceLabel || data?.source) || '서울시·경기도·인천 문화행사 OpenAPI';
-    if (categories.length || upserted > 0 || fetched > 0) {
-      setFestivalCount(upserted || fetched);
-      setFestivalSource(source);
-      setDashboard((current: any) => ({
+    const metro = String(data?.metro || '').toUpperCase();
+    setDashboard((current: any) => {
+      const tour = current?.tour ?? FALLBACK_DASHBOARD.tour;
+      const sources = tour.sources || fallbackOpenSources();
+      const metroApis = metroApisFromSources(sources).map((row: OpenSourceRow) => {
+        if (metro && row.metro !== metro && row.id !== `region-${metro}`) return row;
+        if (!metro) return row;
+        const kids = Array.isArray(data?.sources) ? data.sources : [];
+        const tourHit = kids.find((item: any) => String(item?.source || '') === 'tour');
+        const muniHit = kids.find((item: any) => String(item?.source || '') && String(item?.source || '') !== 'tour');
+        return {
+          ...row,
+          lastSync: new Date().toISOString(),
+          lastStatus: data?.success === false ? '실패' : (fetched > 0 ? '정상' : (data?.success ? '정상' : row.lastStatus)),
+          count: upserted || fetched || row.count,
+          tourCount: tourHit ? Number(tourHit.upserted ?? tourHit.fetched ?? row.tourCount) : row.tourCount,
+          muniCount: muniHit ? Number(muniHit.upserted ?? muniHit.fetched ?? row.muniCount) : row.muniCount,
+        };
+      });
+      return {
         ...(current ?? FALLBACK_DASHBOARD),
         kpi: {
           ...(current?.kpi ?? FALLBACK_DASHBOARD.kpi),
           festivals: upserted || fetched || current?.kpi?.festivals,
         },
         tour: {
-          ...(current?.tour ?? FALLBACK_DASHBOARD.tour),
+          ...tour,
           source,
           lastSync: new Date().toISOString(),
-          categories: categories.length ? categories : (current?.tour?.categories ?? FALLBACK_DASHBOARD.tour.categories),
+          categories: categories.length ? categories : (tour.categories ?? FALLBACK_DASHBOARD.tour.categories),
+          sources: { ...sources, metroApis },
           logs: [
             {
               ran_at: new Date().toISOString(),
@@ -376,10 +393,14 @@ export default function AdminScreen() {
               failed: Number(data?.failed || 0),
               status: data?.success === false ? '실패' : '정상',
             },
-            ...((current?.tour?.logs ?? []) as any[]),
+            ...((tour.logs ?? []) as any[]),
           ].slice(0, 8),
         },
-      }));
+      };
+    });
+    if (categories.length || upserted > 0 || fetched > 0) {
+      setFestivalCount(upserted || fetched);
+      setFestivalSource(source);
     }
   };
 
@@ -412,20 +433,28 @@ export default function AdminScreen() {
     const query = row.syncQuery || { source: row.id };
     const params = new URLSearchParams(query).toString();
     setSyncBusy(row.id);
-    setSyncMessage(`${row.label} 수집을 요청하는 중입니다...`);
+    setSyncMessage(`${row.label} 수집을 시작합니다...`);
     const endpoint = `${API_BASE_URL ? `${API_BASE_URL}/api/festivals/sync` : '/api/festivals/sync'}?${params}`;
     try {
-      const res = await fetch(endpoint, { method: 'POST', signal: AbortSignal.timeout(20000) });
+      const res = await fetch(endpoint, { method: 'POST', signal: AbortSignal.timeout(28000) });
       const text = await res.text();
       let data: any = null;
       try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-      setSyncMessage(data?.message || `${row.label} 수집 요청을 보냈습니다.`);
-      if (data) applySyncResult(data);
+      if (!data) {
+        setSyncMessage(`${row.label} 응답을 읽지 못했습니다. 잠시 후 다시 눌러 주세요.`);
+        return;
+      }
+      if (!data.metro && row.metro) data.metro = row.metro;
+      setSyncMessage(data.message || `${row.label} 수집을 마쳤습니다.`);
+      applySyncResult(data);
       await loadFestivals();
       await loadDashboard();
-      if (data) applySyncResult(data);
-    } catch {
-      setSyncMessage(`${row.label} 서버에 연결하지 못했습니다. 환경변수(${row.envHint})를 확인하세요.`);
+      applySyncResult(data);
+    } catch (err) {
+      const timedOut = String((err as Error)?.name || '').includes('Timeout') || String((err as Error)?.message || '').includes('Timeout');
+      setSyncMessage(timedOut
+        ? `${row.label} 수집 시간이 초과되었습니다. 다시 눌러 이어서 수집하세요.`
+        : `${row.label} 서버에 연결하지 못했습니다. 환경변수(${row.envHint || 'TOUR_API_SERVICE_KEY'})를 확인하세요.`);
     } finally {
       setSyncBusy('');
     }
@@ -644,20 +673,22 @@ export default function AdminScreen() {
             rows={(tour.sources?.national?.length ? tour.sources.national : fallbackOpenSources().national)}
             busyId={syncBusy}
             onCollect={handleSourceSync}
+            showChecks
           />
-          <OpenSourceList
-            title="17개 광역 TourAPI 권역 수집"
-            hint="한국관광공사 searchFestival2를 권역 areaCode로 나눠 수집합니다."
-            rows={(tour.sources?.tourMetros?.length ? tour.sources.tourMetros : fallbackOpenSources().tourMetros)}
+          <MetroApiList
+            title="17개 광역API 권역 수집"
+            hint="권역마다 TourAPI와 지자체 문화 API 연동 여부를 체크합니다. 수집을 누르면 연동된 API를 즉시 가져옵니다."
+            rows={metroApisFromSources(tour.sources?.national ? tour.sources : fallbackOpenSources())}
             busyId={syncBusy}
             onCollect={handleSourceSync}
           />
           <OpenSourceList
             title="나머지 14개 광역 지자체 OpenAPI"
-            hint="Vercel/서버에 {권역}_CULTURE_API_URL 과 {권역}_CULTURE_API_KEY 를 넣으면 해당 지자체 API 수집이 켜집니다. 서울·경기·인천은 전용 수집기를 씁니다."
+            hint="체크된 권역은 지금 수집할 수 있습니다. 빈 칸은 Vercel에 {권역}_CULTURE_API_URL 과 키를 넣으면 켜집니다. 서울·경기·인천은 전용 수집기를 씁니다."
             rows={(tour.sources?.muniMetros?.length ? tour.sources.muniMetros : fallbackOpenSources().muniMetros)}
             busyId={syncBusy}
             onCollect={handleSourceSync}
+            showChecks
           />
           <View style={styles.card}>
             <Text style={styles.cardTitle}>카테고리별 수집 현황</Text>

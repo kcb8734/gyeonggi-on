@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { catalogOpenSources, decorateOpenSources, matchLogToSource } from './metroOpenSources.js';
+import { catalogOpenSources, decorateOpenSources, matchLogToSource, metroApiRows } from './metroOpenSources.js';
 import { rowsToFestivals } from './metroCultureGeneric.js';
 
 test('catalog includes TourAPI, Seoul, Gyeonggi, Incheon and 17 tour metros plus 14 muni slots', () => {
@@ -89,9 +89,32 @@ test('Jeju nolda slot is collectable without a service key', () => {
   assert.equal(jeju?.collectable, true);
   assert.equal(jeju?.envHint, '인증 없음');
   assert.match(String(jeju?.description), /jejunolda/);
-  assert.equal(catalog.muniMetros.find((item) => item.metro === 'BUSAN')?.collectable, false);
+  assert.equal(catalog.muniMetros.find((item) => item.metro === 'DAEGU')?.collectable, false);
   process.env.NTS_SERVICE_KEY = prevNts;
   process.env.DATA_GO_KR_SERVICE_KEY = prevData;
   process.env.JEJU_CULTURE_API_URL = prevUrl;
   process.env.JEJU_CULTURE_API_KEY = prevKey;
+});
+
+test('metroApiRows is 17 metros with TourAPI and municipal checks', () => {
+  const prevNts = process.env.NTS_SERVICE_KEY;
+  const prevTour = process.env.TOUR_API_SERVICE_KEY;
+  process.env.NTS_SERVICE_KEY = 'test-shared-key';
+  process.env.TOUR_API_SERVICE_KEY = '';
+  const board = decorateOpenSources(catalogOpenSources());
+  assert.equal(board.metroApis.length, 17);
+  assert.equal(metroApiRows(board).length, 17);
+  const seoul = board.metroApis.find((row) => row.metro === 'SEOUL');
+  assert.equal(seoul?.tourConnected, true);
+  assert.equal(seoul?.muniConnected, true);
+  assert.equal(seoul?.syncQuery?.source, 'region');
+  const jeju = board.metroApis.find((row) => row.metro === 'JEJU');
+  assert.equal(jeju?.muniConnected, true);
+  const daegu = board.metroApis.find((row) => row.metro === 'DAEGU');
+  assert.equal(daegu?.tourConnected, true);
+  assert.equal(daegu?.muniConnected, false);
+  const busan = board.metroApis.find((row) => row.metro === 'BUSAN');
+  assert.equal(busan?.muniConnected, true);
+  process.env.NTS_SERVICE_KEY = prevNts;
+  process.env.TOUR_API_SERVICE_KEY = prevTour;
 });
