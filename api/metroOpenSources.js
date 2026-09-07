@@ -165,6 +165,58 @@ export function catalogOpenSources() {
   return { national, tourMetros, muniMetros, all: [...national, ...tourMetros, ...muniMetros] };
 }
 
+function mergeApiStatus(...statuses) {
+  const vals = statuses.map((value) => String(value || '').trim()).filter(Boolean);
+  if (vals.includes('정상') && (vals.includes('실패') || vals.includes('부분'))) return '부분';
+  if (vals.includes('정상')) return '정상';
+  if (vals.includes('부분')) return '부분';
+  if (vals.includes('실패')) return '실패';
+  if (vals.includes('키없음')) return vals.some((value) => value !== '키없음') ? vals.find((value) => value !== '키없음') : '키없음';
+  return vals[0] || '';
+}
+
+/** 17개 광역별로 TourAPI·지자체 API 연동 여부를 한 행으로 묶는다. */
+export function metroApiRows(catalog = {}) {
+  const nationalMuni = {};
+  for (const row of catalog.national || []) {
+    if (row.kind === 'muni' && row.metro && row.metro !== 'ALL') nationalMuni[row.metro] = row;
+  }
+  const muniBy = Object.fromEntries((catalog.muniMetros || []).map((row) => [row.metro, row]));
+  const tourBy = Object.fromEntries((catalog.tourMetros || []).map((row) => [row.metro, row]));
+  return METRO_IDS.map((metro) => {
+    const tour = tourBy[metro] || {};
+    const muni = nationalMuni[metro] || muniBy[metro] || {};
+    const tourConnected = Boolean(tour.collectable || tour.keyConfigured);
+    const muniConnected = Boolean(muni.collectable);
+    const lastSync = [tour.lastSync, muni.lastSync].filter(Boolean).sort().slice(-1)[0] || null;
+    return {
+      id: `region-${metro}`,
+      kind: 'region',
+      metro,
+      label: REGION_LABEL[metro] || metro,
+      tourConnected,
+      muniConnected,
+      tourLabel: 'TourAPI',
+      muniLabel: muni.label || `${REGION_LABEL[metro] || metro} 지자체 OpenAPI`,
+      tourCount: Number(tour.count || 0),
+      muniCount: Number(muni.count || 0),
+      count: Number(tour.count || 0) + Number(muni.count || 0),
+      lastSync,
+      lastFetched: Number(tour.lastFetched || 0) + Number(muni.lastFetched || 0),
+      lastStatus: mergeApiStatus(tour.lastStatus, muni.lastStatus) || (tourConnected || muniConnected ? '대기' : '키없음'),
+      collectable: tourConnected || muniConnected,
+      keyConfigured: tourConnected,
+      description: [
+        tourConnected ? 'TourAPI 연동' : 'TourAPI 미연동',
+        muniConnected ? `${muni.label || '지자체 API'} 연동` : '지자체 API 미연동',
+      ].join(' · '),
+      envHint: muni.envHint || tour.envHint || 'TOUR_API_SERVICE_KEY',
+      targetApi: [tour.targetApi, muni.targetApi].filter(Boolean).join('+') || `searchFestival2:${metro}`,
+      syncQuery: { source: 'region', metro },
+    };
+  });
+}
+
 export function decorateOpenSources(catalog, stats = {}) {
   const sourceCounts = stats.sourceCounts || [];
   const sourceMetroCounts = stats.sourceMetroCounts || [];
@@ -197,10 +249,14 @@ export function decorateOpenSources(catalog, stats = {}) {
       lastStatus: log?.status || (row.collectable ? '대기' : '키없음'),
     };
   };
+  const national = (catalog.national || []).map(decorate);
+  const tourMetros = (catalog.tourMetros || []).map(decorate);
+  const muniMetros = (catalog.muniMetros || []).map(decorate);
   return {
-    national: (catalog.national || []).map(decorate),
-    tourMetros: (catalog.tourMetros || []).map(decorate),
-    muniMetros: (catalog.muniMetros || []).map(decorate),
+    national,
+    tourMetros,
+    muniMetros,
+    metroApis: metroApiRows({ national, tourMetros, muniMetros }),
   };
 }
 

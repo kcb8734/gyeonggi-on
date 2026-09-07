@@ -348,7 +348,8 @@ async function syncFestivalsLive(req, res) {
     || sourceHint === 'gyeongnam' || sourceHint === 'gn' || sourceHint === 'gyeongnamculture'
     || sourceHint === 'ulsan' || sourceHint === 'ulsanfestival'
     || sourceHint === 'sejong' || sourceHint === 'sjfestival'
-    || sourceHint === 'jeju' || sourceHint === 'jejunolda' || sourceHint === 'jejuevent' || sourceHint === 'jeju-event';
+    || sourceHint === 'jeju' || sourceHint === 'jejunolda' || sourceHint === 'jejuevent' || sourceHint === 'jeju-event'
+    || sourceHint === 'region' || sourceHint === 'metro-api' || sourceHint === 'metroapi';
   try {
     if (wantDispatch) {
       const collected = await dispatchOpenDataSync(query);
