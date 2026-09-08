@@ -18,6 +18,7 @@ type SheetRow = {
   errorCount?: number;
   errors?: Array<{ row?: number; error?: string }>;
   errorSummary?: Array<{ error?: string; count?: number }>;
+  skippedUndated?: number;
   samples?: string[];
   inserted?: number;
 };
@@ -41,7 +42,7 @@ export default function ExcelImportCard() {
   const [sheets, setSheets] = useState<SheetRow[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [plan, setPlan] = useState<CrawlPlan[]>([]);
-  const [totals, setTotals] = useState<{ valid?: number; errors?: number; rows?: number } | null>(null);
+  const [totals, setTotals] = useState<{ valid?: number; errors?: number; rows?: number; skippedUndated?: number } | null>(null);
   const [year, setYear] = useState<number | undefined>();
   const [saved, setSaved] = useState(false);
   const [crawlRuns, setCrawlRuns] = useState<CrawlRun[]>([]);
@@ -104,8 +105,6 @@ export default function ExcelImportCard() {
     setError('');
     try {
       const result = await uploadExcelFile(file, { dryRun: false });
-      const data = result.data || result;
-      applyAnalysis(data);
       setSaved(true);
       setStep('save');
       setMessage(result.message || '백엔드에 저장했습니다.');
@@ -145,7 +144,7 @@ export default function ExcelImportCard() {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>엑셀 업로드 · 분석 · 저장 · 크롤링</Text>
       <Text style={styles.hint}>
-        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N열(년·월·일) 시작일, O·P·Q열(년·월·일) 종료일을 읽어 PostgreSQL에 저장합니다. 일이 비어 있으면 시작은 1일, 종료는 말일로 채웁니다. 부족한 축제 정보는 대한민국 구석구석 일자별 달력에서 크롤링합니다.
+        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N열(년·월·일) 시작일, O·P·Q열(년·월·일) 종료일을 읽어 PostgreSQL에 저장합니다. 일이 비어 있으면 시작은 1일, 종료는 말일로 채우고, 연도만 있으면 그해 1/1~12/31로 둡니다. 날짜가 전혀 없는 행은 일정 미정으로 건너뜁니다.
       </Text>
       <View style={styles.steps}>
         {STEPS.map((item, index) => {
@@ -173,6 +172,7 @@ export default function ExcelImportCard() {
           <Text style={styles.kpi}>행 {totals.rows ?? 0}</Text>
           <Text style={styles.kpi}>유효 {totals.valid ?? 0}</Text>
           <Text style={styles.kpiWarn}>오류 {totals.errors ?? 0}</Text>
+          {(totals.skippedUndated ?? 0) > 0 ? <Text style={styles.kpi}>일정 미정 {totals.skippedUndated}</Text> : null}
           <Text style={styles.kpi}>권역 {plan.length}</Text>
         </View>
       ) : null}

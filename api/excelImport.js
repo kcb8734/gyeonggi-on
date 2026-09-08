@@ -325,7 +325,12 @@ export function combineYmdParts(yearPart, monthPart, dayPart, yearHint = new Dat
   const mText = textPart(monthPart);
   const dText = textPart(dayPart);
   if (yText && isMissingYmdPart(monthPart) && isMissingYmdPart(dayPart)) {
-    if (isYearOnlyValue(yearPart) || isYearOnlyValue(yText)) return null;
+    if (isYearOnlyValue(yearPart) || isYearOnlyValue(yText)) {
+      let year = parseInt(yText, 10);
+      if (Number.isFinite(year) && year < 100) year += 2000;
+      if (!Number.isFinite(year) || year < 1900) year = yearHint;
+      return bound === 'end' ? padIso(year, 12, 31) : padIso(year, 1, 1);
+    }
     try { return toDate(yText, yearHint); } catch { /* continue */ }
     const parsed = parsePeriod(yText, yearHint);
     return bound === 'end' ? (parsed.end || parsed.start) : parsed.start;
@@ -560,6 +565,17 @@ export function isIgnorableFestivalRow(raw, yearHint) {
   const title = pick(enrichFestivalRow(raw, yearHint), TITLE_FIELDS);
   if (isBlank(title)) return true;
   return SKIP_TITLES.has(canon(title));
+}
+
+export function isUndatedFestivalRow(raw, yearHint) {
+  if (isIgnorableFestivalRow(raw, yearHint)) return false;
+  try {
+    applyProfile(raw, 'festivals', { yearHint });
+    return false;
+  } catch (err) {
+    const message = err && err.message ? err.message : String(err);
+    return /start_date|end_date/.test(message);
+  }
 }
 
 export function toDateTime(value) {
@@ -798,6 +814,7 @@ function sheetPayload(sheet, extra) {
     reason: extra.reason || '',
     rows: (sheet.rows || []).length,
     valid: extra.valid || 0,
+    skippedUndated: extra.skippedUndated || 0,
     errorCount: errors.length,
     errors: errors.slice(0, 8),
     errorSummary: extra.errorSummary || summarizeErrors(errors),
@@ -811,6 +828,7 @@ export function analyzeSheets(sheets, options = {}) {
   const metroNeed = new Map();
   let validTotal = 0;
   let errorTotal = 0;
+  let skippedUndatedTotal = 0;
   let crawlHints = 0;
   const yearHint = options.yearHint || new Date().getFullYear();
   const crawlMonths = new Set();
@@ -830,6 +848,7 @@ export function analyzeSheets(sheets, options = {}) {
     const errors = [];
     const samples = [];
     let valid = 0;
+    let skippedUndated = 0;
     if (!COLUMNS[table]) {
       analyzed.push(sheetPayload(sheet, {
         table: null,
@@ -876,16 +895,24 @@ export function analyzeSheets(sheets, options = {}) {
           samples.push(mapped.title || mapped.name || mapped.business_name || mapped.code || `${table} ${index + 1}`);
         }
       } catch (err) {
-        errors.push({ row: index + 2, error: err && err.message ? err.message : String(err) });
+        const message = err && err.message ? err.message : String(err);
+        if (table === 'festivals' && /start_date|end_date/.test(message)) {
+          skippedUndated += 1;
+          return;
+        }
+        errors.push({ row: index + 2, error: message });
       }
     });
     validTotal += valid;
     errorTotal += errors.length;
+    skippedUndatedTotal += skippedUndated;
     analyzed.push(sheetPayload(sheet, {
       table,
       valid,
       errors,
       samples,
+      skippedUndated,
+      reason: skippedUndated ? `일정 미정 ${skippedUndated}건은 저장하지 않습니다` : '',
     }));
   });
 
@@ -915,6 +942,7 @@ export function analyzeSheets(sheets, options = {}) {
       rows: analyzed.reduce((sum, row) => sum + row.rows, 0),
       valid: validTotal,
       errors: errorTotal,
+      skippedUndated: skippedUndatedTotal,
       crawlMetros: crawlPlan.length,
       crawlMonths: crawlMonths.size,
     },
@@ -933,7 +961,7 @@ export function analyzeExcelFromPayload(body) {
   return {
     ok: true,
     filename,
-    message: `시트 ${analysis.totals.sheets}개 · 유효 ${analysis.totals.valid}건 · 오류 ${analysis.totals.errors}건 · 크롤링 권역 ${analysis.totals.crawlMetros}곳`,
+    message: `시트 ${analysis.totals.sheets}개 · 유효 ${analysis.totals.valid}건 · 오류 ${analysis.totals.errors}건 · 일정 미정 ${analysis.totals.skippedUndated || 0}건 · 크롤링 권역 ${analysis.totals.crawlMetros}곳`,
     analysis,
   };
 }
@@ -1365,6 +1393,64 @@ async function loadMunicipalityCache(client) {
   return cache;
 }
 
+function municipalitySpec(raw) {
+  const rawName = toText(pick(raw, [
+    'municipality', 'municipality_name', '지자체', '지자체명', '시군구명', '시군구', '시군', '기초단체',
+  ]));
+  const name = cityFromText(rawName)
+    || rawName
+    || cityFromText(pick(raw, ['주소', '개최장소', '장소', 'location_name']));
+  const region = toText(pick(raw, ['region_code', '지역코드'])) || (name ? municipalityRegionCode(name) : null);
+  if (!name && !region) return null;
+  const metro = toText(pick(raw, ['metro_region', '권역']))
+    || metroFromText(pick(raw, ['시도', '시도명']))
+    || metroFromText(name)
+    || 'GYEONGGI';
+  return { name, region, metro };
+}
+
+function municipalityIdFromCache(cache, spec) {
+  if (!spec || !cache) return null;
+  return cache.get(`${spec.name || ''}|${spec.region || ''}`)
+    || cache.get(`${spec.name || ''}|`)
+    || cache.get(`|${spec.region || ''}`)
+    || null;
+}
+
+async function ensureMunicipalityBatch(client, specs, cache) {
+  const unique = [];
+  const seen = new Set();
+  (specs || []).forEach((spec) => {
+    if (!spec || (!spec.name && !spec.region)) return;
+    if (municipalityIdFromCache(cache, spec)) return;
+    const key = spec.region || spec.name;
+    if (seen.has(key)) return;
+    seen.add(key);
+    unique.push(spec);
+  });
+  if (!unique.length) return;
+  const values = [];
+  const placeholders = unique.map((spec, index) => {
+    const offset = index * 4;
+    values.push(spec.name || spec.region, spec.region || municipalityRegionCode(spec.name), 0, spec.metro || 'GYEONGGI');
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, COALESCE($${offset + 4}, 'GYEONGGI'))`;
+  });
+  const result = await client.query(
+    `INSERT INTO municipalities (name, region_code, budget_balance, metro_region)
+     VALUES ${placeholders.join(', ')}
+     ON CONFLICT (region_code) DO UPDATE SET name = EXCLUDED.name
+     RETURNING id, name, region_code`,
+    values,
+  );
+  (result.rows || []).forEach((row) => {
+    const id = row && row.id ? String(row.id) : '';
+    if (!id) return;
+    if (row.name) cache.set(`${row.name}|`, id);
+    if (row.region_code) cache.set(`|${row.region_code}`, id);
+    if (row.name && row.region_code) cache.set(`${row.name}|${row.region_code}`, id);
+  });
+}
+
 export async function persistSheets(sheets, options = {}) {
   const dryRun = Boolean(options.dryRun);
   const createMissing = options.createMissing !== false;
@@ -1418,13 +1504,25 @@ export async function persistSheets(sheets, options = {}) {
       let inserted = 0;
       const errors = [];
       const festivalBatch = [];
+      const festivalSpecs = [];
+      let skippedUndated = 0;
       for (let i = 0; i < sheet.rows.length; i += 1) {
         const raw = sheet.rows[i];
         if (table === 'festivals' && isIgnorableFestivalRow(raw, yearHint)) continue;
         try {
           const mapped = applyProfile(raw, table, { yearHint });
           const sourced = table === 'festivals' ? enrichFestivalRow(raw, yearHint) : raw;
-          if (table === 'festivals' || table === 'merchants' || table === 'coupons') {
+          if (table === 'festivals') {
+            mapped.source = mapped.source || 'excel';
+            if (!mapped.tour_content_id) {
+              mapped.tour_content_id = ('excel-' + canon(mapped.title) + '-' + String(mapped.start_date || '')).slice(0, 40);
+            }
+            const spec = municipalitySpec(sourced);
+            festivalSpecs.push(spec);
+            festivalBatch.push({ mapped, spec });
+            continue;
+          }
+          if (table === 'merchants' || table === 'coupons') {
             const municipalityId = await resolveMunicipalityId(
               client,
               sourced,
@@ -1444,14 +1542,6 @@ export async function persistSheets(sheets, options = {}) {
             const festivalId = await resolveFestivalId(client, raw, mapped);
             if (festivalId) mapped.festival_id = festivalId;
           }
-          if (table === 'festivals') {
-            mapped.source = mapped.source || 'excel';
-            if (!mapped.tour_content_id) {
-              mapped.tour_content_id = ('excel-' + canon(mapped.title) + '-' + String(mapped.start_date || '')).slice(0, 40);
-            }
-            festivalBatch.push(usableRow(mapped));
-            continue;
-          }
           const row = usableRow(mapped);
           let conflict = profile.conflict;
           if (table === 'discount_promotions' && !row.id) conflict = [];
@@ -1459,17 +1549,27 @@ export async function persistSheets(sheets, options = {}) {
           await client.query(sql, values);
           inserted += 1;
         } catch (err) {
-          const message = `${sheet.name} ${i + 2}행: ${err && err.message ? err.message : err}`;
-          if (table === 'festivals') {
-            errors.push({ row: i + 2, error: err && err.message ? err.message : String(err) });
+          const message = err && err.message ? err.message : String(err);
+          if (table === 'festivals' && /start_date|end_date/.test(message)) {
+            skippedUndated += 1;
             continue;
           }
-          throw new Error(message);
+          if (table === 'festivals') {
+            errors.push({ row: i + 2, error: message });
+            continue;
+          }
+          throw new Error(`${sheet.name} ${i + 2}행: ${message}`);
         }
       }
       if (table === 'festivals' && festivalBatch.length) {
-        for (let offset = 0; offset < festivalBatch.length; offset += FESTIVAL_BATCH_SIZE) {
-          const chunk = festivalBatch.slice(offset, offset + FESTIVAL_BATCH_SIZE);
+        if (createMissing) await ensureMunicipalityBatch(client, festivalSpecs, muniCache);
+        const rows = festivalBatch.map((item) => {
+          const municipalityId = municipalityIdFromCache(muniCache, item.spec);
+          if (municipalityId) item.mapped.municipality_id = municipalityId;
+          return usableRow(item.mapped);
+        });
+        for (let offset = 0; offset < rows.length; offset += FESTIVAL_BATCH_SIZE) {
+          const chunk = rows.slice(offset, offset + FESTIVAL_BATCH_SIZE);
           const { sql, values } = buildFestivalBatchUpsert(chunk);
           await client.query(sql, values);
           inserted += chunk.length;
@@ -1484,8 +1584,10 @@ export async function persistSheets(sheets, options = {}) {
         tableLabel: TABLE_LABELS[table] || table,
         inserted,
         errorCount: errors.length,
+        skippedUndated,
         errors: errors.slice(0, 8),
         errorSummary: summarizeErrors(errors),
+        reason: skippedUndated ? `일정 미정 ${skippedUndated}건은 저장하지 않습니다` : '',
       });
     }
     if (dryRun) await client.query('ROLLBACK');
@@ -1519,7 +1621,20 @@ export async function importExcelFromPayload(body, options = {}) {
   if (!loadable.length) {
     throw new Error('적재할 축제 행이 없습니다. 조사표의 축제명·시작일·종료일·장소·시군구를 확인하세요.');
   }
-  const analysis = analyzeSheets(sheets, { yearHint });
+  const db = Object.prototype.hasOwnProperty.call(options, 'db') ? options.db : getPool();
+  const persisting = Boolean(db) && !options.dryRun;
   const result = await persistSheets(sheets, Object.assign({ yearHint }, options));
+  const analysis = persisting ? {
+    sheets: result.sheets,
+    cities: [],
+    crawlPlan: [],
+    totals: {
+      sheets: result.sheets.length,
+      valid: result.sheets.reduce((sum, row) => sum + (row.inserted || 0), 0),
+      errors: result.sheets.reduce((sum, row) => sum + (row.errorCount || 0), 0),
+      skippedUndated: result.sheets.reduce((sum, row) => sum + (row.skippedUndated || 0), 0),
+      crawlMetros: 0,
+    },
+  } : analyzeSheets(sheets, { yearHint });
   return Object.assign({ filename, analysis }, result);
 }

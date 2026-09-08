@@ -607,7 +607,11 @@ def combine_ymd_parts(year_part: Any, month_part: Any, day_part: Any, year_hint:
             year += 2000
     if is_missing_ymd_part(month_part) and is_missing_ymd_part(day_part):
         if is_year_only(year_part):
-            return None
+            raw_year = str(year_part).replace("년", "").strip()
+            year = int(raw_year) if raw_year.isdigit() else (year_hint or date.today().year)
+            if year < 100:
+                year += 2000
+            return date(year, 12, 31) if bound == "end" else date(year, 1, 1)
         start, end = parse_period(year_part, year_hint)
         return end if bound == "end" else start
     try:
