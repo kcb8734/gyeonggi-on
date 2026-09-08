@@ -370,6 +370,8 @@ test('recordsFromSurveyAoa reads letter columns even with title/header rows', ()
 test('survey start/end year headers do not fail date mapping', () => {
   assert.equal(combineYmdParts(2026, 9, 1, 2026), '2026-09-01');
   assert.equal(combineYmdParts(2026, null, null, 2026), null);
+  assert.equal(combineYmdParts(2026, 9, null, 2026, 'start'), '2026-09-01');
+  assert.equal(combineYmdParts(2026, 9, '미정', 2026, 'end'), '2026-09-30');
   const rows = recordsFromSurveyAoa([
     letterRow({
       title: '축제명', place: '장소', si: '시', gu: '군구',
@@ -406,6 +408,43 @@ test('survey start/end year headers do not fail date mapping', () => {
   }, 'festivals', { yearHint: 2026 });
   assert.equal(merged.start_date, '2026-09-01');
   assert.equal(merged.end_date, '2026-09-11');
+});
+
+test('survey year-month without day uses first and last day', () => {
+  const mapped = mapSurveyLetters(letterRow({
+    title: '월천축제', place: '광장', si: '수원', gu: '시',
+    sy: 2026, sm: 9, sd: '', ey: 2026, em: 9, ed: '미정',
+  }), 2026);
+  assert.equal(mapped.시작일, '2026-09-01');
+  assert.equal(mapped.종료일, '2026-09-30');
+  const profile = applyProfile({
+    ...mapped,
+    __sheet: '조사표',
+    __surveyLetters: true,
+    __cells: letterRow({
+      title: '월천축제', place: '광장', si: '수원', gu: '시',
+      sy: 2026, sm: 9, sd: '', ey: 2026, em: 9, ed: '미정',
+    }),
+  }, 'festivals', { yearHint: 2026 });
+  assert.equal(profile.start_date, '2026-09-01');
+  assert.equal(profile.end_date, '2026-09-30');
+});
+
+test('persistSheets batches festival inserts', async () => {
+  const db = fakeDb();
+  const result = await persistSheets([{
+    name: '조사표',
+    rows: [
+      { 축제명: '수원화성문화제', 시군구: '수원시', 시작일: '2026-09-01', 종료일: '2026-09-02', 장소: '행궁' },
+      { 축제명: '한국민속촌 축제', 시군구: '용인시', 시작일: '2026-09-03', 종료일: '2026-09-04', 장소: '민속촌' },
+    ],
+  }], { db, dryRun: true, yearHint: 2026 });
+  assert.equal(result.ok, true);
+  assert.equal(result.sheets[0].inserted, 2);
+  const festivalInserts = db.calls.filter((call) => /INSERT INTO festivals/i.test(call.sql));
+  assert.equal(festivalInserts.length, 1);
+  assert.match(festivalInserts[0].sql, /VALUES \(\$1/);
+  assert.ok(festivalInserts[0].sql.includes('), ('));
 });
 
 test('crawlPlannedMetros prefers 구석구석 calendar', async () => {

@@ -25,6 +25,7 @@ discount_promotions / coupons)는 한글·영문 헤더와 외래키 조회를 �
 from __future__ import annotations
 
 import argparse
+import calendar
 import json
 import os
 import re
@@ -590,41 +591,51 @@ def join_sigungu(left: Any, right: Any) -> str:
     return f"{a} {b}".strip()
 
 
+def is_missing_ymd_part(value: Any) -> bool:
+    if is_blank(value):
+        return True
+    text = str(value).strip()
+    return canon(text) in {"미정", "미확정", "추후", "없음", "해당없음", "-", "0", "00"}
+
+
+def combine_ymd_parts(year_part: Any, month_part: Any, day_part: Any, year_hint: int | None = None, bound: str = "start") -> date | None:
+    year = year_hint or date.today().year
+    raw_year = str(year_part).replace("년", "").strip() if not is_blank(year_part) else ""
+    if raw_year.isdigit():
+        year = int(raw_year)
+        if year < 100:
+            year += 2000
+    if is_missing_ymd_part(month_part) and is_missing_ymd_part(day_part):
+        if is_year_only(year_part):
+            return None
+        start, end = parse_period(year_part, year_hint)
+        return end if bound == "end" else start
+    try:
+        month = int(str(month_part).replace("월", ""))
+    except (TypeError, ValueError):
+        start, end = parse_period(".".join(str(part) for part in (year_part, month_part, day_part) if not is_blank(part)), year_hint)
+        return end if bound == "end" else start
+    if is_missing_ymd_part(day_part):
+        day = calendar.monthrange(year, month)[1] if bound == "end" else 1
+    else:
+        try:
+            day = int(str(day_part).replace("일", ""))
+        except (TypeError, ValueError):
+            day = calendar.monthrange(year, month)[1] if bound == "end" else 1
+    try:
+        return date(year, month, day)
+    except ValueError:
+        start, end = parse_period(".".join(str(part) for part in (year_part, month_part, day_part) if not is_blank(part)), year_hint)
+        return end if bound == "end" else start
+
+
 def map_survey_letters(values: tuple[Any, ...] | list[Any], year_hint: int | None = None) -> dict[str, Any]:
     def at(letter: str) -> Any:
         index = col_index(letter)
         return values[index] if index < len(values) else None
 
-    y, m, d = at("L"), at("M"), at("N")
-    ey, em, ed = at("O"), at("P"), at("Q")
-    start_date = None
-    end_date = None
-    if not is_blank(y) and is_blank(m) and is_blank(d):
-        start_date, _ = parse_period(y, year_hint)
-    else:
-        year = year_hint or date.today().year
-        raw_year = str(y).replace("년", "").strip() if not is_blank(y) else ""
-        if raw_year.isdigit():
-            year = int(raw_year)
-            if year < 100:
-                year += 2000
-        try:
-            start_date = date(year, int(str(m).replace("월", "")), int(str(d).replace("일", ""))) if not is_blank(m) and not is_blank(d) else None
-        except (TypeError, ValueError):
-            start_date, _ = parse_period(".".join(str(part) for part in (y, m, d) if not is_blank(part)), year_hint)
-    if not is_blank(ey) and is_blank(em) and is_blank(ed):
-        end_date, _ = parse_period(ey, year_hint)
-    else:
-        year = year_hint or date.today().year
-        raw_year = str(ey).replace("년", "").strip() if not is_blank(ey) else ""
-        if raw_year.isdigit():
-            year = int(raw_year)
-            if year < 100:
-                year += 2000
-        try:
-            end_date = date(year, int(str(em).replace("월", "")), int(str(ed).replace("일", ""))) if not is_blank(em) and not is_blank(ed) else start_date
-        except (TypeError, ValueError):
-            end_date, _ = parse_period(".".join(str(part) for part in (ey, em, ed) if not is_blank(part)), year_hint)
+    start_date = combine_ymd_parts(at("L"), at("M"), at("N"), year_hint, "start")
+    end_date = combine_ymd_parts(at("O"), at("P"), at("Q"), year_hint, "end")
     title = None if is_blank(at("E")) else str(at("E")).strip()
     return {
         "축제명": title,

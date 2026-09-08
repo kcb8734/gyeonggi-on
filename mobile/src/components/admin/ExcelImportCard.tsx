@@ -17,6 +17,7 @@ type SheetRow = {
   valid?: number;
   errorCount?: number;
   errors?: Array<{ row?: number; error?: string }>;
+  errorSummary?: Array<{ error?: string; count?: number }>;
   samples?: string[];
   inserted?: number;
 };
@@ -144,7 +145,7 @@ export default function ExcelImportCard() {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>엑셀 업로드 · 분석 · 저장 · 크롤링</Text>
       <Text style={styles.hint}>
-        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N열(년·월·일) 시작일, O·P·Q열(년·월·일) 종료일을 읽어 PostgreSQL에 저장합니다. 부족한 축제 정보는 대한민국 구석구석 일자별 달력에서 크롤링합니다.
+        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N열(년·월·일) 시작일, O·P·Q열(년·월·일) 종료일을 읽어 PostgreSQL에 저장합니다. 일이 비어 있으면 시작은 1일, 종료는 말일로 채웁니다. 부족한 축제 정보는 대한민국 구석구석 일자별 달력에서 크롤링합니다.
       </Text>
       <View style={styles.steps}>
         {STEPS.map((item, index) => {
@@ -183,9 +184,14 @@ export default function ExcelImportCard() {
           </Text>
           {row.reason ? <Text style={styles.sample}>{row.reason}</Text> : null}
           {row.samples?.length ? <Text style={styles.sample}>{(row.samples || []).join(' · ')}</Text> : null}
-          {(row.errors || []).slice(0, 3).map((item) => (
-            <Text key={`${row.sheet}-${item.row}`} style={styles.errLine}>{item.row}행: {item.error}</Text>
+          {(row.errorSummary || []).slice(0, 4).map((item) => (
+            <Text key={`${row.sheet}-${item.error}`} style={styles.errLine}>
+              {item.error} · {item.count}건
+            </Text>
           ))}
+          {!(row.errorSummary || []).length ? (row.errors || []).slice(0, 3).map((item) => (
+            <Text key={`${row.sheet}-${item.row}`} style={styles.errLine}>{item.row}행: {item.error}</Text>
+          )) : null}
         </View>
       ))}
 
