@@ -87,6 +87,44 @@ export async function fetchDashboard() {
   return data.data;
 }
 
+export async function uploadExcel(file: File, dryRun = false) {
+  const content = await file.arrayBuffer().then((buf) => {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const size = 0x8000;
+    for (let i = 0; i < bytes.length; i += size) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + size));
+    }
+    return btoa(binary);
+  });
+  const token = localStorage.getItem('admin_token');
+  const res = await fetch(`${API_BASE}/api/admin/excel/upload`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ filename: file.name, content, dryRun }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '엑셀 업로드 실패');
+  return data;
+}
+
+export async function downloadExcelTemplate() {
+  const res = await fetch(`${API_BASE}/api/admin/excel/template`);
+  if (!res.ok) throw new Error('템플릿 다운로드 실패');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = '경기온_엑셀적재_템플릿.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function logout() {
   localStorage.removeItem('admin_token');
 }

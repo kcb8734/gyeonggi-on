@@ -3,6 +3,7 @@ import {
   adminLogin,
   approveMerchant,
   deleteAdminFestival,
+  downloadExcelTemplate,
   fetchAdminFestivals,
   fetchBudget,
   fetchDashboard,
@@ -10,6 +11,7 @@ import {
   fetchStats,
   logout,
   saveAdminFestival,
+  uploadExcel,
 } from './api';
 
 type View = 'login' | 'dashboard';
@@ -27,6 +29,9 @@ export default function App() {
   const [budget, setBudget] = useState<any[]>([]);
   const [manualFestivals, setManualFestivals] = useState<any[]>([]);
   const [dashboard, setDashboard] = useState<any>(null);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [excelMessage, setExcelMessage] = useState('');
   const [matchRegion, setMatchRegion] = useState('GYEONGGI');
   const [festivalForm, setFestivalForm] = useState({
     title: '',
@@ -152,6 +157,68 @@ export default function App() {
       </header>
 
       {error ? <p className="error">{error}</p> : null}
+
+      <section>
+        <h2>엑셀 일괄 등록</h2>
+        <p className="muted">지자체·축제·가맹점·프로모션 시트가 있는 .xlsx 파일을 올리면 PostgreSQL에 적재합니다.</p>
+        <div className="festival-form excel-upload">
+          <input
+            type="file"
+            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(e) => {
+              setExcelFile(e.target.files && e.target.files[0] ? e.target.files[0] : null);
+              setExcelMessage('');
+            }}
+          />
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => downloadExcelTemplate().catch((err) => setError(err instanceof Error ? err.message : '템플릿 실패'))}
+          >
+            템플릿 받기
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={excelBusy}
+            onClick={async () => {
+              if (!excelFile) { setError('엑셀 파일을 선택하세요.'); return; }
+              setExcelBusy(true); setError(''); setExcelMessage('');
+              try {
+                const data = await uploadExcel(excelFile, true);
+                setExcelMessage(data.message || '미리보기 완료');
+              } catch (err) {
+                setError(err instanceof Error ? err.message : '미리보기 실패');
+              } finally {
+                setExcelBusy(false);
+              }
+            }}
+          >
+            미리보기
+          </button>
+          <button
+            type="button"
+            disabled={excelBusy}
+            onClick={async () => {
+              if (!excelFile) { setError('엑셀 파일을 선택하세요.'); return; }
+              setExcelBusy(true); setError(''); setExcelMessage('');
+              try {
+                const data = await uploadExcel(excelFile, false);
+                setExcelMessage(data.message || '적재 완료');
+                await load();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : '적재 실패');
+              } finally {
+                setExcelBusy(false);
+              }
+            }}
+          >
+            {excelBusy ? '처리 중…' : 'DB에 적재'}
+          </button>
+        </div>
+        {excelFile ? <p className="muted">선택 파일: {excelFile.name}</p> : null}
+        {excelMessage ? <p className="muted">{excelMessage}</p> : null}
+      </section>
 
       <section>
         <h2>한국관광공사 TourAPI 데이터 수집 프로세스</h2>

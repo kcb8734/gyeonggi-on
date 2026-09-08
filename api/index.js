@@ -47,6 +47,10 @@ import {
   tourServiceKey,
 } from './tourLive.js';
 import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
+import {
+  buildTemplateBuffer,
+  importExcelFromPayload,
+} from './excelImport.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
 const ACTIVE_CODE = '01';
 const ALLOWED_ORIGINS = [
@@ -83,6 +87,27 @@ function sendCsv(res, req, csv, filename) {
     Object.keys(headers).forEach((key) => res.setHeader(key, headers[key]));
   }
   const payload = Buffer.from(body, 'utf8');
+  if (typeof res.status === 'function' && typeof res.send === 'function') {
+    res.status(200).send(payload);
+    return;
+  }
+  res.statusCode = 200;
+  res.end(payload);
+}
+
+function sendXlsx(res, req, buffer, filename) {
+  const name = filename || 'excel_import_template.xlsx';
+  const asciiName = 'excel_import_template.xlsx';
+  const headers = Object.assign(corsHeaders(req), {
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'Content-Disposition': 'attachment; filename="' + asciiName + '"; filename*=UTF-8\'\'' + encodeURIComponent(name),
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  if (typeof res.setHeader === 'function') {
+    Object.keys(headers).forEach((key) => res.setHeader(key, headers[key]));
+  }
+  const payload = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
   if (typeof res.status === 'function' && typeof res.send === 'function') {
     res.status(200).send(payload);
     return;
@@ -763,6 +788,38 @@ async function handler(req, res) {
     if (/\/api\/centers/i.test(path)) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       send(res, 200, { success: true, data: summarizeCenterRegions() }, corsHeaders(req));
+      return;
+    }
+    if (/admin\/excel\/template/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        sendXlsx(res, req, buildTemplateBuffer(), '경기온_엑셀적재_템플릿.xlsx');
+      } catch (err) {
+        send(res, 500, {
+          success: false,
+          message: err && err.message ? err.message : '엑셀 템플릿을 만들지 못했습니다.',
+        }, corsHeaders(req));
+      }
+      return;
+    }
+    if (/admin\/excel(\/upload)?([^\w]|$)/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        const result = await importExcelFromPayload(body, {
+          dryRun: Boolean(body.dryRun || body.dry_run),
+          createMissing: body.createMissing !== false && body.create_missing !== false,
+        });
+        send(res, 200, {
+          success: true,
+          message: result.message,
+          data: result,
+        }, corsHeaders(req));
+      } catch (err) {
+        send(res, 400, {
+          success: false,
+          message: err && err.message ? err.message : '엑셀 적재에 실패했습니다.',
+        }, corsHeaders(req));
+      }
       return;
     }
     if (/admin\/dashboard/i.test(path)) {

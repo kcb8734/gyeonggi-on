@@ -10,6 +10,7 @@ import {
   WeightSlider,
 } from '../components/admin/AdminWidgets';
 import AdminCenterPanel from '../components/admin/AdminCenterPanel';
+import ExcelImportCard from '../components/admin/ExcelImportCard';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
 import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
@@ -492,6 +493,8 @@ export default function AdminScreen() {
         </View>
       ) : null}
 
+      {menu === 'dash' ? <ExcelImportCard /> : null}
+
       {menu === 'dash' ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>쿠폰 회수율</Text>
@@ -558,6 +561,8 @@ export default function AdminScreen() {
       ) : null}
 
       {menu === 'coupon' ? (
+        <>
+          <ExcelImportCard />
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>쿠폰 마스터</Text>
@@ -618,6 +623,7 @@ export default function AdminScreen() {
             </View>
           ))}
         </View>
+        </>
       ) : null}
 
       {menu === 'centers' ? <AdminCenterPanel /> : null}

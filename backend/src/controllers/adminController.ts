@@ -335,3 +335,46 @@ export const downloadSettlementExcel = async (_req: Request, res: Response) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   return res.status(200).send(Buffer.from(body, 'utf8'));
 };
+
+async function loadExcelImport() {
+  const { pathToFileURL } = await import('url');
+  const path = await import('path');
+  const file = path.resolve(__dirname, '../../../api/excelImport.js');
+  return import(pathToFileURL(file).href);
+}
+
+/** GET /api/admin/excel/template */
+export const downloadExcelTemplate = async (_req: Request, res: Response) => {
+  try {
+    const { buildTemplateBuffer } = await loadExcelImport();
+    const buffer = buildTemplateBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="excel_import_template.xlsx"; filename*=UTF-8''${encodeURIComponent('경기온_엑셀적재_템플릿.xlsx')}`,
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).send(buffer);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : '엑셀 템플릿을 만들지 못했습니다.',
+    });
+  }
+};
+
+/** POST /api/admin/excel/upload */
+export const uploadAdminExcel = async (req: Request, res: Response) => {
+  try {
+    const { importExcelFromPayload } = await loadExcelImport();
+    const result = await importExcelFromPayload(req.body || {}, {
+      dryRun: Boolean(req.body?.dryRun || req.body?.dry_run),
+    });
+    return res.json({ success: true, message: result.message, data: result });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error instanceof Error ? error.message : '엑셀 적재에 실패했습니다.',
+    });
+  }
+};

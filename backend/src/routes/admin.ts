@@ -3,6 +3,7 @@ import { adminLogin } from '../controllers/adminAuthController';
 import {
   approveMerchantMatching,
   downloadSettlementExcel,
+  downloadExcelTemplate,
   getAdminDashboard,
   getBudgetOverview,
   getCouponStats,
@@ -12,6 +13,7 @@ import {
   removeAdminFestival,
   updateAdminEngine,
   upsertAdminFestival,
+  uploadAdminExcel,
 } from '../controllers/adminController';
 import { adminAuthMiddleware } from '../middleware/adminAuth';
 
@@ -30,5 +32,8 @@ router.post('/engine', updateAdminEngine);
 router.post('/courses/pick', markCoursePick);
 router.get('/settlement/excel', downloadSettlementExcel);
 router.get('/settlements.csv', downloadSettlementExcel);
+router.get('/excel/template', downloadExcelTemplate);
+router.post('/excel/upload', uploadAdminExcel);
+router.post('/excel', uploadAdminExcel);
 
 export default router;

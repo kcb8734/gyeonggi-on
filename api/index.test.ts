@@ -4,20 +4,51 @@ import { test } from 'node:test';
 import handler from './index.js';
 
 function invoke(req: { method?: string; url?: string; body?: unknown; headers?: Record<string, string> }) {
-  return new Promise<{ status: number; body: unknown }>((resolve) => {
+  return new Promise<{ status: number; body: unknown; headers: Record<string, string> }>((resolve) => {
     const res = {
       statusCode: 200,
       headers: {} as Record<string, string>,
       setHeader(key: string, value: string) { this.headers[key] = value; },
       status(code: number) { this.statusCode = code; return this; },
-      json(body: unknown) { resolve({ status: this.statusCode, body }); },
-      end(raw?: string) {
-        resolve({ status: this.statusCode, body: raw ? JSON.parse(raw) : null });
+      json(body: unknown) { resolve({ status: this.statusCode, body, headers: this.headers }); },
+      send(body: unknown) { resolve({ status: this.statusCode, body, headers: this.headers }); },
+      end(raw?: string | Buffer) {
+        if (Buffer.isBuffer(raw)) {
+          resolve({ status: this.statusCode, body: raw, headers: this.headers });
+          return;
+        }
+        resolve({ status: this.statusCode, body: raw ? JSON.parse(raw) : null, headers: this.headers });
       },
     };
     void handler(req, res);
   });
 }
+
+test('POST /api/admin/excel/upload without a file returns 400', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/admin/excel/upload', body: {} });
+  assert.equal(result.status, 400);
+  assert.equal((result.body as { success: boolean }).success, false);
+  assert.match(String((result.body as { message?: string }).message), /엑셀/);
+});
+
+test('GET template then POST dry-run upload', async () => {
+  const template = await invoke({ method: 'GET', url: '/api/admin/excel/template' });
+  assert.equal(template.status, 200);
+  assert.ok(Buffer.isBuffer(template.body));
+  const uploaded = await invoke({
+    method: 'POST',
+    url: '/api/admin/excel/upload',
+    body: {
+      filename: 'import.xlsx',
+      content: Buffer.from(template.body as Buffer).toString('base64'),
+      dryRun: true,
+    },
+  });
+  assert.equal(uploaded.status, 200);
+  const body = uploaded.body as { success: boolean; data?: { sheets?: unknown[] } };
+  assert.equal(body.success, true);
+  assert.equal(body.data?.sheets?.length, 4);
+});
 
 test('GET /health returns ok without Express', async () => {
   const result = await invoke({ method: 'GET', url: '/health' });
