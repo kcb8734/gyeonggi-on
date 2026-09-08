@@ -6,6 +6,7 @@ import {
   analyzeSheets,
   buildTemplateBuffer,
   canon,
+  combineYmdParts,
   crawlPlannedMetros,
   decodeExcelPayload,
   importExcelFromPayload,
@@ -60,6 +61,8 @@ test('maps Korean municipality and merchant rows', () => {
 test('date and bool helpers', () => {
   assert.equal(toDate('2026-09-01'), '2026-09-01');
   assert.equal(toDate(new Date('2026-09-08T12:00:00Z')), '2026-09-08');
+  assert.equal(toDate(2026), null);
+  assert.equal(toDate('2026'), null);
   assert.equal(toBool('아니오'), false);
   assert.equal(toBool('Y'), true);
 });
@@ -212,12 +215,17 @@ function surveyWorkbook() {
   ]), '총괄');
   const header = letterRow({
     title: '축제명', place: '장소', si: '시', gu: '군구',
-    sy: '년', sm: '월', sd: '일', ey: '년', em: '월', ed: '일',
+    sy: '시작', sm: '시작', sd: '시작', ey: '종료', em: '종료', ed: '종료',
   });
   header[0] = '연번';
+  const units = letterRow({
+    title: '', place: '', si: '', gu: '',
+    sy: '년', sm: '월', sd: '일', ey: '년', em: '월', ed: '일',
+  });
   const surveyRows = [
     ['2026년 지역축제 개최 계획 현황'],
     header,
+    units,
     letterRow({
       title: '수원화성문화제', place: '수원화성 행궁광장', si: '수원', gu: '시',
       sy: 2026, sm: 9, sd: 1, ey: 2026, em: 9, ed: 30,
@@ -357,6 +365,47 @@ test('recordsFromSurveyAoa reads letter columns even with title/header rows', ()
   assert.equal(rows[0].시작일, '2026-08-22');
   assert.equal(rows[0].종료일, '2026-09-05');
   assert.equal(rows[0].개최장소, '자라섬');
+});
+
+test('survey start/end year headers do not fail date mapping', () => {
+  assert.equal(combineYmdParts(2026, 9, 1, 2026), '2026-09-01');
+  assert.equal(combineYmdParts(2026, null, null, 2026), null);
+  const rows = recordsFromSurveyAoa([
+    letterRow({
+      title: '축제명', place: '장소', si: '시', gu: '군구',
+      sy: '시작', sm: '월', sd: '일', ey: '종료', em: '월', ed: '일',
+    }),
+    letterRow({
+      title: '수원화성문화제', place: '행궁광장', si: '수원', gu: '시',
+      sy: 2026, sm: 9, sd: 1, ey: 2026, em: 9, ed: 30,
+    }),
+  ], { yearHint: 2026, sheetName: '조사표' });
+  assert.equal(rows[0].시작, 2026);
+  const mapped = applyProfile(rows[0], 'festivals', { yearHint: 2026 });
+  assert.equal(mapped.title, '수원화성문화제');
+  assert.equal(mapped.start_date, '2026-09-01');
+  assert.equal(mapped.end_date, '2026-09-30');
+  assert.equal(mapped.location_name, '행궁광장');
+
+  const merged = applyProfile({
+    축제명: '한국민속촌 축제',
+    장소: '한국민속촌',
+    시군구: '용인시',
+    시작: 2026,
+    월: 9,
+    일: 1,
+    종료: 2026,
+    시작일: '2026-09-01',
+    종료일: '2026-09-11',
+    __sheet: '조사표',
+    __surveyLetters: true,
+    __cells: letterRow({
+      title: '한국민속촌 축제', place: '한국민속촌', si: '용인시', gu: '',
+      sy: 2026, sm: 9, sd: 1, ey: 2026, em: 9, ed: 11,
+    }),
+  }, 'festivals', { yearHint: 2026 });
+  assert.equal(merged.start_date, '2026-09-01');
+  assert.equal(merged.end_date, '2026-09-11');
 });
 
 test('crawlPlannedMetros prefers 구석구석 calendar', async () => {

@@ -252,6 +252,30 @@ export function joinSigungu(left, right) {
   return `${a} ${b}`.trim();
 }
 
+export function isYearOnlyValue(value) {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1900 && value <= 2100) return true;
+  const text = String(value == null ? '' : value).trim().replace(/\.0$/, '').replace(/년$/, '').trim();
+  return /^(19|20)\d{2}$/.test(text);
+}
+
+export function isDateFragmentHeader(header) {
+  const normalized = normalizeHeader(header);
+  const key = canon(normalized || header);
+  if (['년', '연도', 'year', '월', 'month', '일', 'day', '시작년', '시작월', '종료년', '종료월'].includes(key)) return true;
+  return /^(시작|종료)(년|월)$/.test(key);
+}
+
+export function looksLikeCompleteDate(value) {
+  if (isBlank(value) || isYearOnlyValue(value)) return false;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return true;
+  if (typeof value === 'number' && value > 30000 && value < 80000) return true;
+  const text = String(value).trim();
+  if (/(20\d{2})\s*[.\-\/년]?\s*(\d{1,2})\s*[.\-\/월]?\s*(\d{1,2})/.test(text)) return true;
+  if (/^(20\d{2})(\d{2})(\d{2})$/.test(text)) return true;
+  if (/^\d{1,2}[.\-\/]\d{1,2}/.test(text)) return true;
+  return false;
+}
+
 export function combineYmdParts(yearPart, monthPart, dayPart, yearHint = new Date().getFullYear()) {
   if (yearPart instanceof Date && !Number.isNaN(yearPart.getTime()) && isBlank(monthPart) && isBlank(dayPart)) {
     return yearPart.toISOString().slice(0, 10);
@@ -263,6 +287,7 @@ export function combineYmdParts(yearPart, monthPart, dayPart, yearHint = new Dat
   const mText = textPart(monthPart);
   const dText = textPart(dayPart);
   if (yText && !mText && !dText) {
+    if (isYearOnlyValue(yearPart) || isYearOnlyValue(yText)) return null;
     try { return toDate(yText, yearHint); } catch { /* continue */ }
     const parsed = parsePeriod(yText, yearHint);
     return parsed.start;
@@ -422,6 +447,7 @@ export function toDate(value, yearHint = new Date().getFullYear()) {
     const iso = padIso(yearHint, short[1], short[2]);
     if (iso) return iso;
   }
+  if (isYearOnlyValue(value) || isYearOnlyValue(text)) return null;
   throw new Error('날짜로 변환할 수 없습니다: ' + value);
 }
 
@@ -591,13 +617,26 @@ export function applyProfile(raw, table, options = {}) {
   const source = table === 'festivals' ? enrichFestivalRow(raw, yearHint) : raw;
   const index = aliasIndex(profile);
   const out = {};
+  if (table === 'festivals') {
+    const startValue = pick(source, ['시작일', 'start_date', '축제시작일자', '축제시작일', '개최시작일', '시작일자', '개최기간시작']);
+    const endValue = pick(source, ['종료일', 'end_date', '축제종료일자', '축제종료일', '개최종료일', '종료일자', '개최기간종료']);
+    if (looksLikeCompleteDate(startValue)) {
+      try { out.start_date = toDate(startValue, yearHint); } catch { /* scanned below */ }
+    }
+    if (looksLikeCompleteDate(endValue)) {
+      try { out.end_date = toDate(endValue, yearHint); } catch { /* scanned below */ }
+    }
+  }
   Object.entries(source || {}).forEach(([header, value]) => {
+    if (String(header).startsWith('__') || isDateFragmentHeader(header)) return;
     const column = lookupColumn(index, header);
     if (!column || isBlank(value) || !isBlank(out[column])) return;
+    const isDateCol = column === 'start_date' || column === 'end_date';
+    if (isDateCol && !looksLikeCompleteDate(value)) return;
     const convert = CONVERTERS[column] || toText;
-    out[column] = convert.length > 1 && (column === 'start_date' || column === 'end_date')
-      ? toDate(value, yearHint)
-      : convert(value);
+    const converted = isDateCol ? toDate(value, yearHint) : convert(value);
+    if (isDateCol && isBlank(converted)) return;
+    out[column] = converted;
   });
   if (table === 'merchants' && !out.owner_user_id) out.owner_user_id = randomUUID();
   if (table === 'discount_promotions' && out.remaining_quantity == null && out.total_quantity != null) {
@@ -1064,7 +1103,7 @@ export function recordsFromSurveyAoa(aoa, options = {}) {
       __surveyLetters: true,
     };
     headers.forEach((header, i) => {
-      if (header && !isBlank(values[i])) record[header] = values[i];
+      if (header && !isBlank(values[i]) && !isDateFragmentHeader(header)) record[header] = values[i];
     });
     Object.assign(record, lettered);
     records.push(record);

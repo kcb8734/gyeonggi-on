@@ -144,7 +144,7 @@ export default function ExcelImportCard() {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>엑셀 업로드 · 분석 · 저장 · 크롤링</Text>
       <Text style={styles.hint}>
-        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N 시작일, O·P·Q 종료일을 읽어 PostgreSQL에 저장합니다. 부족한 축제 정보는 대한민국 구석구석 일자별 달력에서 크롤링합니다.
+        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N열(년·월·일) 시작일, O·P·Q열(년·월·일) 종료일을 읽어 PostgreSQL에 저장합니다. 부족한 축제 정보는 대한민국 구석구석 일자별 달력에서 크롤링합니다.
       </Text>
       <View style={styles.steps}>
         {STEPS.map((item, index) => {

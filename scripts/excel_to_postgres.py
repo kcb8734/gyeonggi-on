@@ -124,6 +124,33 @@ def is_blank(value: Any) -> bool:
     return False
 
 
+def is_year_only(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int) and 1900 <= value <= 2100:
+        return True
+    if isinstance(value, float) and value.is_integer() and 1900 <= int(value) <= 2100:
+        return True
+    text = re.sub(r"\.0$", "", str(value).strip())
+    text = re.sub(r"년$", "", text).strip()
+    return bool(re.fullmatch(r"(19|20)\d{2}", text))
+
+
+def is_complete_date_value(value: Any) -> bool:
+    if is_blank(value) or is_year_only(value):
+        return False
+    if isinstance(value, (date, datetime)):
+        return True
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 30000 < float(value) < 80000:
+        return True
+    text = str(value).strip()
+    if re.search(r"(20\d{2})\s*[.\-/년]?\s*(\d{1,2})\s*[.\-/월]?\s*(\d{1,2})", text):
+        return True
+    if re.match(r"^\d{1,2}[.\-/]\d{1,2}", text):
+        return True
+    return False
+
+
 def to_bool(value: Any, default: bool | None = None) -> bool | None:
     if is_blank(value):
         return default
@@ -173,13 +200,13 @@ def to_text(value: Any) -> str | None:
 
 
 def to_date(value: Any, year_hint: int | None = None) -> date | None:
-    if is_blank(value):
+    if is_blank(value) or is_year_only(value):
         return None
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
         return value
-    if isinstance(value, (int, float)) and not isinstance(value, bool) and 59 < float(value) < 80000:
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 30000 < float(value) < 80000:
         return date(1899, 12, 30) + timedelta(days=int(value))
     text = str(value).strip()
     full = re.search(r"(20\d{2})\s*[.\-/년]?\s*(\d{1,2})\s*[.\-/월]?\s*(\d{1,2})", text)
@@ -508,9 +535,13 @@ def apply_profile(row: dict[str, Any], profile: TableProfile) -> dict[str, Any]:
     for column in profile.columns:
         raw = None
         for key in column.keys():
-            if key in raw_by_canon:
-                raw = raw_by_canon[key]
-                break
+            candidate = raw_by_canon.get(key)
+            if is_blank(candidate):
+                continue
+            if column.kind == "date" and not is_complete_date_value(candidate):
+                continue
+            raw = candidate
+            break
         if is_blank(raw):
             if column.required and column.name in profile.defaults:
                 out[column.name] = profile.defaults[column.name]
