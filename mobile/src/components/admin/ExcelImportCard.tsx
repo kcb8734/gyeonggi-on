@@ -141,7 +141,7 @@ export default function ExcelImportCard() {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>엑셀 업로드 · 분석 · 저장 · 크롤링</Text>
       <Text style={styles.hint}>
-        엑셀을 올리면 시트와 시군을 분석하고 PostgreSQL에 저장한 뒤, 부족한 축제 정보는 TourAPI로 크롤링합니다.
+        엑셀을 올리면 시트와 시군을 분석하고 PostgreSQL에 저장한 뒤, 부족한 축제 정보는 TourAPI로 크롤링합니다. 문체부 개최계획(조사표) 파일은 축제명·시작일·종료일·장소·시군구로 읽습니다.
       </Text>
       <View style={styles.steps}>
         {STEPS.map((item, index) => {
@@ -176,8 +176,9 @@ export default function ExcelImportCard() {
       {sheets.map((row) => (
         <View key={`${row.sheet}-${row.table}`} style={styles.sheetBox}>
           <Text style={styles.sheetTitle}>
-            {row.sheet} → {row.table || '미지원'} · {row.valid ?? row.inserted ?? 0}/{row.rows ?? 0}건
+            {row.sheet} → {row.tableLabel || row.table || (row.skipped ? '건너뜀' : '미지원')} · {row.valid ?? row.inserted ?? 0}/{row.rows ?? 0}건
           </Text>
+          {row.reason ? <Text style={styles.sample}>{row.reason}</Text> : null}
           {row.samples?.length ? <Text style={styles.sample}>{(row.samples || []).join(' · ')}</Text> : null}
           {(row.errors || []).slice(0, 3).map((item) => (
             <Text key={`${row.sheet}-${item.row}`} style={styles.errLine}>{item.row}행: {item.error}</Text>

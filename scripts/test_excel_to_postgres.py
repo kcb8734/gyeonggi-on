@@ -63,6 +63,7 @@ class MappingTest(unittest.TestCase):
     def test_sheet_aliases(self):
         self.assertEqual(resolve_table_name("가맹점"), "merchants")
         self.assertEqual(resolve_table_name("축제정보"), "festivals")
+        self.assertEqual(resolve_table_name("조사표"), "festivals")
         self.assertEqual(resolve_table_name("프로모션"), "discount_promotions")
         self.assertEqual(resolve_table_name("Sheet1", forced="coupons"), "coupons")
 
@@ -158,6 +159,21 @@ class TemplateExcelTest(unittest.TestCase):
             festival = apply_profile(sheets["축제"][0], PROFILES["festivals"])
             self.assertEqual(festival["title"], "수원화성문화제")
             self.assertEqual(festival["start_date"], date(2026, 9, 1))
+
+    def test_survey_sheet_maps_period_and_city(self):
+        mapped = apply_profile(
+            {
+                "1. 시군구": "수원시",
+                "2. 축제명": "수원화성문화제",
+                "3. 개최기간": "2026.09.01 ~ 2026.09.30",
+                "4. 개최장소": "수원화성 행궁광장",
+            },
+            PROFILES["festivals"],
+        )
+        self.assertEqual(mapped["title"], "수원화성문화제")
+        self.assertEqual(mapped["start_date"], date(2026, 9, 1))
+        self.assertEqual(mapped["end_date"], date(2026, 9, 30))
+        self.assertEqual(mapped["location_name"], "수원화성 행궁광장")
 
 
 class CliTest(unittest.TestCase):
