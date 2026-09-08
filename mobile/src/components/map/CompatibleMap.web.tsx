@@ -60,6 +60,8 @@ interface MapViewProps {
   initialRegion?: MapRegion;
   region?: MapRegion;
   pointerEvents?: 'auto' | 'none' | 'box-none';
+  /** 겹친 핀을 원형으로 벌릴지. 홈 미니맵은 false. */
+  spreadPins?: boolean;
   children?: ReactNode;
   onRegionChangeComplete?: (region: MapRegion) => void;
   showsUserLocation?: boolean;
@@ -82,7 +84,7 @@ function regionToZoom(region: MapRegion): number {
 function unstackMarkers(map: L.Map | null, layer: L.LayerGroup | null) {
   if (!map || !layer) return;
   const size = map.getSize();
-  if (size.x < 40 || size.y < 40) return;
+  if (size.x < 240 || size.y < 260) return;
   const groups = new Map<string, L.Marker[]>();
   layer.eachLayer((item) => {
     if (!(item instanceof L.Marker)) return;
@@ -179,7 +181,7 @@ function fitPadding(options?: {
 }
 
 export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
-  { style, initialRegion, region, children, onRegionChangeComplete, pointerEvents },
+  { style, initialRegion, region, children, onRegionChangeComplete, pointerEvents, spreadPins = true },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -187,11 +189,13 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   const layerRef = useRef<L.LayerGroup | null>(null);
   const regionCb = useRef(onRegionChangeComplete);
   const childrenRef = useRef(children);
+  const spreadRef = useRef(spreadPins);
   const pendingFly = useRef<MapRegion | null>(null);
   const pendingFit = useRef<{ latitude: number; longitude: number }[] | null>(null);
   const appliedKey = useRef('');
   regionCb.current = onRegionChangeComplete;
   childrenRef.current = children;
+  spreadRef.current = spreadPins;
   const fallback = initialRegion ?? region ?? {
     latitude: 37.4138,
     longitude: 127.5183,
@@ -252,9 +256,9 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
           marker.onPress?.();
         });
       }
-      pin.addTo(layer);
+    pin.addTo(layer);
     });
-    unstackMarkers(mapRef.current, layer);
+    if (spreadRef.current) unstackMarkers(mapRef.current, layer);
   };
 
   const fly = (next: MapRegion) => {

@@ -14,9 +14,9 @@ import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { findFallbackFestival } from '../constants/regionTour';
 import { festivalImageFor } from '../constants/regionMedia';
 import {
-  extractHomepageUrl,
   gyeonggiEventCopy,
   isGenericFestivalOverview,
+  resolveEventLink,
 } from '../constants/gyeonggiEventGuides';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
@@ -181,11 +181,23 @@ export default function FestivalDetailScreen({
     || (contentTypeId === '39' || fallbackKind === 'food' || detail.contentTypeId === '39'
       ? '한국관광공사 TourAPI에서 수집한 맛집 정보입니다. 상세 소개가 확인되는 대로 자동 반영됩니다.'
       : EMPTY_COPY.overview);
-  const homepageUrl = extractHomepageUrl(detail.homepage)
-    || extractHomepageUrl(fallbackHomepage)
-    || extractHomepageUrl(gyeonggiGuide?.homepage)
-    || extractHomepageUrl(known?.homepage);
-  const homepageLabel = gyeonggiGuide?.homepageLabel || '행사 홈페이지 열기';
+  const action = isRestaurant
+    ? resolveEventLink({
+      title: detail.title || fallbackTitle,
+      contentId,
+      homepage: detail.homepage || fallbackHomepage || known?.homepage,
+      description: `${rawOverview} ${known?.description || ''}`,
+    })
+    : resolveEventLink({
+      title: detail.title || fallbackTitle,
+      contentId,
+      metro: fallbackMetro,
+      source: /^\d+$/.test(String(contentId || '').replace(/^tour-/, '')) ? 'tour' : undefined,
+      homepage: detail.homepage || fallbackHomepage || known?.homepage || gyeonggiGuide?.homepage,
+      description: `${rawOverview} ${known?.description || ''}`,
+    });
+  const homepageUrl = action?.url;
+  const homepageLabel = action?.label || '행사 홈페이지';
   const fee = detail.fee?.trim() || EMPTY_COPY.fee;
   const address = detail.address?.trim() || EMPTY_COPY.address;
   const slides = detail.images.length ? detail.images : hero ? [{ originUrl: hero }] : [];

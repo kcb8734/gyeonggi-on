@@ -29,3 +29,16 @@ test('경기 주소는 제주온에 섞이지 않는다', () => {
   assert.equal(festivalBelongsToMetro(suwon, 'JEJU'), false);
   assert.equal(festivalBelongsToMetro(suwon, 'GYEONGGI'), true);
 });
+
+test('인천 좌표 범위에 고양·포천은 넣지 않는다', () => {
+  assert.equal(festivalBelongsToMetro({
+    title: '고양 행사',
+    latitude: 37.6584,
+    longitude: 126.8320,
+  }, 'INCHEON'), false);
+  assert.equal(festivalBelongsToMetro({
+    title: '송도 행사',
+    latitude: 37.389,
+    longitude: 126.643,
+  }, 'INCHEON'), true);
+});

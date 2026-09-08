@@ -47,7 +47,7 @@ import {
   useAppState,
 } from '../stores/appStore';
 import { getFeedPosts, getMyFeedPosts } from '../stores/feedStore';
-import { validLatLng, pinsInSelectedRegion } from '../utils/mapCamera';
+import { validLatLng, eligibleHomeMapPins } from '../utils/mapCamera';
 import { ddayLabel } from '../utils/date';
 
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -183,11 +183,9 @@ export default function HomeScreen() {
   }, [locatedFestivals, category, query, hideEnded]);
 
   const mapPins = useMemo(() => {
-    const withCoords = locatedFestivals.filter((item) => validLatLng(item.latitude, item.longitude));
-    const maxKm = Math.max(selectedPreset.latitudeDelta, selectedPreset.longitudeDelta) * 111 * 1.15;
-    const near = pinsInSelectedRegion(withCoords, selectedPreset, maxKm);
-    return near.length ? near : withCoords.filter((item) => festivalBelongsToMetro(item, metro));
-  }, [locatedFestivals, selectedPreset, metro]);
+    const origin = { latitude: selectedPreset.latitude, longitude: selectedPreset.longitude };
+    return eligibleHomeMapPins(locatedFestivals, metro, origin);
+  }, [locatedFestivals, selectedPreset.latitude, selectedPreset.longitude, metro]);
 
   const homeRegion = useMemo(() => ({
     latitude: selectedPreset.latitude,
@@ -198,29 +196,10 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const origin = { latitude: selectedPreset.latitude, longitude: selectedPreset.longitude };
-      const maxKm = Math.max(selectedPreset.latitudeDelta, selectedPreset.longitudeDelta) * 111 * 1.15;
-      const near = pinsInSelectedRegion(mapPins, origin, maxKm);
-      if (near.length > 1) {
-        mapRef.current?.fitToCoordinates(
-          near.map((item) => ({ latitude: item.latitude, longitude: item.longitude })),
-          { edgePadding: { top: 28, right: 28, bottom: 28, left: 28 } },
-        );
-        return;
-      }
-      if (near.length === 1) {
-        mapRef.current?.animateToRegion({
-          latitude: near[0].latitude,
-          longitude: near[0].longitude,
-          latitudeDelta: Math.min(selectedPreset.latitudeDelta, 0.35),
-          longitudeDelta: Math.min(selectedPreset.longitudeDelta, 0.35),
-        });
-        return;
-      }
       mapRef.current?.animateToRegion(homeRegion);
     }, 80);
     return () => clearTimeout(timer);
-  }, [metro, localityId, mapPins, homeRegion, selectedPreset]);
+  }, [metro, localityId, homeRegion]);
 
   const discountByFestival = useMemo(() => {
     const map = new Map<string, number>();
@@ -317,6 +296,7 @@ export default function HomeScreen() {
             style={styles.map}
             initialRegion={homeRegion}
             region={homeRegion}
+            spreadPins={false}
             pointerEvents={Platform.OS === 'web' ? 'auto' : 'none'}
           >
             {mapPins.map((festival) => (

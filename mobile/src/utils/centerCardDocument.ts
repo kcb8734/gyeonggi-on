@@ -99,9 +99,9 @@ function cardCss(dpi: number) {
     .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; font-size: ${u(3.2)}; }
     .title { font-size: ${u(2.55)}; color: ${CARD_COLORS.title}; font-weight: 500; white-space: nowrap; overflow: hidden; }
-    .brand-block { margin-top: auto; padding-top: ${u(2.2)}; padding-bottom: ${u(CARD_MM.brandAboveRule)}; }
-    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; }
-    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; }
+    .brand-block { margin-top: auto; padding-top: ${u(2.8)}; padding-bottom: ${u(CARD_MM.brandAboveRule)}; overflow: visible; }
+    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.65; padding-top: 0.28em; overflow: visible; }
+    .center { margin-top: ${u(0.55)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; line-height: 1.65; padding-top: 0.22em; white-space: nowrap; overflow: visible; }
     .rule {
       position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)};
       bottom: ${u(CARD_MM.ruleFromBottom)}; margin: 0; border: 0;
@@ -469,9 +469,9 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
 
     ctx.fillStyle = CARD_COLORS.brand;
     ctx.font = font('800', 3.2);
-    ctx.fillText('온앤온+', pad, ruleY - mm(CARD_MM.brandAboveRule + 3.2));
+    ctx.fillText('온앤온+', pad, ruleY - mm(CARD_MM.brandAboveRule + 4.2));
     ctx.font = 'italic 700 ' + mm(2.75) + 'px "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
-    ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(CARD_MM.brandAboveRule));
+    ctx.fillText(model.dedicatedCenter, pad, ruleY - mm(CARD_MM.brandAboveRule + 0.55));
 
     ctx.strokeStyle = '#d1d5db';
     ctx.lineWidth = Math.max(1, mm(0.25));

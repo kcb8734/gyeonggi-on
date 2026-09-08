@@ -299,6 +299,7 @@ function homeFromTour(item, metro, areaCode) {
     mapy: item.mapY,
     tel: item.tel,
     overview: item.overview,
+    homepage: item.homepage,
     areacode: item.areaCode || areaCode,
   }, metro, areaCode);
 }

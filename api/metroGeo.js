@@ -178,6 +178,39 @@ export function hasValidCoords(lat, lng) {
     && Math.abs(longitude) <= 180;
 }
 
+export function koreaLandCoords(lat, lng) {
+  if (!hasValidCoords(lat, lng)) return false;
+  return lat >= 33.05 && lat <= 38.75 && lng >= 124.55 && lng <= 132.05;
+}
+
+/** 권역별 지도 핀 허용 박스. 인접 광역 도시가 섞이지 않게 좁힌다. */
+export const METRO_MAP_BOUNDS = {
+  SEOUL: { minLat: 37.42, maxLat: 37.71, minLng: 126.78, maxLng: 127.19 },
+  BUSAN: { minLat: 34.95, maxLat: 35.40, minLng: 128.75, maxLng: 129.32 },
+  DAEGU: { minLat: 35.70, maxLat: 36.05, minLng: 128.40, maxLng: 128.80 },
+  INCHEON: { minLat: 37.22, maxLat: 37.86, minLng: 126.10, maxLng: 126.78 },
+  GWANGJU: { minLat: 35.06, maxLat: 35.26, minLng: 126.70, maxLng: 127.02 },
+  DAEJEON: { minLat: 36.22, maxLat: 36.50, minLng: 127.25, maxLng: 127.55 },
+  ULSAN: { minLat: 35.40, maxLat: 35.72, minLng: 129.05, maxLng: 129.48 },
+  SEJONG: { minLat: 36.42, maxLat: 36.68, minLng: 127.14, maxLng: 127.42 },
+  GYEONGGI: { minLat: 36.88, maxLat: 38.32, minLng: 126.38, maxLng: 127.90 },
+  GANGWON: { minLat: 37.00, maxLat: 38.62, minLng: 127.05, maxLng: 129.40 },
+  CHUNGBUK: { minLat: 36.10, maxLat: 37.25, minLng: 127.25, maxLng: 128.70 },
+  CHUNGNAM: { minLat: 35.95, maxLat: 37.10, minLng: 125.95, maxLng: 127.65 },
+  JEONBUK: { minLat: 35.20, maxLat: 36.20, minLng: 126.40, maxLng: 127.90 },
+  JEONNAM: { minLat: 33.95, maxLat: 35.50, minLng: 125.05, maxLng: 127.90 },
+  GYEONGBUK: { minLat: 35.50, maxLat: 37.55, minLng: 127.80, maxLng: 129.70 },
+  GYEONGNAM: { minLat: 34.55, maxLat: 35.75, minLng: 127.55, maxLng: 129.30 },
+  JEJU: { minLat: 33.10, maxLat: 33.56, minLng: 126.14, maxLng: 126.98 },
+};
+
+export function coordsInMetroBBox(lat, lng, metro) {
+  if (!koreaLandCoords(lat, lng)) return false;
+  const box = METRO_MAP_BOUNDS[String(metro || '').toUpperCase()];
+  if (!box) return true;
+  return lat >= box.minLat && lat <= box.maxLat && lng >= box.minLng && lng <= box.maxLng;
+}
+
 export function geocodePlace(text, metroHint) {
   const metro = metroHint ? normalizeMetroId(metroHint) : (metroFromPlace(text) || 'GYEONGGI');
   const city = cityFromPlace(text, metro);
@@ -197,26 +230,6 @@ export function withCoords(item, metroHint) {
   return { latitude: geo.lat, longitude: geo.lng };
 }
 
-const METRO_SPAN = {
-  SEOUL: 0.45,
-  BUSAN: 0.55,
-  DAEGU: 0.5,
-  INCHEON: 0.55,
-  GWANGJU: 0.4,
-  DAEJEON: 0.4,
-  ULSAN: 0.5,
-  SEJONG: 0.4,
-  GYEONGGI: 1.7,
-  GANGWON: 1.9,
-  CHUNGBUK: 1.2,
-  CHUNGNAM: 1.3,
-  JEONBUK: 1.3,
-  JEONNAM: 1.7,
-  GYEONGBUK: 1.7,
-  GYEONGNAM: 1.5,
-  JEJU: 0.9,
-};
-
 /** 장소 문구·좌표를 우선하고, 요청 권역으로 덮어쓴 태그는 후순위로 본다. */
 export function festivalBelongsToMetro(item, metroHint) {
   const wanted = normalizeMetroId(metroHint);
@@ -228,9 +241,7 @@ export function festivalBelongsToMetro(item, metroHint) {
   const lat = Number(row.latitude ?? row.mapY);
   const lng = Number(row.longitude ?? row.mapX);
   if (hasValidCoords(lat, lng)) {
-    const center = METRO_CENTERS[wanted] || METRO_CENTERS.GYEONGGI;
-    const span = METRO_SPAN[wanted] || 1.2;
-    return Math.abs(lat - center.lat) <= span && Math.abs(lng - center.lng) <= span;
+    return coordsInMetroBBox(lat, lng, wanted);
   }
 
   const taggedRaw = String(row.metro || row.regionalZone || '').trim();

@@ -61,6 +61,7 @@ interface MapViewProps {
   initialRegion?: MapRegion;
   region?: MapRegion;
   pointerEvents?: 'auto' | 'none' | 'box-none';
+  spreadPins?: boolean;
   children?: ReactNode;
   onRegionChangeComplete?: (region: MapRegion) => void;
   showsUserLocation?: boolean;

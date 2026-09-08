@@ -127,6 +127,7 @@ function toCultureFestival(partial, metro, source) {
     source,
     metro,
     categoryHint: extra,
+    homepage: text(partial.homepage || partial.url) || undefined,
   };
   item.category = categoryForFestival({
     source,
@@ -203,6 +204,7 @@ export function parseGwangjuHtml(html, metro = 'GWANGJU') {
     const cate = stripTags((block.match(/class="list_cate">([\s\S]*?)<\/span>/i) || [])[1] || '');
     const period = parsePeriod((block.match(/class="period">([\s\S]*?)<\/span>/i) || [])[1] || '');
     const seq = (block.match(/seq=(\d+)/) || [])[1];
+    const href = (block.match(/href="([^"]+)"/) || [])[1] || '';
     const resolvedMetro = metroFromPlace(place) || metro;
     if (metro === 'JEONNAM' && resolvedMetro === 'GWANGJU') return null;
     if (metro === 'GWANGJU' && resolvedMetro === 'JEONNAM') return null;
@@ -214,6 +216,9 @@ export function parseGwangjuHtml(html, metro = 'GWANGJU') {
       address: place || SIDO_NAME[metro],
       kind: cate,
       categoryHint: cate,
+      homepage: seq
+        ? `https://dmgj.kr/event.es?mid=a10303000000&seq=${seq}`
+        : (href.startsWith('http') ? href : (href ? `https://dmgj.kr${href}` : undefined)),
     }, resolvedMetro === 'JEONNAM' || resolvedMetro === 'GWANGJU' ? resolvedMetro : metro, 'dmgj');
   }).filter(Boolean);
 }
@@ -230,6 +235,7 @@ export function parseDaejeonHtml(html, metro = 'DAEJEON') {
     if (!title || seen.has(key)) return null;
     seen.add(key);
     const prg = (block.match(/prg_id=(\d+)/) || [])[1];
+    const href = (block.match(/href="([^"]+)"/) || [])[1] || '';
     return toCultureFestival({
       contentId: prg ? `dcaf-${prg}` : undefined,
       title,
@@ -238,6 +244,9 @@ export function parseDaejeonHtml(html, metro = 'DAEJEON') {
       address: '대전광역시',
       kind: badge,
       categoryHint: badge,
+      homepage: href
+        ? (href.startsWith('http') ? href : `https://dcaf.or.kr${href}`)
+        : undefined,
     }, metro, 'dcaf');
   }).filter(Boolean);
 }
@@ -262,6 +271,7 @@ export function parseJejuApi(payload, metro = 'JEJU') {
       mapY: row.y,
       kind: row.categoryName,
       categoryHint: row.categoryName,
+      homepage: row.link || row.homepage || row.url,
     }, metro, 'jeju');
   }).filter(Boolean);
 }
@@ -510,6 +520,7 @@ export function cultureToHome(item, metro) {
     is_trending: Boolean(item.firstImage),
     source: item.source || 'culture',
     tel: item.tel,
+    homepage: item.homepage || item.url || undefined,
     regionalZone: zone,
     metro: zone,
     areaCode: item.areaCode || AREA_CODE_BY_METRO[zone],

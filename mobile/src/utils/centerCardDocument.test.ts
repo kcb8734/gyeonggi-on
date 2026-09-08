@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { findLocalityByWebSlug, localityWebSlug, listCenterLocalities, summarizeCenterRegions } from '../constants/centerDirectors';
 import { CARD_MM, CARD_PRINT_CM, buildCenterCardFaceDocument, buildCenterCardHtml, buildCenterCardModel, setJpegDpi } from './centerCardDocument';
@@ -64,11 +65,21 @@ test('front face document uses flex layout and nowrap contact values', () => {
   assert.match(html, /display: grid/);
   assert.match(html, /white-space: nowrap/);
   assert.match(html, /class="brand-block"/);
+  assert.match(html, /line-height: 1\.65/);
+  assert.match(html, /padding-top: 0\.28em/);
   assert.match(html, /class="kv addr"/);
   assert.match(html, />A\.</);
   assert.doesNotMatch(html, />W\.</);
   assert.match(html, /position: absolute/);
   assert.doesNotMatch(html, /max-width: 640px/);
+});
+
+test('download buttons do not repeat print size', () => {
+  const source = readFileSync(new URL('../components/ui/CenterDirectorCard.tsx', import.meta.url), 'utf8');
+  assert.match(source, /전면 JPEG 다운로드/);
+  assert.match(source, /후면 JPEG 다운로드/);
+  assert.doesNotMatch(source, /전면 JPEG 다운로드 ·/);
+  assert.doesNotMatch(source, /후면 JPEG 다운로드 ·/);
 });
 
 test('back face keeps website QR while print size stays 92x52mm', () => {

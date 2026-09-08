@@ -72,3 +72,18 @@ test('태그만 제주온으로 덮어쓴 경기 축제도 걸러낸다', () => 
   assert.equal(festivalBelongsToMetro(leaked, 'JEJU'), false);
   assert.equal(festivalBelongsToMetro(leaked, 'GYEONGGI'), true);
 });
+
+test('인천온 좌표 박스에 고양·양주가 섞이지 않는다', () => {
+  assert.equal(festivalBelongsToMetro({
+    id: 'goyang',
+    title: '고양미술축제',
+    latitude: 37.6584,
+    longitude: 126.8320,
+  }, 'INCHEON'), false);
+  assert.equal(festivalBelongsToMetro({
+    id: 'songdo',
+    title: '인천펜타포트',
+    latitude: 37.389,
+    longitude: 126.643,
+  }, 'INCHEON'), true);
+});

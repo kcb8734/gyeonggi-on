@@ -1,7 +1,6 @@
 import type { HomeFestival } from '../types/home';
 import { METRO_REGIONS, normalizeMetroId } from '../constants/regions';
-import { REGION_PRESETS } from '../constants/regionTour';
-import { validLatLng } from './mapCamera';
+import { coordsInMetroBBox, validLatLng } from './mapCamera';
 
 function festivalKey(item: HomeFestival) {
   const title = String(item.title || '').trim();
@@ -73,12 +72,6 @@ export function inferMetroFromPlace(value?: string | null): string | null {
   return null;
 }
 
-function regionSpan(metro: string) {
-  const preset = REGION_PRESETS.find((item) => item.id === metro);
-  if (!preset) return 1.2;
-  return Math.max(preset.latitudeDelta, preset.longitudeDelta) * 1.05;
-}
-
 export function festivalBelongsToMetro(item: HomeFestival, metro: string): boolean {
   const wanted = normalizeMetroId(metro);
   const hay = `${item.title || ''} ${item.location_name || ''} ${item.municipality_name || ''}`;
@@ -86,10 +79,7 @@ export function festivalBelongsToMetro(item: HomeFestival, metro: string): boole
   if (inferred) return inferred === wanted;
 
   if (validLatLng(item.latitude, item.longitude)) {
-    const preset = REGION_PRESETS.find((row) => row.id === wanted) ?? REGION_PRESETS.find((row) => row.id === 'GYEONGGI')!;
-    const span = regionSpan(wanted);
-    return Math.abs(item.latitude - preset.latitude) <= span
-      && Math.abs(item.longitude - preset.longitude) <= span;
+    return coordsInMetroBBox(item.latitude, item.longitude, wanted);
   }
 
   const tagged = String(item.metro || item.regionalZone || '').trim();
