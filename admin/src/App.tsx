@@ -264,7 +264,7 @@ export default function App() {
               {excelAnalysis.sheets.map((row: any) => (
                 <tr key={row.sheet}>
                   <td>{row.sheet}</td>
-                  <td>{row.table || '미지원'}</td>
+                  <td>{row.tableLabel || row.table || (row.skipped ? '건너뜀' : '미지원')}</td>
                   <td>{row.valid}/{row.rows}</td>
                   <td>{(row.samples || []).join(', ')}</td>
                 </tr>

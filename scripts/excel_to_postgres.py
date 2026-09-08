@@ -31,7 +31,7 @@ import re
 import sys
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable, Iterable
@@ -49,6 +49,14 @@ BACKEND_DIR = REPO_ROOT / "backend"
 TRUTHY = {"1", "true", "t", "y", "yes", "o", "예", "맞음", "on", "활성"}
 FALSY = {"0", "false", "f", "n", "no", "x", "아니오", "아님", "off", "비활성"}
 
+SKIP_SHEETS = {
+    "총괄": "요약 시트",
+    "응답보기": "문항/코드 시트",
+    "안내": "안내 시트",
+    "표지": "표지 시트",
+    "코드북": "문항/코드 시트",
+}
+
 SHEET_ALIASES = {
     "municipalities": "municipalities",
     "지자체": "municipalities",
@@ -56,6 +64,12 @@ SHEET_ALIASES = {
     "festivals": "festivals",
     "축제": "festivals",
     "축제정보": "festivals",
+    "조사표": "festivals",
+    "개최계획": "festivals",
+    "개최현황": "festivals",
+    "지역축제": "festivals",
+    "축제현황": "festivals",
+    "문화축제": "festivals",
     "merchants": "merchants",
     "가맹점": "merchants",
     "점포": "merchants",
@@ -80,6 +94,19 @@ LOAD_ORDER = [
 def canon(value: Any) -> str:
     text = "" if value is None else str(value).strip().lower()
     return re.sub(r"[\s_\-()/]+", "", text)
+
+
+def is_skipped_sheet(sheet_name: str) -> bool:
+    key = canon(sheet_name)
+    return any(canon(alias) == key or key.startswith(canon(alias)) for alias in SKIP_SHEETS)
+
+
+def normalize_header(value: Any) -> str:
+    text = "" if value is None else str(value).strip()
+    text = re.sub(r"^\s*(?:문항|질문|항목)?\s*q?\s*\d+\s*[\.\)\:\-]", "", text, flags=re.I)
+    text = re.sub(r"[\*＊]+", "", text)
+    text = re.sub(r"\([^)]*\)", "", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def is_blank(value: Any) -> bool:
@@ -145,20 +172,58 @@ def to_text(value: Any) -> str | None:
     return str(value).strip()
 
 
-def to_date(value: Any) -> date | None:
+def to_date(value: Any, year_hint: int | None = None) -> date | None:
     if is_blank(value):
         return None
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
         return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 59 < float(value) < 80000:
+        return date(1899, 12, 30) + timedelta(days=int(value))
     text = str(value).strip()
+    full = re.search(r"(20\d{2})\s*[.\-/년]?\s*(\d{1,2})\s*[.\-/월]?\s*(\d{1,2})", text)
+    if full:
+        return date(int(full.group(1)), int(full.group(2)), int(full.group(3)))
     for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%Y%m%d"):
         try:
             return datetime.strptime(text[:10] if fmt != "%Y%m%d" else text[:8], fmt).date()
         except ValueError:
             continue
+    short = re.match(r"^(\d{1,2})[.\-/](\d{1,2})$", text)
+    if short:
+        year = year_hint or date.today().year
+        return date(year, int(short.group(1)), int(short.group(2)))
     raise ValueError(f"날짜로 변환할 수 없습니다: {value!r}")
+
+
+def parse_period(value: Any, year_hint: int | None = None) -> tuple[date | None, date | None]:
+    if is_blank(value):
+        return (None, None)
+    if isinstance(value, (date, datetime)):
+        parsed = to_date(value)
+        return (parsed, parsed)
+    text = str(value).strip()
+    full = list(re.finditer(r"(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})", text))
+    if full:
+        start = date(int(full[0].group(1)), int(full[0].group(2)), int(full[0].group(3)))
+        end = start
+        if len(full) > 1:
+            end = date(int(full[1].group(1)), int(full[1].group(2)), int(full[1].group(3)))
+        return (start, end)
+    shorts = list(re.finditer(r"(\d{1,2})\s*[.\-/월]\s*(\d{1,2})\s*일?", text))
+    if shorts:
+        year = year_hint or date.today().year
+        start = date(year, int(shorts[0].group(1)), int(shorts[0].group(2)))
+        end = start
+        if len(shorts) > 1:
+            end = date(year, int(shorts[1].group(1)), int(shorts[1].group(2)))
+        return (start, end)
+    try:
+        parsed = to_date(value, year_hint)
+        return (parsed, parsed)
+    except ValueError:
+        return (None, None)
 
 
 def to_datetime(value: Any) -> datetime | None:
@@ -258,11 +323,11 @@ PROFILES: dict[str, TableProfile] = {
         columns=[
             Column("id", "uuid", ("ID",)),
             Column("municipality_id", "uuid", ("지자체ID",), skip_insert=True),
-            Column("title", "text", ("축제명", "제목", "이름"), required=True),
-            Column("description", "text", ("설명", "소개")),
-            Column("start_date", "date", ("시작일", "시작"), required=True),
-            Column("end_date", "date", ("종료일", "종료"), required=True),
-            Column("location_name", "text", ("장소", "주소", "개최장소")),
+            Column("title", "text", ("축제명", "행사명", "축제이름", "제목", "이름"), required=True),
+            Column("description", "text", ("설명", "소개", "축제내용", "주요내용", "행사내용")),
+            Column("start_date", "date", ("시작일", "시작일자", "개최시작일", "축제시작일자", "축제시작일", "시작", "개최기간시작"), required=True),
+            Column("end_date", "date", ("종료일", "종료일자", "개최종료일", "축제종료일자", "축제종료일", "종료", "개최기간종료"), required=True),
+            Column("location_name", "text", ("장소", "주소", "개최장소", "행사장소", "소재지도로명주소")),
             Column("latitude", "number", ("위도", "lat")),
             Column("longitude", "number", ("경도", "lng", "lon")),
             Column("category", "text", ("카테고리", "분류")),
@@ -400,6 +465,8 @@ def connection_dsn(url: str) -> str:
 def resolve_table_name(sheet_name: str, forced: str | None = None) -> str:
     if forced:
         return forced
+    if is_skipped_sheet(sheet_name):
+        return ""
     key = canon(sheet_name)
     if key in SHEET_ALIASES:
         return SHEET_ALIASES[key]
@@ -407,16 +474,37 @@ def resolve_table_name(sheet_name: str, forced: str | None = None) -> str:
 
 
 def pick(row: dict[str, Any], *names: str) -> Any:
-    by_key = {canon(key): value for key, value in row.items()}
+    by_key: dict[str, Any] = {}
+    for key, value in row.items():
+        by_key[canon(key)] = value
+        normalized = normalize_header(key)
+        if normalized:
+            by_key[canon(normalized)] = value
     for name in names:
-        if canon(name) in by_key and not is_blank(by_key[canon(name)]):
-            return by_key[canon(name)]
+        key = canon(name)
+        if key in by_key and not is_blank(by_key[key]):
+            return by_key[key]
     return None
 
 
 def apply_profile(row: dict[str, Any], profile: TableProfile) -> dict[str, Any]:
+    source = dict(row)
+    if profile.table == "festivals":
+        start, end = parse_period(pick(source, "개최기간", "행사기간", "축제기간", "기간"))
+        if start and is_blank(pick(source, "시작일", "축제시작일자", "축제시작일", "개최시작일")):
+            source["시작일"] = start
+        if end and is_blank(pick(source, "종료일", "축제종료일자", "축제종료일", "개최종료일")):
+            source["종료일"] = end
+        city = pick(source, "시군구명", "시군구", "시군", "기초단체", "지자체명")
+        if city and is_blank(source.get("시군구")):
+            source["시군구"] = city
     out: dict[str, Any] = {}
-    raw_by_canon = {canon(key): value for key, value in row.items()}
+    raw_by_canon: dict[str, Any] = {}
+    for key, value in source.items():
+        raw_by_canon[canon(key)] = value
+        normalized = normalize_header(key)
+        if normalized:
+            raw_by_canon[canon(normalized)] = value
     for column in profile.columns:
         raw = None
         for key in column.keys():
@@ -774,6 +862,15 @@ def load_file(
     summary: dict[str, Any] = {"file": str(path), "dry_run": dry_run, "sheets": []}
     try:
         for sheet_name, _headers, records in sheets:
+            if is_skipped_sheet(sheet_name) and not table:
+                summary["sheets"].append({
+                    "sheet": sheet_name,
+                    "table": None,
+                    "inserted": 0,
+                    "skipped": True,
+                    "errors": [],
+                })
+                continue
             table_name = resolve_table_name(sheet_name, table)
             profile = PROFILES.get(table_name)
             if profile is None:
