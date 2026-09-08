@@ -91,6 +91,8 @@ test('template round-trip parses Korean sheets', () => {
   const festival = applyProfile(byName['축제'][0], 'festivals');
   assert.equal(festival.title, '수원화성문화제');
   assert.equal(festival.start_date, '2026-09-01');
+  assert.equal(festival.category, '계절축제');
+  assert.equal(festival.source, 'excel');
 });
 
 function fakeDb(options = {}) {

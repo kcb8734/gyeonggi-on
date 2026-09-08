@@ -1,4 +1,5 @@
 import { AREA_CODE_BY_METRO, MOI_CODE_BY_METRO, REGION_LABEL, REGION_META, normalizeMetroId } from './metroLocalities.js';
+import { classifyFestival as classifyFestivalShared } from './festivalCategories.js';
 
 export const KOR_SERVICE2 = 'https://apis.data.go.kr/B551011/KorService2';
 
@@ -6,14 +7,7 @@ const CONTENT_FESTIVAL = '15';
 const NEARBY_TYPES = new Set(['12', '14', '15', '38', '39']);
 
 export function classifyFestival(title, extra = '') {
-  const hay = String(title || '') + ' ' + extra;
-  if (/플리|마켓|장터|야시장|프리마켓/.test(hay)) return '플리마켓';
-  if (/먹거리|음식|맛집|푸드|한우|막걸리|치킨|분식|야식/.test(hay)) return '먹거리';
-  if (/공연|콘서트|뮤지컬|버스킹/.test(hay)) return '공연';
-  if (/가족|어린이|키즈|유아|체험학습|어린이날/.test(hay)) return '가족';
-  if (/체험|원데이|클래스|만들기/.test(hay)) return '체험';
-  if (/봄|여름|가을|겨울|벚꽃|연꽃|단풍|눈꽃|해바라기|억새|계절/.test(hay)) return '계절축제';
-  return '문화/예술';
+  return classifyFestivalShared(title, extra);
 }
 
 export function placeKind(contentTypeId) {

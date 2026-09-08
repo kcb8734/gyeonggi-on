@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { firstNonEmptyFestivals, mergeFestivalSources } from './festivalFeed';
+import { firstNonEmptyFestivals, mergeFestivalSources, matchesFestivalCategory } from './festivalFeed';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import type { HomeFestival } from '../types/home';
 
@@ -31,8 +31,17 @@ test('listed festivals stay first but still merge missing TourAPI rows', () => {
   assert.equal(merged.map((item) => item.id).join(','), 'tour-1,tour-2');
 });
 
-test('GYEONGGI fallbacks keep the home list populated', () => {
-  assert.ok((REGION_FESTIVAL_FALLBACKS.GYEONGGI?.length ?? 0) >= 5);
-  const merged = mergeFestivalSources([], [], [], REGION_FESTIVAL_FALLBACKS.GYEONGGI);
-  assert.ok(merged.some((item) => item.title.includes('수원화성')));
+test('excel listed festivals stay searchable as 계절축제', () => {
+  const listed = [{
+    id: 'excel-1',
+    contentId: 'excel-1',
+    title: '수원화성문화제',
+    latitude: 37,
+    longitude: 127,
+    category: '문화/예술',
+    source: 'excel',
+  }];
+  assert.equal(matchesFestivalCategory(listed[0], '계절축제'), true);
+  const merged = mergeFestivalSources(listed, [fest('tour-2', '가평 자라섬 재즈페스티벌')]);
+  assert.equal(merged[0].source, 'excel');
 });

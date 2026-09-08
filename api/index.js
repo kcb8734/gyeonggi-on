@@ -47,6 +47,8 @@ import {
   tourServiceKey,
 } from './tourLive.js';
 import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
+import { mergeFestivalSources } from './festivalMerge.js';
+import { crawlCultureForMetro, cultureToHome } from './regionCultureCrawlers.js';
 import {
   buildTemplateBuffer,
   analyzeExcelFromPayload,
@@ -300,6 +302,46 @@ function homeFromTour(item, metro, areaCode) {
   }, metro, areaCode);
 }
 
+async function collectMetroFestivals(metroKey, query = {}) {
+  const now = new Date();
+  const [tourResult, persisted, culture] = await Promise.all([
+    searchFestival2({
+      metro: metroKey,
+      areaCode: query.areaCode || METRO_AREA[metroKey],
+      month: query.month || (now.getMonth() + 1),
+      year: query.year || now.getFullYear(),
+      category: query.category,
+    }).catch((err) => {
+      console.warn('[api] tour search', err && err.message ? err.message : err);
+      return { festivals: [], source: 'none', metro: metroKey, areaCode: METRO_AREA[metroKey], regionLabel: REGION_LABEL[metroKey] };
+    }),
+    listPersistedFestivals(metroKey).catch(() => []),
+    crawlCultureForMetro(metroKey, { timeoutMs: 10000 }).catch(() => []),
+  ]);
+  const tourFestivals = (tourResult.festivals || [])
+    .map((item) => homeFromTour(item, tourResult.metro || metroKey, tourResult.areaCode || METRO_AREA[metroKey]))
+    .filter(Boolean);
+  const cultureFestivals = (culture || []).map((item) => cultureToHome(item, metroKey));
+  const festivals = mergeFestivalSources(persisted, cultureFestivals, tourFestivals);
+  const sources = [
+    persisted.length ? 'db' : null,
+    cultureFestivals.length ? 'culture' : null,
+    tourFestivals.length ? tourResult.source : null,
+  ].filter(Boolean);
+  return {
+    metro: tourResult.metro || metroKey,
+    areaCode: tourResult.areaCode || METRO_AREA[metroKey],
+    regionLabel: tourResult.regionLabel || REGION_LABEL[metroKey],
+    lDongRegnCd: tourResult.lDongRegnCd,
+    festivals,
+    source: sources.join('+') || 'none',
+    tourSource: tourResult.source,
+    persisted,
+    culture: cultureFestivals,
+    tourFestivals,
+  };
+}
+
 async function listFestivalsLive(req, res) {
   const headers = corsHeaders(req);
   if (String(req.method || '').toUpperCase() === 'OPTIONS') {
@@ -309,22 +351,8 @@ async function listFestivalsLive(req, res) {
   const query = readQuery(req);
   const metroKey = normalizeMetroId(query.metro);
   try {
-    const result = await searchFestival2({
-      metro: metroKey,
-      areaCode: query.areaCode || METRO_AREA[metroKey],
-      month: query.month,
-      year: query.year,
-      category: query.category,
-    });
-    let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
-    let source = result.source;
-    if (!festivals.length) {
-      const persisted = await listPersistedFestivals(result.metro);
-      if (persisted.length) {
-        festivals = persisted;
-        source = 'db';
-      }
-    }
+    const result = await collectMetroFestivals(metroKey, query);
+    const festivals = result.festivals;
     send(res, 200, {
       success: true,
       metro: result.metro,
@@ -333,7 +361,7 @@ async function listFestivalsLive(req, res) {
       moiCode: MOI_CODE_BY_METRO[result.metro] || result.lDongRegnCd,
       regionLabel: result.regionLabel,
       count: festivals.length,
-      source: source,
+      source: result.source,
       festivals: festivals,
       data: festivals,
       message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
@@ -371,15 +399,42 @@ async function syncFestivalsLive(req, res) {
   const query = readQuery(req);
   const metroKey = normalizeMetroId(query.metro);
   try {
-    const result = await searchFestival2({
-      metro: metroKey,
-      areaCode: query.areaCode || METRO_AREA[metroKey],
-      month: query.month,
-      year: query.year,
-      category: query.category,
-    });
-    const festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
-    const persist = await persistTourFestivals(result.festivals);
+    const result = await collectMetroFestivals(metroKey, query);
+    const persistTour = await persistTourFestivals(
+      (result.tourFestivals || []).map((item) => ({
+        contentId: item.contentId,
+        title: item.title,
+        eventStartDate: item.start_date,
+        eventEndDate: item.end_date,
+        address: item.location_name,
+        overview: item.description,
+        mapY: item.latitude,
+        mapX: item.longitude,
+        category: item.category,
+        firstImage: item.image_url,
+        tel: item.tel,
+        source: 'tour',
+        metro: metroKey,
+      })),
+    );
+    const persistCulture = await persistTourFestivals(
+      (result.culture || []).map((item) => ({
+        contentId: item.contentId,
+        title: item.title,
+        eventStartDate: item.start_date,
+        eventEndDate: item.end_date,
+        address: item.location_name,
+        overview: item.description,
+        mapY: item.latitude,
+        mapX: item.longitude,
+        category: item.category,
+        firstImage: item.image_url,
+        tel: item.tel,
+        source: item.source || 'culture',
+        metro: metroKey,
+      })),
+    );
+    const upserted = (persistTour.upserted || 0) + (persistCulture.upserted || 0);
     send(res, 200, {
       success: true,
       metro: result.metro,
@@ -387,17 +442,17 @@ async function syncFestivalsLive(req, res) {
       areaCode: result.areaCode,
       moiCode: MOI_CODE_BY_METRO[result.metro] || result.lDongRegnCd,
       regionLabel: result.regionLabel,
-      count: festivals.length,
-      fetched: festivals.length,
-      upserted: persist.upserted,
-      skipped: persist.skipped,
-      persisted: persist.ok,
+      count: result.festivals.length,
+      fetched: result.festivals.length,
+      upserted: upserted,
+      skipped: (persistTour.skipped || 0) + (persistCulture.skipped || 0),
+      persisted: Boolean(persistTour.ok || persistCulture.ok),
       source: result.source,
-      festivals: festivals,
-      data: festivals,
-      message: persist.ok
-        ? result.regionLabel + ' 축제 ' + persist.upserted + '건을 DB에 동기화했습니다. (' + result.source + ')'
-        : result.regionLabel + ' 축제 ' + festivals.length + '건을 TourAPI에서 수집했습니다. ' + persist.message,
+      festivals: result.festivals,
+      data: result.festivals,
+      message: persistTour.ok || persistCulture.ok
+        ? result.regionLabel + ' 축제·공연 ' + upserted + '건을 DB에 동기화했습니다. (' + result.source + ')'
+        : result.regionLabel + ' 축제 ' + result.festivals.length + '건을 수집했습니다.',
     }, headers);
   } catch (err) {
     console.error('[api] festival sync', err && err.message ? err.message : err);
@@ -511,23 +566,8 @@ async function getHomeFeed(req, res) {
   const query = readQuery(req);
   const metro = normalizeMetroId(query.metro);
   try {
-    const now = new Date();
-    const result = await searchFestival2({
-      metro: metro,
-      areaCode: METRO_AREA[metro],
-      month: query.month || (now.getMonth() + 1),
-      year: query.year || now.getFullYear(),
-      category: query.category,
-    });
-    let festivals = result.festivals.map((item) => homeFromTour(item, result.metro, result.areaCode)).filter(Boolean);
-    let source = result.source;
-    if (!festivals.length) {
-      const persisted = await listPersistedFestivals(metro);
-      if (persisted.length) {
-        festivals = persisted;
-        source = 'db';
-      }
-    }
+    const result = await collectMetroFestivals(metro, query);
+    const festivals = result.festivals;
     send(res, 200, {
       success: true,
       available: festivals.length > 0,
@@ -537,7 +577,7 @@ async function getHomeFeed(req, res) {
       festivals: festivals.map((item) => Object.assign({}, item, { hasCoupon: Boolean(item && item.hasCoupon) })),
       promotions: [],
       popular: festivals.map((item) => Object.assign({}, item, { hasCoupon: Boolean(item && item.hasCoupon) })),
-      source: source,
+      source: result.source,
     }, headers);
   } catch (err) {
     console.error('[api] /api/home', err && err.message ? err.message : err);

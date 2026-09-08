@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getPool, municipalityRegionCode, persistTourFestivals } from './festivalDbSync.js';
+import { getPool, municipalityRegionCode, persistTourFestivals, ensureFestivalColumns } from './festivalDbSync.js';
 import { METRO_LOCALITIES, REGION_LABEL, REGION_META, normalizeMetroId } from './metroLocalities.js';
 import { searchFestival2 } from './tourLive.js';
 import { crawlVisitkoreaCalendar } from './visitkoreaCalendar.js';
@@ -706,6 +706,8 @@ export function applyProfile(raw, table, options = {}) {
     if (!out.end_date && out.start_date) out.end_date = out.start_date;
     if (out.title) out.title = String(out.title).slice(0, 100);
     if (out.location_name) out.location_name = String(out.location_name).slice(0, 150);
+    out.category = '계절축제';
+    if (isBlank(out.source)) out.source = 'excel';
   }
   const missing = profile.required.filter((col) => isBlank(out[col]));
   if (missing.length) throw new Error(`${table} 필수 값이 없습니다: ${missing.join(', ')}`);
@@ -1345,7 +1347,7 @@ function buildUpsert(table, row, conflict) {
 const FESTIVAL_BATCH_COLS = [
   'municipality_id', 'title', 'description', 'start_date', 'end_date',
   'location_name', 'latitude', 'longitude', 'category', 'image_url',
-  'is_trending', 'tour_content_id', 'tel', 'source',
+  'is_trending', 'tour_content_id', 'tel', 'source', 'metro_region',
 ];
 const FESTIVAL_BATCH_SIZE = 80;
 
@@ -1355,8 +1357,9 @@ function buildFestivalBatchUpsert(rows) {
     const offset = index * FESTIVAL_BATCH_COLS.length;
     FESTIVAL_BATCH_COLS.forEach((col) => {
       let value = row[col];
-      if (col === 'category' && isBlank(value)) value = '문화/예술';
+      if (col === 'category' && isBlank(value)) value = '계절축제';
       if (col === 'source' && isBlank(value)) value = 'excel';
+      if (col === 'metro_region' && isBlank(value)) value = 'GYEONGGI';
       if (col === 'is_trending' && value == null) value = false;
       values.push(value == null ? null : value);
     });
@@ -1371,7 +1374,8 @@ function buildFestivalBatchUpsert(rows) {
       location_name = COALESCE(EXCLUDED.location_name, festivals.location_name),
       municipality_id = COALESCE(EXCLUDED.municipality_id, festivals.municipality_id),
       category = EXCLUDED.category,
-      source = EXCLUDED.source
+      source = EXCLUDED.source,
+      metro_region = COALESCE(EXCLUDED.metro_region, festivals.metro_region)
     RETURNING id`;
   return { sql, values };
 }
@@ -1400,12 +1404,13 @@ function municipalitySpec(raw) {
   const name = cityFromText(rawName)
     || rawName
     || cityFromText(pick(raw, ['주소', '개최장소', '장소', 'location_name']));
-  const region = toText(pick(raw, ['region_code', '지역코드'])) || (name ? municipalityRegionCode(name) : null);
-  if (!name && !region) return null;
   const metro = toText(pick(raw, ['metro_region', '권역']))
     || metroFromText(pick(raw, ['시도', '시도명']))
     || metroFromText(name)
+    || metroFromText(pick(raw, ['주소', '개최장소', '장소', 'location_name']))
     || 'GYEONGGI';
+  const region = toText(pick(raw, ['region_code', '지역코드'])) || (name ? municipalityRegionCode(name, metro) : null);
+  if (!name && !region) return null;
   return { name, region, metro };
 }
 
@@ -1474,6 +1479,7 @@ export async function persistSheets(sheets, options = {}) {
   const client = await db.connect();
   const summary = [];
   try {
+    await ensureFestivalColumns(client);
     await client.query('BEGIN');
     const muniCache = await loadMunicipalityCache(client);
     for (const sheet of ordered) {
@@ -1514,10 +1520,12 @@ export async function persistSheets(sheets, options = {}) {
           const sourced = table === 'festivals' ? enrichFestivalRow(raw, yearHint) : raw;
           if (table === 'festivals') {
             mapped.source = mapped.source || 'excel';
+            mapped.category = mapped.category || '계절축제';
             if (!mapped.tour_content_id) {
               mapped.tour_content_id = ('excel-' + canon(mapped.title) + '-' + String(mapped.start_date || '')).slice(0, 40);
             }
             const spec = municipalitySpec(sourced);
+            if (spec && spec.metro) mapped.metro_region = spec.metro;
             festivalSpecs.push(spec);
             festivalBatch.push({ mapped, spec });
             continue;

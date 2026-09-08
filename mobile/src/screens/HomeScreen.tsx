@@ -20,13 +20,14 @@ import {
   METRO_REGIONS,
   getLocalities,
   localityMatches,
+  GYEONGGI_CITY_COORDS,
 } from '../constants/regions';
 import { PREVIEW_HOME } from '../api/previewHome';
 import { REGION_FESTIVAL_FALLBACKS, regionById, withFestivalImage } from '../constants/regionTour';
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalHasSampleCoupon } from '../utils/festivalCoupon';
-import { mergeFestivalSources } from '../utils/festivalFeed';
+import { mergeFestivalSources, matchesFestivalCategory } from '../utils/festivalFeed';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -51,6 +52,18 @@ import { ddayLabel } from '../utils/date';
 
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 const ALL = '전체';
+
+function withRegionCoords(item: HomeFestival, metro: string): HomeFestival {
+  if (validLatLng(item.latitude, item.longitude)) return item;
+  const hay = `${item.municipality_name ?? ''} ${item.location_name ?? ''}`;
+  const cityHit = Object.entries(GYEONGGI_CITY_COORDS).find(([name]) => hay.includes(name));
+  const preset = regionById(metro);
+  return {
+    ...item,
+    latitude: cityHit?.[1].lat ?? preset.latitude,
+    longitude: cityHit?.[1].lng ?? preset.longitude,
+  };
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -81,7 +94,7 @@ export default function HomeScreen() {
   useEffect(() => {
     Promise.all([
       fetchHomeFeed(metro),
-      metro === 'GYEONGGI' ? fetchListedFestivals() : Promise.resolve([]),
+      fetchListedFestivals(metro),
       fetchTourFestivals({ areaCode: selectedPreset.code }),
     ]).then(([feed, listed, tourFestivals]) => {
       const extra = app.localPromotions.filter((item) =>
@@ -101,8 +114,8 @@ export default function HomeScreen() {
         feed.festivals,
         metro === 'GYEONGGI' ? [...PREVIEW_HOME.festivals, ...(REGION_FESTIVAL_FALLBACKS.GYEONGGI ?? [])] : (REGION_FESTIVAL_FALLBACKS[metro] ?? []),
       );
-      const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
-      setFestivals([...extras, ...incoming].map((item) => withFestivalImage(item, metro)));
+  const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
+      setFestivals([...extras, ...incoming].map((item) => withFestivalImage(withRegionCoords(item, metro), metro)));
       if (!feed.available && incoming.length === 0) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
   }, [metro, selectedPreset.code, app.localPromotions, app.localFestivals]);
@@ -139,7 +152,7 @@ export default function HomeScreen() {
   const popular = useMemo(() => {
     const q = query.trim();
     return locatedFestivals.filter((item) => {
-      const matchCategory = category === ALL || item.category === category;
+      const matchCategory = category === ALL || matchesFestivalCategory(item, category);
       const matchQuery = !q || `${item.title} ${item.location_name}`.includes(q);
       const matchEnded = !hideEnded || ddayLabel(item.start_date, item.end_date) !== '종료';
       return matchCategory && matchQuery && matchEnded;
