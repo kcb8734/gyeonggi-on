@@ -230,8 +230,10 @@ export default function App() {
               try {
                 const saved = await uploadExcel(excelFile, false);
                 if (saved.data?.analysis) setExcelAnalysis(saved.data.analysis);
-                const metros = (saved.data?.analysis?.crawlPlan || excelAnalysis?.crawlPlan || []).map((row: any) => row.metro);
-                const crawled = await crawlExcel(metros);
+                const plan = saved.data?.analysis?.crawlPlan || excelAnalysis?.crawlPlan || [];
+                const metros = plan.map((row: any) => row.metro);
+                const months = [...new Set(plan.flatMap((row: any) => row.months || []))];
+                const crawled = await crawlExcel(metros, { months, year: saved.data?.analysis?.year || excelAnalysis?.year });
                 setExcelCrawl(crawled.data || crawled);
                 setExcelMessage(`${saved.message || '저장'} · ${crawled.message || '크롤링'}`);
                 await load();
