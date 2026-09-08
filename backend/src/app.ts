@@ -39,7 +39,7 @@ app.use(cors({
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 
 // 헬스체크
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'gyeonggi-on-backend' }));

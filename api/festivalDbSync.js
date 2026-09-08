@@ -37,7 +37,7 @@ function loadPg() {
   return null;
 }
 
-function getPool() {
+export function getPool() {
   const url = String(process.env.DATABASE_URL || '').trim();
   if (!url) return null;
   if (pool) return pool;

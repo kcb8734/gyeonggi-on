@@ -10,6 +10,7 @@ import {
   WeightSlider,
 } from '../components/admin/AdminWidgets';
 import AdminCenterPanel from '../components/admin/AdminCenterPanel';
+import ExcelImportCard from '../components/admin/ExcelImportCard';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_PHONE, normalizeMetroId } from '../constants/regions';
 import { fetchSettlementCsv, settlementFilename, triggerCsvDownload } from '../utils/csvDownload';
 import { downloadFeedRewardPdf, type FeedRewardRow } from '../utils/feedRewardDocument';
@@ -215,7 +216,7 @@ function mergeDashboard(next: any) {
   };
 }
 
-type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats' | 'centers';
+type Menu = 'dash' | 'excel' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats' | 'centers';
 
 function formatWhen(value?: string) {
   if (!value) return '-';
@@ -469,6 +470,7 @@ export default function AdminScreen() {
       <View style={styles.menuRow}>
         {([
           ['dash', '대시보드'],
+          ['excel', '엑셀수집'],
           ['tour', 'TourAPI'],
           ['coupon', '상가·쿠폰'],
           ['match', '지자체'],
@@ -491,6 +493,8 @@ export default function AdminScreen() {
           <KpiCard title="지자체 매칭률" value={`${assigned}/${totalCities}`} sub={`매칭률 ${matchRate}%`} color={unassigned.length ? 'red' : 'green'} alert={unassigned.length > 0} />
         </View>
       ) : null}
+
+      {menu === 'dash' || menu === 'excel' ? <ExcelImportCard /> : null}
 
       {menu === 'dash' ? (
         <View style={styles.card}>
