@@ -3,18 +3,20 @@ import { PREVIEW_HOME } from './previewHome';
 import { REGION_FESTIVAL_FALLBACKS, fallbackPromotions, withFestivalImage } from '../constants/regionTour';
 import { normalizeMetroId } from '../constants/regions';
 import type { HomeFeed } from '../types/home';
+import { festivalsForMetro } from '../utils/festivalFeed';
 
 export async function fetchHomeFeed(metro: string, category?: string): Promise<HomeFeed> {
   try {
     const res = await api.get<HomeFeed>('/api/home', { params: { metro, category } });
     if (res.data?.festivals?.length) {
       const promotions = res.data.promotions?.length ? res.data.promotions : fallbackPromotions(metro);
-      const festivals = res.data.festivals.map((item) => withFestivalImage(item, metro));
+      const festivals = festivalsForMetro(res.data.festivals, metro).map((item) => withFestivalImage(item, metro));
+      const rows = festivals.length ? festivals : (REGION_FESTIVAL_FALLBACKS[normalizeMetroId(metro)] ?? []).map((item) => withFestivalImage(item, metro));
       return {
         ...res.data,
-        festivals,
+        festivals: rows,
         promotions,
-        popular: (res.data.popular?.length ? res.data.popular : festivals).map((item) => withFestivalImage(item, metro)),
+        popular: (res.data.popular?.length ? festivalsForMetro(res.data.popular, metro) : rows).map((item) => withFestivalImage(item, metro)),
       };
     }
   } catch {

@@ -1,5 +1,6 @@
 import { AREA_CODE_BY_METRO, MOI_CODE_BY_METRO, REGION_LABEL, REGION_META, normalizeMetroId } from './metroLocalities.js';
 import { classifyFestival as classifyFestivalShared } from './festivalCategories.js';
+import { metroFromPlace } from './metroGeo.js';
 
 export const KOR_SERVICE2 = 'https://apis.data.go.kr/B551011/KorService2';
 
@@ -201,6 +202,7 @@ function festivalCacheKey(resolved) {
 
 const BUILTIN_BY_METRO = {
   GYEONGGI: [
+    { contentId: 'semiwon-lotus', contentTypeId: '15', title: '양평 세미원 연꽃문화제', address: '경기도 양평군 양서면 양수로 93', eventStartDate: '2026-08-01', eventEndDate: '2026-08-31', firstImage: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=800&q=80', mapX: 127.310, mapY: 37.541, tel: '031-775-1834', category: '계절축제', overview: '양평 두물머리 세미원에서 연꽃이 만개하는 여름 축제', areaCode: '31' },
     { contentId: 'suwon-hwaseong', contentTypeId: '15', title: '수원화성문화제', address: '경기도 수원시 팔달구 정조로 825', eventStartDate: '2026-08-19', eventEndDate: '2026-09-21', firstImage: 'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?w=800&q=80', mapX: 127.013, mapY: 37.287, tel: '031-228-3675', category: '문화/예술', overview: '세계유산 수원화성을 무대로 펼쳐지는 야간 퍼레이드와 전통 공연', areaCode: '31' },
     { contentId: 'yongin-folk', contentTypeId: '15', title: '용인 한국민속촌 축제', address: '경기도 용인시 기흥구 민속촌로 90', eventStartDate: '2026-08-21', eventEndDate: '2026-09-11', firstImage: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80', mapX: 127.117, mapY: 37.259, tel: '031-288-0000', category: '가족', overview: '전통 가옥과 장터 체험이 이어지는 용인 대표 가족 축제', areaCode: '31' },
     { contentId: 'gapyeong-jazz', contentTypeId: '15', title: '가평 자라섬 재즈페스티벌', address: '경기도 가평군 가평읍 자라섬로 60', eventStartDate: '2026-08-22', eventEndDate: '2026-09-05', firstImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80', mapX: 127.513, mapY: 37.823, tel: '031-582-0174', category: '계절축제', overview: '북한강 위 자라섬에서 열리는 국내 대표 재즈 페스티벌', areaCode: '31' },
@@ -222,15 +224,51 @@ const BUILTIN_BY_METRO = {
   ],
   GANGWON: [
     { contentId: 'chuncheon-mime', contentTypeId: '15', title: '춘천마임축제', address: '강원특별자치도 춘천시 축제거리', eventStartDate: '2026-05-21', eventEndDate: '2026-05-31', firstImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80', mapX: 127.73, mapY: 37.8813, tel: '033-242-2587', category: '공연', overview: '춘천 명동·공지천에서 열리는 마임 축제', areaCode: '32' },
+    { contentId: 'gangneung-coffee', contentTypeId: '15', title: '강릉커피축제', address: '강원특별자치도 강릉시 창해로 14', eventStartDate: '2026-10-02', eventEndDate: '2026-10-06', firstImage: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80', mapX: 128.8761, mapY: 37.7519, tel: '033-640-4414', category: '먹거리', overview: '안목해변과 커피거리가 어우러진 강릉 대표 커피 축제', areaCode: '32' },
+  ],
+  DAEGU: [
+    { contentId: 'daegu-chimac', contentTypeId: '15', title: '대구치맥페스티벌', address: '대구광역시 수성구 두산동', eventStartDate: '2026-07-24', eventEndDate: '2026-07-28', firstImage: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80', mapX: 128.694, mapY: 35.829, tel: '053-803-3644', category: '먹거리', overview: '수성못 일대 치킨과 맥주 축제', areaCode: '4' },
+  ],
+  ULSAN: [
+    { contentId: 'ulsan-whale', contentTypeId: '15', title: '울산고래축제', address: '울산광역시 남구 장생포고래로', eventStartDate: '2026-05-22', eventEndDate: '2026-05-25', firstImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80', mapX: 129.43, mapY: 35.504, tel: '052-226-0196', category: '가족', overview: '장생포에서 열리는 울산 고래 문화 축제', areaCode: '7' },
+  ],
+  SEJONG: [
+    { contentId: 'sejong-festival', contentTypeId: '15', title: '세종축제', address: '세종특별자치시 어진동', eventStartDate: '2026-10-10', eventEndDate: '2026-10-12', firstImage: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=80', mapX: 127.289, mapY: 36.48, tel: '044-120', category: '가족', overview: '세종호수공원 일대 시민 축제', areaCode: '8' },
+  ],
+  CHUNGBUK: [
+    { contentId: 'cheongju-jikji', contentTypeId: '15', title: '청주직지축제', address: '충청북도 청주시 흥덕구', eventStartDate: '2026-09-03', eventEndDate: '2026-09-07', firstImage: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80', mapX: 127.489, mapY: 36.6424, tel: '043-201-2028', category: '문화/예술', overview: '직지와 고인쇄 문화를 기리는 청주 축제', areaCode: '33' },
+  ],
+  CHUNGNAM: [
+    { contentId: 'boryeong-mud', contentTypeId: '15', title: '보령머드축제', address: '충청남도 보령시 머드광장로', eventStartDate: '2026-07-17', eventEndDate: '2026-07-26', firstImage: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&q=80', mapX: 126.612, mapY: 36.333, tel: '041-930-3543', category: '체험', overview: '대천해수욕장 머드 체험 축제', areaCode: '34' },
+  ],
+  DAEJEON: [
+    { contentId: 'daejeon-0si', contentTypeId: '15', title: '대전 0시 축제', address: '대전광역시 중구 은행동', eventStartDate: '2026-08-08', eventEndDate: '2026-08-11', firstImage: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800&q=80', mapX: 127.427, mapY: 36.328, tel: '042-250-1271', category: '공연', overview: '대전 원도심 야간 문화 축제', areaCode: '3' },
+  ],
+  JEONBUK: [
+    { contentId: 'jeonju-hanji', contentTypeId: '15', title: '전주한지문화축제', address: '전북특별자치도 전주시 완산구', eventStartDate: '2026-05-01', eventEndDate: '2026-05-05', firstImage: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&q=80', mapX: 127.153, mapY: 35.815, tel: '063-281-5255', category: '문화/예술', overview: '한옥마을과 한지 체험이 이어지는 전주 축제', areaCode: '35' },
+  ],
+  JEONNAM: [
+    { contentId: 'yeosu-fireworks', contentTypeId: '15', title: '여수밤바다불꽃축제', address: '전라남도 여수시 종포해양공원', eventStartDate: '2026-10-31', eventEndDate: '2026-11-01', firstImage: 'https://images.unsplash.com/photo-1467810563316-b554652e1da4?w=800&q=80', mapX: 127.6622, mapY: 34.7604, tel: '061-659-3822', category: '공연', overview: '여수 밤바다를 수놓는 불꽃축제', areaCode: '36' },
+  ],
+  GWANGJU: [
+    { contentId: 'gwangju-kimchi', contentTypeId: '15', title: '광주김치축제', address: '광주광역시 서구 상무시민공원', eventStartDate: '2026-10-23', eventEndDate: '2026-10-27', firstImage: 'https://images.unsplash.com/photo-1467260201071-6e2ed80abd56?w=800&q=80', mapX: 126.8526, mapY: 35.1595, tel: '062-613-3642', category: '먹거리', overview: '김장 문화를 주제로 한 광주 대표 축제', areaCode: '5' },
+  ],
+  GYEONGBUK: [
+    { contentId: 'gyeongju-cherry', contentTypeId: '15', title: '경주벚꽃축제', address: '경상북도 경주시 대릉원일대', eventStartDate: '2026-04-03', eventEndDate: '2026-04-12', firstImage: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=800&q=80', mapX: 129.2247, mapY: 35.8562, tel: '054-779-6081', category: '계절축제', overview: '대릉원·황리단길 벚꽃 축제', areaCode: '37' },
+  ],
+  GYEONGNAM: [
+    { contentId: 'jinju-lantern', contentTypeId: '15', title: '진주남강유등축제', address: '경상남도 진주시 남강로', eventStartDate: '2026-10-01', eventEndDate: '2026-10-12', firstImage: 'https://images.unsplash.com/photo-1528360983277-427c9a0e30ef?w=800&q=80', mapX: 128.108, mapY: 35.18, tel: '055-749-2826', category: '문화/예술', overview: '남강을 수놓는 진주 유등 축제', areaCode: '38' },
+  ],
+  JEJU: [
+    { contentId: 'jeju-fire', contentTypeId: '15', title: '제주들불축제', address: '제주특별자치도 제주시 애월읍 봉성리 산 59-8', eventStartDate: '2026-03-06', eventEndDate: '2026-03-09', firstImage: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&q=80', mapX: 126.517, mapY: 33.459, tel: '064-728-2742', category: '계절축제', overview: '새별오름에서 열리는 제주 들불 축제', areaCode: '39' },
+    { contentId: 'seogwipo-chilsipri', contentTypeId: '15', title: '서귀포칠십리축제', address: '제주특별자치도 서귀포시 서귀동', eventStartDate: '2026-10-09', eventEndDate: '2026-10-12', firstImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80', mapX: 126.56, mapY: 33.253, tel: '064-760-3191', category: '문화/예술', overview: '서귀포 칠십리시공원 일대 문화 축제', areaCode: '39' },
+    { contentId: 'jeju-rape', contentTypeId: '15', title: '제주유채꽃축제', address: '제주특별자치도 제주시 한림읍', eventStartDate: '2026-04-04', eventEndDate: '2026-04-13', firstImage: 'https://images.unsplash.com/photo-1490750967868-88aa6486c31d?w=800&q=80', mapX: 126.239, mapY: 33.389, tel: '064-740-6000', category: '가족', overview: '서쪽 유채꽃 단지에서 열리는 봄 축제', areaCode: '39' },
   ],
 };
 
 function builtinFestivals(resolved) {
   const metro = resolved.metro || metroForArea(resolved.areaCode, 'GYEONGGI');
-  const rows = BUILTIN_BY_METRO[metro];
-  if (rows?.length) return rows;
-  if (metro === 'GYEONGGI' || resolved.areaCode === '31') return BUILTIN_BY_METRO.GYEONGGI;
-  return BUILTIN_BY_METRO.GYEONGGI;
+  return BUILTIN_BY_METRO[metro] || [];
 }
 
 export function fallbackTourFestivals(input = {}) {
@@ -300,6 +338,14 @@ export async function searchFestival2(input, fetchImpl) {
     }
     if (input.category) {
       festivals = festivals.filter((item) => item.category === input.category);
+    }
+    if (!resolved.nationwide && resolved.metro) {
+      festivals = festivals.filter((item) => {
+        const inferred = metroFromPlace(`${item.title || ''} ${item.address || ''}`);
+        if (inferred && inferred !== resolved.metro) return false;
+        if (item.areaCode && item.areaCode !== resolved.areaCode) return false;
+        return true;
+      });
     }
     if (festivals.length) {
       LAST_OK_FESTIVALS.set(key, festivals);

@@ -6,6 +6,7 @@ import type { HomeFestival } from '../types/home';
 import { addSchedule, rememberFestival, useAppState } from '../stores/appStore';
 import { useSelectedRegionPreset } from '../stores/regionStore';
 import { REGION_FESTIVAL_FALLBACKS, withFestivalImage } from '../constants/regionTour';
+import { festivalsForMetro } from '../utils/festivalFeed';
 import { eventColor, overlapsDay, ymd } from '../utils/date';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -32,11 +33,16 @@ export default function CalendarScreen() {
   const region = useSelectedRegionPreset();
 
   useEffect(() => {
-    fetchTourFestivals({ areaCode: region.code, month, year }).then((items) => {
-      const mapped = items.map(homeFestivalFromTour);
+    let cancelled = false;
+    fetchTourFestivals({ areaCode: region.code, metro: region.id, month, year }).then((items) => {
+      if (cancelled) return;
+      const mapped = festivalsForMetro(items.map((item) => homeFestivalFromTour(item, region.id)), region.id);
       const incoming = mapped.length ? mapped : (REGION_FESTIVAL_FALLBACKS[region.id] ?? []);
       setFestivals(incoming.map((item) => withFestivalImage(item, region.id)));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [month, year, region.code, region.id]);
 
   const cells = useMemo(() => monthCells(year, month), [year, month]);

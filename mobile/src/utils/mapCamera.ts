@@ -33,6 +33,17 @@ export function categoryPinColor(category?: string) {
   return 'teal';
 }
 
+/** 선택 권역 중심에서 벗어난 핀은 버리고, 없으면 빈 배열을 반환한다. */
+export function pinsInSelectedRegion<T extends { latitude: number; longitude: number }>(
+  pins: T[],
+  origin: { latitude: number; longitude: number },
+  maxKm: number,
+): T[] {
+  const valid = pins.filter((point) => validLatLng(point.latitude, point.longitude));
+  if (!validLatLng(origin.latitude, origin.longitude)) return valid;
+  return valid.filter((point) => kmBetween(origin.latitude, origin.longitude, point.latitude, point.longitude) <= maxKm);
+}
+
 /** 타 지역 핀이 섞여 지도가 광역으로 벌어지지 않게 시·군 반경 안으로 자른다. */
 export function boundToLocality(
   points: { latitude: number; longitude: number }[],

@@ -52,6 +52,11 @@ export const METRO_REGIONS: MetroRegion[] = [
   { id: 'JEJU', label: '제주온', ready: true, covers: '제주특별자치도 제주시·서귀포시', governments: ['제주특별자치도'], tourAreaCode: '39', moiCode: '50', phonePrefix: '064' },
 ];
 
+/** 홈 상단 권역 버튼용 가나다 정렬 (강원온 → 제주온 → 충북온) */
+export const METRO_REGIONS_BY_LABEL: MetroRegion[] = [...METRO_REGIONS].sort((a, b) =>
+  a.label.localeCompare(b.label, 'ko'),
+);
+
 export const REGION_PHONE: Record<string, string> = Object.fromEntries(
   METRO_REGIONS.map((region) => [region.id, region.phonePrefix]),
 );

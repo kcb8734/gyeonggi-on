@@ -17,7 +17,7 @@ import { issueCoupon } from '../api/coupons';
 import {
   COMING_SOON_MESSAGE,
   FESTIVAL_CATEGORIES,
-  METRO_REGIONS,
+  METRO_REGIONS_BY_LABEL,
   getLocalities,
   localityMatches,
   GYEONGGI_CITY_COORDS,
@@ -27,7 +27,7 @@ import { REGION_FESTIVAL_FALLBACKS, regionById, withFestivalImage } from '../con
 import { setRegion, useSelectedRegionPreset } from '../stores/regionStore';
 import type { HomeFestival, HomePromotion } from '../types/home';
 import { festivalHasSampleCoupon } from '../utils/festivalCoupon';
-import { mergeFestivalSources, matchesFestivalCategory } from '../utils/festivalFeed';
+import { festivalsForMetro, festivalBelongsToMetro, mergeFestivalSources, matchesFestivalCategory } from '../utils/festivalFeed';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import BannerCarousel from '../components/ui/BannerCarousel';
 import FestivalGridCard from '../components/ui/FestivalGridCard';
@@ -47,7 +47,7 @@ import {
   useAppState,
 } from '../stores/appStore';
 import { getFeedPosts, getMyFeedPosts } from '../stores/feedStore';
-import { validLatLng } from '../utils/mapCamera';
+import { validLatLng, pinsInSelectedRegion } from '../utils/mapCamera';
 import { ddayLabel } from '../utils/date';
 
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -56,13 +56,24 @@ const ALL = '전체';
 function withRegionCoords(item: HomeFestival, metro: string): HomeFestival {
   if (validLatLng(item.latitude, item.longitude)) return item;
   const hay = `${item.municipality_name ?? ''} ${item.location_name ?? ''}`;
-  const cityHit = Object.entries(GYEONGGI_CITY_COORDS).find(([name]) => hay.includes(name));
+  const cityHit = metro === 'GYEONGGI'
+    ? Object.entries(GYEONGGI_CITY_COORDS).find(([name]) => hay.includes(name))
+    : undefined;
   const preset = regionById(metro);
   return {
     ...item,
     latitude: cityHit?.[1].lat ?? preset.latitude,
     longitude: cityHit?.[1].lng ?? preset.longitude,
   };
+}
+
+function decorateFestival(item: HomeFestival, metro: string): HomeFestival {
+  return withFestivalImage(withRegionCoords({
+    ...item,
+    metro: item.metro ?? metro,
+    regionalZone: item.regionalZone ?? item.metro ?? metro,
+    areaCode: item.areaCode ?? regionById(metro).code,
+  }, metro), metro);
 }
 
 export default function HomeScreen() {
@@ -92,11 +103,15 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    let cancelled = false;
+    const seed = (REGION_FESTIVAL_FALLBACKS[metro] ?? []).map((item) => decorateFestival(item, metro));
+    setFestivals(seed);
     Promise.all([
       fetchHomeFeed(metro),
       fetchListedFestivals(metro),
-      fetchTourFestivals({ areaCode: selectedPreset.code }),
+      fetchTourFestivals({ areaCode: selectedPreset.code, metro }),
     ]).then(([feed, listed, tourFestivals]) => {
+      if (cancelled) return;
       const extra = app.localPromotions.filter((item) =>
         (!item.metro || item.metro === metro)
         && !feed.promotions.some((promo) => promo.id === item.id),
@@ -107,17 +122,25 @@ export default function HomeScreen() {
         coupon_type: item.coupon_type ?? (item.funding_type === 'MERCHANT_ONLY' ? 'SELF' : 'OFFICIAL'),
         total_discount_rate: item.total_discount_rate
           ?? ((item.merchant_discount_rate ?? 0) + (item.gov_matching_rate ?? 0)),
-      }))]);
-      const incoming = mergeFestivalSources(
+      }))].filter((item) => !item.metro || item.metro === metro));
+      const incoming = festivalsForMetro(mergeFestivalSources(
         listed,
-        tourFestivals.map(homeFestivalFromTour),
+        tourFestivals.map((item) => homeFestivalFromTour(item, metro)),
         feed.festivals,
         metro === 'GYEONGGI' ? [...PREVIEW_HOME.festivals, ...(REGION_FESTIVAL_FALLBACKS.GYEONGGI ?? [])] : (REGION_FESTIVAL_FALLBACKS[metro] ?? []),
+      ), metro);
+      const extras = app.localFestivals.filter((item) =>
+        (!item.metro || item.metro === metro)
+        && festivalBelongsToMetro(item, metro)
+        && !incoming.some((festival) => festival.id === item.id),
       );
-  const extras = app.localFestivals.filter((item) => !incoming.some((festival) => festival.id === item.id));
-      setFestivals([...extras, ...incoming].map((item) => withFestivalImage(withRegionCoords(item, metro), metro)));
+      const next = [...extras, ...incoming].map((item) => decorateFestival(item, metro));
+      setFestivals(next.length ? next : seed);
       if (!feed.available && incoming.length === 0) setToast(feed.message ?? COMING_SOON_MESSAGE);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [metro, selectedPreset.code, app.localPromotions, app.localFestivals]);
 
   useEffect(() => {
@@ -126,7 +149,7 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const metroInfo = METRO_REGIONS.find((item) => item.id === metro) ?? METRO_REGIONS[0];
+  const metroInfo = METRO_REGIONS_BY_LABEL.find((item) => item.id === metro) ?? METRO_REGIONS_BY_LABEL[0];
   const locality = getLocalities(metro).find((item) => item.id === localityId) ?? null;
 
   const locatedFestivals = useMemo(
@@ -159,10 +182,12 @@ export default function HomeScreen() {
     });
   }, [locatedFestivals, category, query, hideEnded]);
 
-  const mapPins = useMemo(
-    () => locatedFestivals.filter((item) => validLatLng(item.latitude, item.longitude)),
-    [locatedFestivals],
-  );
+  const mapPins = useMemo(() => {
+    const withCoords = locatedFestivals.filter((item) => validLatLng(item.latitude, item.longitude));
+    const maxKm = Math.max(selectedPreset.latitudeDelta, selectedPreset.longitudeDelta) * 111 * 1.15;
+    const near = pinsInSelectedRegion(withCoords, selectedPreset, maxKm);
+    return near.length ? near : withCoords.filter((item) => festivalBelongsToMetro(item, metro));
+  }, [locatedFestivals, selectedPreset, metro]);
 
   const homeRegion = useMemo(() => ({
     latitude: selectedPreset.latitude,
@@ -173,26 +198,29 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (mapPins.length > 1) {
+      const origin = { latitude: selectedPreset.latitude, longitude: selectedPreset.longitude };
+      const maxKm = Math.max(selectedPreset.latitudeDelta, selectedPreset.longitudeDelta) * 111 * 1.15;
+      const near = pinsInSelectedRegion(mapPins, origin, maxKm);
+      if (near.length > 1) {
         mapRef.current?.fitToCoordinates(
-          mapPins.map((item) => ({ latitude: item.latitude, longitude: item.longitude })),
+          near.map((item) => ({ latitude: item.latitude, longitude: item.longitude })),
           { edgePadding: { top: 28, right: 28, bottom: 28, left: 28 } },
         );
         return;
       }
-      if (mapPins.length === 1) {
+      if (near.length === 1) {
         mapRef.current?.animateToRegion({
-          latitude: mapPins[0].latitude,
-          longitude: mapPins[0].longitude,
-          latitudeDelta: 0.25,
-          longitudeDelta: 0.25,
+          latitude: near[0].latitude,
+          longitude: near[0].longitude,
+          latitudeDelta: Math.min(selectedPreset.latitudeDelta, 0.35),
+          longitudeDelta: Math.min(selectedPreset.longitudeDelta, 0.35),
         });
         return;
       }
       mapRef.current?.animateToRegion(homeRegion);
     }, 80);
     return () => clearTimeout(timer);
-  }, [metro, localityId, mapPins, homeRegion]);
+  }, [metro, localityId, mapPins, homeRegion, selectedPreset]);
 
   const discountByFestival = useMemo(() => {
     const map = new Map<string, number>();
@@ -256,7 +284,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionRow}>
-          {METRO_REGIONS.map((region) => {
+          {METRO_REGIONS_BY_LABEL.map((region) => {
             const active = metro === region.id;
             return (
               <TouchableOpacity
@@ -280,7 +308,7 @@ export default function HomeScreen() {
           />
         </View>
 
-        <BannerCarousel items={banner} onPress={openFestival} />
+        <BannerCarousel key={metro} items={banner} onPress={openFestival} />
 
         <TouchableOpacity activeOpacity={0.95} onPress={() => navigation.navigate('Nearby')} style={styles.mapCard}>
           <MapView
@@ -407,6 +435,7 @@ export default function HomeScreen() {
               longitude: festival.longitude,
               metro,
               imageUrl: festival.image_url ?? undefined,
+              homepage: festival.homepage ?? undefined,
             });
           } else {
             navigation.navigate('Nearby', { festivalId: festival.id });

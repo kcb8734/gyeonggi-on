@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { firstNonEmptyFestivals, mergeFestivalSources, matchesFestivalCategory } from './festivalFeed';
+import { firstNonEmptyFestivals, festivalBelongsToMetro, festivalsForMetro, mergeFestivalSources, matchesFestivalCategory } from './festivalFeed';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import type { HomeFestival } from '../types/home';
 
@@ -44,4 +44,31 @@ test('excel listed festivals stay searchable as 계절축제', () => {
   assert.equal(matchesFestivalCategory(listed[0], '계절축제'), true);
   const merged = mergeFestivalSources(listed, [fest('tour-2', '가평 자라섬 재즈페스티벌')]);
   assert.equal(merged[0].source, 'excel');
+});
+
+test('제주온 목록에 경기온 축제가 섞이지 않는다', () => {
+  const mixed = [
+    { id: 'gg', title: '수원화성문화제', location_name: '경기도 수원시', latitude: 37.287, longitude: 127.013, metro: 'GYEONGGI' },
+    { id: 'jj', title: '제주들불축제', location_name: '제주특별자치도 제주시', latitude: 33.459, longitude: 126.517, metro: 'JEJU' },
+  ];
+  const jeju = festivalsForMetro(mixed, 'JEJU');
+  assert.equal(jeju.length, 1);
+  assert.equal(jeju[0].title, '제주들불축제');
+  const gyeonggi = festivalsForMetro(mixed, 'GYEONGGI');
+  assert.equal(gyeonggi.length, 1);
+  assert.equal(gyeonggi[0].title, '수원화성문화제');
+});
+
+test('태그만 제주온으로 덮어쓴 경기 축제도 걸러낸다', () => {
+  const leaked = {
+    id: 'leak',
+    title: '수원화성문화제',
+    location_name: '경기도 수원시 팔달구',
+    latitude: 37.287,
+    longitude: 127.013,
+    metro: 'JEJU',
+    regionalZone: 'JEJU',
+  };
+  assert.equal(festivalBelongsToMetro(leaked, 'JEJU'), false);
+  assert.equal(festivalBelongsToMetro(leaked, 'GYEONGGI'), true);
 });

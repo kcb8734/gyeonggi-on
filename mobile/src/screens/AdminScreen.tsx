@@ -25,8 +25,8 @@ import {
   type FeedPayoutMode,
 } from '../stores/feedPayoutStore';
 
-const ADMIN_EMAIL = 'admin@gyeonggi-on.kr';
-const ADMIN_PASSWORD = 'admin1234';
+const ADMIN_EMAIL = 'kcb8734@gmail.com';
+const ADMIN_PASSWORD = 'kimcb8113!';
 const REGION_LABEL: Record<string, string> = Object.fromEntries(
   METRO_REGIONS.map((region) => [region.id, region.label]),
 );

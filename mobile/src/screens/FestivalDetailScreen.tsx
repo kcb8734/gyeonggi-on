@@ -13,6 +13,11 @@ import CourseGuideModal from '../components/ui/CourseGuideModal';
 import { fetchRecommendedCourse, type FestivalCourse } from '../api/courses';
 import { findFallbackFestival } from '../constants/regionTour';
 import { festivalImageFor } from '../constants/regionMedia';
+import {
+  extractHomepageUrl,
+  gyeonggiEventCopy,
+  isGenericFestivalOverview,
+} from '../constants/gyeonggiEventGuides';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
@@ -45,6 +50,7 @@ export default function FestivalDetailScreen({
   fallbackLongitude,
   fallbackMetro,
   fallbackImageUrl,
+  fallbackHomepage,
 }: {
   contentId: string;
   contentTypeId?: string;
@@ -57,6 +63,7 @@ export default function FestivalDetailScreen({
   fallbackLongitude?: number;
   fallbackMetro?: string;
   fallbackImageUrl?: string;
+  fallbackHomepage?: string;
 }) {
   useAppState();
   const known = findFallbackFestival(contentId, fallbackTitle);
@@ -90,7 +97,7 @@ export default function FestivalDetailScreen({
             ...data,
             tel: data.tel || fallbackTel,
             title: genericTitle ? (fallbackTitle || known?.title || data.title) : data.title,
-            overview: data.overview && !data.overview.includes('확인되는 대로')
+            overview: data.overview && !isGenericFestivalOverview(data.overview)
               ? data.overview
               : (known?.description || data.overview),
             address: (data.address && data.address !== '주소 확인 중')
@@ -99,6 +106,7 @@ export default function FestivalDetailScreen({
             mapX,
             mapY,
             firstImage: data.firstImage || fallbackImageUrl || known?.image_url || data.firstImage,
+            homepage: data.homepage || fallbackHomepage || known?.homepage,
             eventStartDate: data.eventStartDate || known?.start_date,
             eventEndDate: data.eventEndDate || known?.end_date,
           });
@@ -121,6 +129,7 @@ export default function FestivalDetailScreen({
             mapY: fallbackLatitude || known?.latitude || 0,
             images: image ? [{ originUrl: image }] : [],
             firstImage: image,
+            homepage: fallbackHomepage || known?.homepage,
             category: (known?.category as TourDetail['category']) || (fallbackKind === 'food' || contentTypeId === '39' ? '먹거리' : '문화/예술'),
           });
         }
@@ -128,7 +137,7 @@ export default function FestivalDetailScreen({
     return () => {
       cancelled = true;
     };
-  }, [contentId, contentTypeId, fallbackKind, fallbackTel, fallbackTitle, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, fallbackImageUrl, known]);
+  }, [contentId, contentTypeId, fallbackKind, fallbackTel, fallbackTitle, fallbackCity, fallbackAddress, fallbackLatitude, fallbackLongitude, fallbackMetro, fallbackImageUrl, fallbackHomepage, known]);
 
   useEffect(() => {
     if (!detail?.title) return;
@@ -163,11 +172,20 @@ export default function FestivalDetailScreen({
   const resolvedTel = detail.tel || fallbackTel;
   const callUrl = telHref(resolvedTel);
   const telLabel = formatTel(resolvedTel) || resolvedTel || EMPTY_COPY.tel;
-  const overview = detail.overview?.trim() || (
-    contentTypeId === '39' || fallbackKind === 'food' || detail.contentTypeId === '39'
+  const gyeonggiGuide = !isRestaurant
+    ? gyeonggiEventCopy(detail.title || fallbackTitle, contentId, fallbackMetro)
+    : null;
+  const rawOverview = detail.overview?.trim() || known?.description || '';
+  const overview = (!isGenericFestivalOverview(rawOverview) ? rawOverview : '')
+    || gyeonggiGuide?.overview
+    || (contentTypeId === '39' || fallbackKind === 'food' || detail.contentTypeId === '39'
       ? '한국관광공사 TourAPI에서 수집한 맛집 정보입니다. 상세 소개가 확인되는 대로 자동 반영됩니다.'
-      : EMPTY_COPY.overview
-  );
+      : EMPTY_COPY.overview);
+  const homepageUrl = extractHomepageUrl(detail.homepage)
+    || extractHomepageUrl(fallbackHomepage)
+    || extractHomepageUrl(gyeonggiGuide?.homepage)
+    || extractHomepageUrl(known?.homepage);
+  const homepageLabel = gyeonggiGuide?.homepageLabel || '행사 홈페이지 열기';
   const fee = detail.fee?.trim() || EMPTY_COPY.fee;
   const address = detail.address?.trim() || EMPTY_COPY.address;
   const slides = detail.images.length ? detail.images : hero ? [{ originUrl: hero }] : [];
@@ -207,6 +225,11 @@ export default function FestivalDetailScreen({
         <View style={styles.card}>
           <Text style={styles.label}>상세 개요</Text>
           <Text style={styles.overview}>{overview}</Text>
+          {homepageUrl ? (
+            <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(homepageUrl)}>
+              <Text style={styles.linkBtnText}>{homepageLabel}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {course ? (
@@ -350,6 +373,14 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '800', color: '#6B7280', marginBottom: 4 },
   value: { fontSize: 15, color: '#111827', fontWeight: '600' },
   overview: { fontSize: 14, lineHeight: 22, color: '#374151' },
+  linkBtn: {
+    marginTop: 12,
+    backgroundColor: '#1D4ED8',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  linkBtnText: { color: '#fff', fontWeight: '800' },
   courseBtn: {
     marginTop: 12,
     backgroundColor: '#0F766E',

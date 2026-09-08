@@ -15,8 +15,8 @@ export const adminLogin = async (req: Request, res: Response) => {
   const email = String(req.body?.email ?? req.body?.username ?? '').trim();
   const password = String(req.body?.password ?? '');
 
-  const expectedEmail = process.env.ADMIN_EMAIL || 'admin@gyeonggi-on.kr';
-  const expectedPassword = process.env.ADMIN_PASSWORD || 'admin1234';
+  const expectedEmail = process.env.ADMIN_EMAIL || 'kcb8734@gmail.com';
+  const expectedPassword = process.env.ADMIN_PASSWORD || 'kimcb8113!';
 
   if (!email || !password) {
     return res.status(400).json({ success: false, message: '이메일과 비밀번호를 입력해주세요.' });

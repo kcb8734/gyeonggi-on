@@ -97,10 +97,14 @@ export function useFestivalMap(initialFestivalId?: string) {
 
   const loadAround = useCallback(async (coords: { latitude: number; longitude: number } | null) => {
     const preset = regionById(region.id);
-    const center = coords ?? {
+    const presetCenter = {
       latitude: preset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
       longitude: preset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
     };
+    const maxKm = Math.max(preset.latitudeDelta || 0.7, preset.longitudeDelta || 0.7) * 111;
+    const center = coords && withinKm(coords, presetCenter, maxKm)
+      ? coords
+      : presetCenter;
     setLoadingFestivals(true);
     setLoadingTour(true);
     setError(null);

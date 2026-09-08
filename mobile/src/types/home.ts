@@ -29,6 +29,7 @@ export interface HomeFestival {
   managerEmail?: string;
   managerPhone?: string;
   fee?: string;
+  homepage?: string;
 }
 
 export interface QrScanRecord {

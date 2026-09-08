@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { boundToLocality, categoryPinColor, regionFromPoints, validLatLng } from './mapCamera';
+import { boundToLocality, categoryPinColor, pinsInSelectedRegion, regionFromPoints, validLatLng } from './mapCamera';
 
 test('강릉 좌표만 유효로 본다', () => {
   assert.equal(validLatLng(37.7792, 128.878), true);
@@ -36,4 +36,14 @@ test('타 지역 좌표는 바운더리에서 제외한다', () => {
   ], 40, { latitude: 37.3215, longitude: 126.8308 });
   assert.equal(points.some((point) => point.longitude > 128), false);
   assert.ok(points.length >= 2);
+});
+
+test('선택 권역 밖의 핀은 빈 배열로 남긴다', () => {
+  const jeju = { latitude: 33.4996, longitude: 126.5312 };
+  const kept = pinsInSelectedRegion([
+    { latitude: 37.287, longitude: 127.013 },
+    { latitude: 33.459, longitude: 126.517 },
+  ], jeju, 90);
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].latitude, 33.459);
 });
