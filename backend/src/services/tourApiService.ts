@@ -257,10 +257,11 @@ export function classifyFestival(title: string, extra = ''): FestivalCategory {
   const hay = `${title} ${extra}`;
   if (/플리|마켓|장터|야시장|프리마켓/.test(hay)) return '플리마켓';
   if (/먹거리|음식|맛집|푸드|한우|막걸리|치킨|분식|야식/.test(hay)) return '먹거리';
-  if (/공연|콘서트|뮤지컬|버스킹/.test(hay)) return '공연';
+  if (/공연|콘서트|뮤지컬|오페라|연극|무용|발레|국악|클래식|연주회|리사이틀|음악회|버스킹/.test(hay)) return '공연';
   if (/가족|어린이|키즈|유아|체험학습|어린이날/.test(hay)) return '가족';
-  if (/체험|원데이|클래스|만들기/.test(hay)) return '체험';
+  if (/체험|원데이|클래스|만들기|워크숍|워크샵|교육/.test(hay)) return '체험';
   if (/봄|여름|가을|겨울|벚꽃|연꽃|단풍|눈꽃|해바라기|억새|계절/.test(hay)) return '계절축제';
+  if (/전시|그림전|사진전|기획전|미술|갤러리|박물관|문학/.test(hay)) return '문화/예술';
   return '문화/예술';
 }
 

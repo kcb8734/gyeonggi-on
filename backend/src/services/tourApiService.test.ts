@@ -36,6 +36,7 @@ test('classifyFestival maps keywords to home categories', () => {
   assert.equal(classifyFestival('어린이 가족 체험 한마당'), '가족');
   assert.equal(classifyFestival('세미원 연꽃문화제'), '계절축제');
   assert.equal(classifyFestival('수원 국가유산야행'), '문화/예술');
+  assert.equal(classifyFestival('로맨틱연극 그녀를 믿지마세요'), '공연');
 });
 
 test('formatYmd and overlapsMonth handle TourAPI dates', () => {

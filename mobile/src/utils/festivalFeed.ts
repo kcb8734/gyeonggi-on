@@ -20,6 +20,18 @@ export function mergeFestivalSources(...groups: HomeFestival[][]) {
   return out;
 }
 
+export function matchesFestivalCategory(item: HomeFestival, category: string) {
+  const wanted = String(category || '').trim();
+  if (!wanted || wanted === '전체') return true;
+  const source = String(item.source || '');
+  const actual = String(item.category || '');
+  if (wanted === '계절축제' && (actual === '계절축제' || source === 'excel' || source === 'survey' || source === 'xlsx')) {
+    return true;
+  }
+  if (wanted === '문화/예술' && (actual === '문화/예술' || actual === '문화예술')) return true;
+  return actual === wanted;
+}
+
 export function firstNonEmptyFestivals(...groups: HomeFestival[][]) {
   for (const group of groups) {
     if (group?.length) return group;

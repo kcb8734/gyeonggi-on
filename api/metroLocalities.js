@@ -16,6 +16,14 @@ function normalizeMetroId(id) {
   return LEGACY_METRO_ALIASES[raw] || raw;
 }
 
+function metroMatchIds(metro) {
+  const key = normalizeMetroId(metro);
+  const aliases = Object.entries(LEGACY_METRO_ALIASES)
+    .filter(([, mapped]) => mapped === key)
+    .map(([legacy]) => legacy);
+  return [key, ...aliases];
+}
+
 const REGION_META = {
   SEOUL: { label: '서울온', phone: '02', tourAreaCode: '1', moiCode: '11' },
   BUSAN: { label: '부산온', phone: '051', tourAreaCode: '6', moiCode: '26' },
@@ -179,6 +187,7 @@ function feedRewardRows() {
 export {
   LEGACY_METRO_ALIASES,
   normalizeMetroId,
+  metroMatchIds,
   REGION_META,
   REGION_LABEL,
   REGION_PHONE,

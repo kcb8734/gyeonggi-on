@@ -28,14 +28,20 @@ function toFestivalPin(item: {
   contentTypeId?: string;
   tel?: string;
   image_url?: string | null;
-}): FestivalPin | null {
-  if (!validLatLng(item.latitude, item.longitude)) return null;
+}, fallback?: { latitude: number; longitude: number }): FestivalPin | null {
+  let latitude = item.latitude;
+  let longitude = item.longitude;
+  if (!validLatLng(latitude, longitude) && fallback && validLatLng(fallback.latitude, fallback.longitude)) {
+    latitude = fallback.latitude;
+    longitude = fallback.longitude;
+  }
+  if (!validLatLng(latitude, longitude)) return null;
   return {
     id: item.id,
     title: item.title,
     location_name: item.location_name,
-    latitude: item.latitude as number,
-    longitude: item.longitude as number,
+    latitude: latitude as number,
+    longitude: longitude as number,
     start_date: item.start_date,
     end_date: item.end_date,
     municipality_name: item.municipality_name,
@@ -104,18 +110,24 @@ export function useFestivalMap(initialFestivalId?: string) {
         fetchHomeFeed(region.id).catch(() => null),
         fetchTourNearby({ mapX: center.longitude, mapY: center.latitude, radius: TOUR_RADIUS_M }).catch(() => [] as TourPlace[]),
       ]);
+      const fallback = {
+        latitude: preset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
+        longitude: preset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
+      };
       const nearbyFestivals = list.filter((item) =>
         validLatLng(item.latitude, item.longitude) && withinKm(item, center, NEARBY_KM),
       );
       const feedPins = (feed?.festivals ?? [])
-        .map(toFestivalPin)
+        .map((item) => toFestivalPin(item, fallback))
         .filter((item): item is FestivalPin => Boolean(item));
-      let pins = nearbyFestivals;
+      const byId = new Map<string, FestivalPin>();
+      feedPins.forEach((item) => byId.set(item.id, item));
+      nearbyFestivals.forEach((item) => {
+        if (!byId.has(item.id)) byId.set(item.id, item);
+      });
+      let pins = [...byId.values()];
       if (!pins.length) {
-        pins = feedPins.filter((item) => withinKm(item, center, 40));
-      }
-      if (!pins.length) {
-        pins = feedPins.length ? feedPins : list.filter((item) => validLatLng(item.latitude, item.longitude));
+        pins = nearbyFestivals;
       }
       setFestivals(pins);
       const promoPins = (feed?.promotions ?? [])
