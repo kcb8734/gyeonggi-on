@@ -378,3 +378,32 @@ export const uploadAdminExcel = async (req: Request, res: Response) => {
     });
   }
 };
+
+/** POST /api/admin/excel/analyze */
+export const analyzeAdminExcel = async (req: Request, res: Response) => {
+  try {
+    const { analyzeExcelFromPayload } = await loadExcelImport();
+    const result = analyzeExcelFromPayload(req.body || {});
+    return res.json({ success: true, message: result.message, data: result });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error instanceof Error ? error.message : '엑셀 분석에 실패했습니다.',
+    });
+  }
+};
+
+/** POST /api/admin/excel/crawl */
+export const crawlAdminExcel = async (req: Request, res: Response) => {
+  try {
+    const { crawlPlannedMetros } = await loadExcelImport();
+    const metros = Array.isArray(req.body?.metros) ? req.body.metros : (req.body?.metro ? [req.body.metro] : []);
+    const result = await crawlPlannedMetros(metros);
+    return res.json({ success: true, message: result.message, data: result });
+  } catch (error) {
+    return res.status(502).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'TourAPI 크롤링에 실패했습니다.',
+    });
+  }
+};

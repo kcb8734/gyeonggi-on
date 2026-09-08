@@ -49,6 +49,8 @@ import {
 import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
 import {
   buildTemplateBuffer,
+  analyzeExcelFromPayload,
+  crawlPlannedMetros,
   importExcelFromPayload,
 } from './excelImport.js';
 const NTS_STATUS_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
@@ -798,6 +800,33 @@ async function handler(req, res) {
         send(res, 500, {
           success: false,
           message: err && err.message ? err.message : '엑셀 템플릿을 만들지 못했습니다.',
+        }, corsHeaders(req));
+      }
+      return;
+    }
+    if (/admin\/excel\/analyze/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        const result = analyzeExcelFromPayload(body);
+        send(res, 200, { success: true, message: result.message, data: result }, corsHeaders(req));
+      } catch (err) {
+        send(res, 400, {
+          success: false,
+          message: err && err.message ? err.message : '엑셀 분석에 실패했습니다.',
+        }, corsHeaders(req));
+      }
+      return;
+    }
+    if (/admin\/excel\/crawl/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        const metros = Array.isArray(body.metros) ? body.metros : (body.metro ? [body.metro] : []);
+        const result = await crawlPlannedMetros(metros);
+        send(res, 200, { success: true, message: result.message, data: result }, corsHeaders(req));
+      } catch (err) {
+        send(res, 502, {
+          success: false,
+          message: err && err.message ? err.message : 'TourAPI 크롤링에 실패했습니다.',
         }, corsHeaders(req));
       }
       return;

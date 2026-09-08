@@ -50,6 +50,23 @@ test('GET template then POST dry-run upload', async () => {
   assert.equal(body.data?.sheets?.length, 4);
 });
 
+test('POST /api/admin/excel/analyze returns crawl plan', async () => {
+  const template = await invoke({ method: 'GET', url: '/api/admin/excel/template' });
+  const analyzed = await invoke({
+    method: 'POST',
+    url: '/api/admin/excel/analyze',
+    body: {
+      filename: 'import.xlsx',
+      content: Buffer.from(template.body as Buffer).toString('base64'),
+    },
+  });
+  assert.equal(analyzed.status, 200);
+  const body = analyzed.body as { success: boolean; data?: { analysis?: { crawlPlan?: unknown[]; totals?: { valid?: number } } } };
+  assert.equal(body.success, true);
+  assert.ok((body.data?.analysis?.totals?.valid || 0) >= 4);
+  assert.ok((body.data?.analysis?.crawlPlan || []).length >= 1);
+});
+
 test('GET /health returns ok without Express', async () => {
   const result = await invoke({ method: 'GET', url: '/health' });
   assert.equal(result.status, 200);

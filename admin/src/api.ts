@@ -125,6 +125,45 @@ export async function downloadExcelTemplate() {
   URL.revokeObjectURL(url);
 }
 
+export async function analyzeExcel(file: File) {
+  const content = await file.arrayBuffer().then((buf) => {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const size = 0x8000;
+    for (let i = 0; i < bytes.length; i += size) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + size));
+    }
+    return btoa(binary);
+  });
+  const token = localStorage.getItem('admin_token');
+  const res = await fetch(`${API_BASE}/api/admin/excel/analyze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ filename: file.name, content }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '엑셀 분석 실패');
+  return data;
+}
+
+export async function crawlExcel(metros: string[]) {
+  const token = localStorage.getItem('admin_token');
+  const res = await fetch(`${API_BASE}/api/admin/excel/crawl`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ metros }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || '크롤링 실패');
+  return data;
+}
+
 export function logout() {
   localStorage.removeItem('admin_token');
 }

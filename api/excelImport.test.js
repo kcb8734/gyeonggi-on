@@ -2,11 +2,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   applyProfile,
+  analyzeExcelFromPayload,
+  analyzeSheets,
   buildTemplateBuffer,
   canon,
+  crawlPlannedMetros,
   decodeExcelPayload,
   importExcelFromPayload,
   loadXlsx,
+  metroFromText,
   parseWorkbook,
   persistSheets,
   resolveTableName,
@@ -130,4 +134,44 @@ test('importExcelFromPayload without DATABASE_URL still previews a template', as
   assert.equal(result.ok, true);
   assert.equal(result.persisted, false);
   assert.ok(result.sheets.length >= 3);
+  assert.ok(result.analysis?.crawlPlan?.some((row) => row.metro === 'GYEONGGI'));
+});
+
+test('metroFromText maps Gyeonggi cities', () => {
+  assert.equal(metroFromText('수원시'), 'GYEONGGI');
+  assert.equal(metroFromText('경기온'), 'GYEONGGI');
+  assert.equal(metroFromText('GYEONGGI'), 'GYEONGGI');
+});
+
+test('analyzeSheets plans TourAPI crawl for template metros', () => {
+  const buffer = buildTemplateBuffer();
+  const sheets = parseWorkbook(buffer);
+  const analysis = analyzeSheets(sheets);
+  assert.equal(analysis.totals.sheets, 4);
+  assert.ok(analysis.totals.valid >= 4);
+  assert.ok(analysis.cities.includes('수원시'));
+  assert.equal(analysis.crawlPlan[0].metro, 'GYEONGGI');
+});
+
+test('analyzeExcelFromPayload returns crawl plan', () => {
+  const buffer = buildTemplateBuffer();
+  const result = analyzeExcelFromPayload({ filename: 'import.xlsx', content: buffer.toString('base64') });
+  assert.equal(result.ok, true);
+  assert.match(result.message, /크롤링 권역/);
+  assert.ok(result.analysis.crawlPlan.length >= 1);
+});
+
+test('crawlPlannedMetros uses injected search and persist', async () => {
+  const result = await crawlPlannedMetros(['GYEONGGI'], {
+    searchFestival2: async () => ({
+      festivals: [{ contentId: 'x1', title: '수원화성문화제', eventStartDate: '2026-09-01' }],
+      source: 'fake',
+    }),
+    persistTourFestivals: async (rows) => ({ ok: true, upserted: rows.length, skipped: 0, message: 'ok' }),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.fetched, 1);
+  assert.equal(result.upserted, 1);
+  assert.equal(result.runs[0].metro, 'GYEONGGI');
+  assert.equal(result.runs[0].source, 'fake');
 });

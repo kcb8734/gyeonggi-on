@@ -49,6 +49,35 @@ export async function uploadExcelFile(file: File, options?: { dryRun?: boolean; 
   return data;
 }
 
+export async function analyzeExcelFile(file: File, apiBase = '') {
+  const base = apiBase.replace(/\/$/, '');
+  const content = await blobToBase64(file);
+  const response = await fetch(`${base}/api/admin/excel/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ filename: file.name, content }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `엑셀 분석 실패 (HTTP ${response.status})`);
+  }
+  return data;
+}
+
+export async function crawlExcelMetros(metros: string[], apiBase = '') {
+  const base = apiBase.replace(/\/$/, '');
+  const response = await fetch(`${base}/api/admin/excel/crawl`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ metros }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `크롤링 실패 (HTTP ${response.status})`);
+  }
+  return data;
+}
+
 export async function downloadExcelTemplate(apiBase = '') {
   const base = apiBase.replace(/\/$/, '');
   const response = await fetch(`${base}/api/admin/excel/template`);

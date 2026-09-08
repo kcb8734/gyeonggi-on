@@ -11,6 +11,8 @@ import {
   fetchStats,
   logout,
   saveAdminFestival,
+  analyzeExcel,
+  crawlExcel,
   uploadExcel,
 } from './api';
 
@@ -32,6 +34,8 @@ export default function App() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [excelBusy, setExcelBusy] = useState(false);
   const [excelMessage, setExcelMessage] = useState('');
+  const [excelAnalysis, setExcelAnalysis] = useState<any>(null);
+  const [excelCrawl, setExcelCrawl] = useState<any>(null);
   const [matchRegion, setMatchRegion] = useState('GYEONGGI');
   const [festivalForm, setFestivalForm] = useState({
     title: '',
@@ -159,15 +163,34 @@ export default function App() {
       {error ? <p className="error">{error}</p> : null}
 
       <section>
-        <h2>엑셀 일괄 등록</h2>
-        <p className="muted">지자체·축제·가맹점·프로모션 시트가 있는 .xlsx 파일을 올리면 PostgreSQL에 적재합니다.</p>
+        <h2>엑셀 업로드 · 분석 · 저장 · 크롤링</h2>
+        <p className="muted">엑셀을 올리면 시트/시군을 분석하고 PostgreSQL에 저장한 뒤, 부족한 축제 정보는 TourAPI로 크롤링합니다.</p>
+        <ol className="process">
+          <li>엑셀 선택 → 시트·유효 행·오류·크롤링 권역을 분석합니다.</li>
+          <li>백엔드 저장은 지자체/축제/가맹점/프로모션을 PostgreSQL에 UPSERT합니다.</li>
+          <li>필요한 크롤링은 분석된 권역의 searchFestival2 결과를 DB에 동기화합니다.</li>
+        </ol>
         <div className="festival-form excel-upload">
           <input
             type="file"
             accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={(e) => {
-              setExcelFile(e.target.files && e.target.files[0] ? e.target.files[0] : null);
+            onChange={async (e) => {
+              const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+              setExcelFile(file);
               setExcelMessage('');
+              setExcelAnalysis(null);
+              setExcelCrawl(null);
+              if (!file) return;
+              setExcelBusy(true); setError('');
+              try {
+                const data = await analyzeExcel(file);
+                setExcelAnalysis(data.data?.analysis || data.analysis || data.data);
+                setExcelMessage(data.message || '분석을 마쳤습니다.');
+              } catch (err) {
+                setError(err instanceof Error ? err.message : '분석 실패');
+              } finally {
+                setExcelBusy(false);
+              }
             }}
           />
           <button
@@ -180,44 +203,104 @@ export default function App() {
           <button
             type="button"
             className="ghost"
-            disabled={excelBusy}
+            disabled={excelBusy || !excelFile}
             onClick={async () => {
               if (!excelFile) { setError('엑셀 파일을 선택하세요.'); return; }
-              setExcelBusy(true); setError(''); setExcelMessage('');
+              setExcelBusy(true); setError('');
               try {
-                const data = await uploadExcel(excelFile, true);
-                setExcelMessage(data.message || '미리보기 완료');
+                const data = await uploadExcel(excelFile, false);
+                if (data.data?.analysis) setExcelAnalysis(data.data.analysis);
+                setExcelMessage(data.message || '저장 완료');
+                await load();
               } catch (err) {
-                setError(err instanceof Error ? err.message : '미리보기 실패');
+                setError(err instanceof Error ? err.message : '저장 실패');
               } finally {
                 setExcelBusy(false);
               }
             }}
           >
-            미리보기
+            백엔드에 저장
           </button>
           <button
             type="button"
-            disabled={excelBusy}
+            disabled={excelBusy || !excelFile}
             onClick={async () => {
               if (!excelFile) { setError('엑셀 파일을 선택하세요.'); return; }
-              setExcelBusy(true); setError(''); setExcelMessage('');
+              setExcelBusy(true); setError('');
               try {
-                const data = await uploadExcel(excelFile, false);
-                setExcelMessage(data.message || '적재 완료');
+                const saved = await uploadExcel(excelFile, false);
+                if (saved.data?.analysis) setExcelAnalysis(saved.data.analysis);
+                const metros = (saved.data?.analysis?.crawlPlan || excelAnalysis?.crawlPlan || []).map((row: any) => row.metro);
+                const crawled = await crawlExcel(metros);
+                setExcelCrawl(crawled.data || crawled);
+                setExcelMessage(`${saved.message || '저장'} · ${crawled.message || '크롤링'}`);
                 await load();
               } catch (err) {
-                setError(err instanceof Error ? err.message : '적재 실패');
+                setError(err instanceof Error ? err.message : '저장/크롤링 실패');
               } finally {
                 setExcelBusy(false);
               }
             }}
           >
-            {excelBusy ? '처리 중…' : 'DB에 적재'}
+            {excelBusy ? '처리 중…' : '저장 후 크롤링'}
           </button>
         </div>
         {excelFile ? <p className="muted">선택 파일: {excelFile.name}</p> : null}
         {excelMessage ? <p className="muted">{excelMessage}</p> : null}
+        {excelAnalysis?.totals ? (
+          <p className="muted">유효 {excelAnalysis.totals.valid}건 · 오류 {excelAnalysis.totals.errors}건 · 크롤링 권역 {excelAnalysis.totals.crawlMetros}곳</p>
+        ) : null}
+        {excelAnalysis?.sheets?.length ? (
+          <table>
+            <thead>
+              <tr>
+                <th>시트</th>
+                <th>테이블</th>
+                <th>유효/전체</th>
+                <th>샘플</th>
+              </tr>
+            </thead>
+            <tbody>
+              {excelAnalysis.sheets.map((row: any) => (
+                <tr key={row.sheet}>
+                  <td>{row.sheet}</td>
+                  <td>{row.table || '미지원'}</td>
+                  <td>{row.valid}/{row.rows}</td>
+                  <td>{(row.samples || []).join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+        {excelAnalysis?.crawlPlan?.length ? (
+          <ul className="process">
+            {excelAnalysis.crawlPlan.map((row: any) => (
+              <li key={row.metro}>{row.label}: {row.reason}{row.cities?.length ? ` (${row.cities.join(', ')})` : ''}</li>
+            ))}
+          </ul>
+        ) : null}
+        {excelCrawl?.runs?.length ? (
+          <table>
+            <thead>
+              <tr>
+                <th>권역</th>
+                <th>수집</th>
+                <th>DB 저장</th>
+                <th>출처</th>
+              </tr>
+            </thead>
+            <tbody>
+              {excelCrawl.runs.map((row: any) => (
+                <tr key={row.metro}>
+                  <td>{row.label}</td>
+                  <td>{row.fetched}</td>
+                  <td>{row.upserted}</td>
+                  <td>{row.source}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
       </section>
 
       <section>

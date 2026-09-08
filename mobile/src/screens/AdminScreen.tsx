@@ -216,7 +216,7 @@ function mergeDashboard(next: any) {
   };
 }
 
-type Menu = 'dash' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats' | 'centers';
+type Menu = 'dash' | 'excel' | 'tour' | 'coupon' | 'match' | 'feeds' | 'ai' | 'stats' | 'centers';
 
 function formatWhen(value?: string) {
   if (!value) return '-';
@@ -470,6 +470,7 @@ export default function AdminScreen() {
       <View style={styles.menuRow}>
         {([
           ['dash', '대시보드'],
+          ['excel', '엑셀수집'],
           ['tour', 'TourAPI'],
           ['coupon', '상가·쿠폰'],
           ['match', '지자체'],
@@ -493,7 +494,7 @@ export default function AdminScreen() {
         </View>
       ) : null}
 
-      {menu === 'dash' ? <ExcelImportCard /> : null}
+      {menu === 'dash' || menu === 'excel' ? <ExcelImportCard /> : null}
 
       {menu === 'dash' ? (
         <View style={styles.card}>
@@ -561,8 +562,6 @@ export default function AdminScreen() {
       ) : null}
 
       {menu === 'coupon' ? (
-        <>
-          <ExcelImportCard />
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>쿠폰 마스터</Text>
@@ -623,7 +622,6 @@ export default function AdminScreen() {
             </View>
           ))}
         </View>
-        </>
       ) : null}
 
       {menu === 'centers' ? <AdminCenterPanel /> : null}

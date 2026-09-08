@@ -6,7 +6,9 @@ import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getPool, municipalityRegionCode } from './festivalDbSync.js';
+import { getPool, municipalityRegionCode, persistTourFestivals } from './festivalDbSync.js';
+import { METRO_LOCALITIES, REGION_LABEL, REGION_META, normalizeMetroId } from './metroLocalities.js';
+import { searchFestival2 } from './tourLive.js';
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -294,6 +296,187 @@ export function applyProfile(raw, table) {
   return out;
 }
 
+function cityIndex() {
+  const rows = [];
+  Object.entries(METRO_LOCALITIES).forEach(([metro, locs]) => {
+    (locs || []).forEach((loc) => {
+      const label = String(loc.label || loc.id || '').replace(/^(서울|부산|대구|인천|광주|대전|울산)\s+/, '');
+      if (label.length < 2) return;
+      rows.push({ metro, city: label, key: canon(label) });
+    });
+  });
+  rows.sort((a, b) => b.key.length - a.key.length);
+  return rows;
+}
+
+const CITY_INDEX = cityIndex();
+
+export function metroFromText(value) {
+  const text = toText(value);
+  if (!text) return null;
+  const compact = text.toUpperCase().replace(/\s+/g, '');
+  if (REGION_META[compact]) return normalizeMetroId(compact);
+  const byLabel = Object.entries(REGION_LABEL).find(([, label]) => (
+    canon(label) === canon(text) || text.includes(label) || label.includes(text)
+  ));
+  if (byLabel) return byLabel[0];
+  const hay = canon(text);
+  const hit = CITY_INDEX.find((row) => hay.includes(row.key));
+  return hit ? hit.metro : null;
+}
+
+export function cityFromText(value) {
+  const text = toText(value);
+  if (!text) return null;
+  const hay = canon(text);
+  const hit = CITY_INDEX.find((row) => hay.includes(row.key));
+  return hit ? hit.city : null;
+}
+
+function needsTourCrawl(table, mapped) {
+  if (table === 'municipalities') return true;
+  if (table !== 'festivals') return false;
+  const contentId = String(mapped.tour_content_id || '');
+  if (!contentId || contentId.startsWith('excel-')) return true;
+  if (mapped.latitude == null || mapped.longitude == null) return true;
+  if (!mapped.image_url) return true;
+  return false;
+}
+
+export function analyzeSheets(sheets) {
+  const analyzed = [];
+  const cities = new Set();
+  const metroNeed = new Map();
+  let validTotal = 0;
+  let errorTotal = 0;
+  let crawlHints = 0;
+
+  (sheets || []).forEach((sheet) => {
+    const table = resolveTableName(sheet.name);
+    const errors = [];
+    const samples = [];
+    let valid = 0;
+    (sheet.rows || []).forEach((raw, index) => {
+      try {
+        const mapped = table && COLUMNS[table] ? applyProfile(raw, table) : raw;
+        valid += 1;
+        const place = pick(Object.assign({}, raw, mapped), [
+          'municipality', '지자체명', '시군구', 'name', 'city',
+          'address', '주소', 'location_name', '장소', 'metro_region', '권역',
+        ]);
+        const city = mapped.name && table === 'municipalities'
+          ? mapped.name
+          : (cityFromText(place) || toText(pick(raw, ['지자체명', '시군구'])));
+        if (city) cities.add(city);
+        const metro = metroFromText(pick(raw, ['metro_region', '권역'])) || metroFromText(place) || metroFromText(city);
+        if (metro) {
+          const prev = metroNeed.get(metro) || { metro, cities: new Set(), hints: 0 };
+          if (city) prev.cities.add(city);
+          if (needsTourCrawl(table, mapped)) {
+            prev.hints += 1;
+            crawlHints += 1;
+          }
+          metroNeed.set(metro, prev);
+        } else if (needsTourCrawl(table, mapped)) {
+          crawlHints += 1;
+        }
+        if (samples.length < 3) {
+          samples.push(mapped.title || mapped.name || mapped.business_name || mapped.code || `${table} ${index + 1}`);
+        }
+      } catch (err) {
+        errors.push({ row: index + 2, error: err && err.message ? err.message : String(err) });
+      }
+    });
+    validTotal += valid;
+    errorTotal += errors.length;
+    analyzed.push({
+      sheet: sheet.name,
+      table: COLUMNS[table] ? table : null,
+      known: Boolean(COLUMNS[table]),
+      rows: (sheet.rows || []).length,
+      valid,
+      errorCount: errors.length,
+      errors: errors.slice(0, 8),
+      samples,
+    });
+  });
+
+  if (!metroNeed.size && (validTotal || cities.size)) {
+    metroNeed.set('GYEONGGI', { metro: 'GYEONGGI', cities, hints: crawlHints || 1 });
+  }
+
+  const crawlPlan = [...metroNeed.values()].map((item) => ({
+    metro: item.metro,
+    label: REGION_LABEL[item.metro] || item.metro,
+    cities: [...item.cities],
+    hints: item.hints,
+    reason: item.hints
+      ? `엑셀 ${item.hints}건을 TourAPI 축제 정보로 보강`
+      : `${item.cities.size || 1}개 시군 축제를 동기화`,
+  }));
+
+  return {
+    sheets: analyzed,
+    cities: [...cities],
+    crawlPlan,
+    totals: {
+      sheets: analyzed.length,
+      rows: analyzed.reduce((sum, row) => sum + row.rows, 0),
+      valid: validTotal,
+      errors: errorTotal,
+      crawlMetros: crawlPlan.length,
+    },
+  };
+}
+
+export function analyzeExcelFromPayload(body) {
+  const { filename, buffer } = decodeExcelPayload(body || {});
+  const sheets = parseWorkbook(buffer);
+  if (!sheets.some((sheet) => sheet.rows.length)) {
+    throw new Error('적재할 행이 없습니다. 템플릿 시트를 확인하세요.');
+  }
+  const analysis = analyzeSheets(sheets.filter((sheet) => sheet.rows.length));
+  return {
+    ok: true,
+    filename,
+    message: `시트 ${analysis.totals.sheets}개 · 유효 ${analysis.totals.valid}건 · 오류 ${analysis.totals.errors}건 · 크롤링 권역 ${analysis.totals.crawlMetros}곳`,
+    analysis,
+  };
+}
+
+export async function crawlPlannedMetros(metros, options = {}) {
+  const unique = [...new Set((metros || []).map((item) => normalizeMetroId(item)).filter(Boolean))].slice(0, 8);
+  if (!unique.length) unique.push('GYEONGGI');
+  const search = options.searchFestival2 || searchFestival2;
+  const persist = options.persistTourFestivals || persistTourFestivals;
+  const runs = [];
+  for (const metro of unique) {
+    const result = await search({ metro });
+    const festivals = (result && result.festivals) || [];
+    const saved = await persist(festivals);
+    runs.push({
+      metro,
+      label: REGION_LABEL[metro] || metro,
+      fetched: festivals.length,
+      upserted: saved && saved.upserted ? saved.upserted : 0,
+      skipped: saved && saved.skipped ? saved.skipped : 0,
+      persisted: Boolean(saved && saved.ok),
+      source: (result && result.source) || 'none',
+      message: (saved && saved.message) || '',
+    });
+  }
+  const upserted = runs.reduce((sum, row) => sum + row.upserted, 0);
+  const fetched = runs.reduce((sum, row) => sum + row.fetched, 0);
+  return {
+    ok: true,
+    crawled: runs.length,
+    fetched,
+    upserted,
+    message: runs.map((row) => `${row.label} ${row.fetched}건 수집/${row.upserted}건 저장`).join(' · '),
+    runs,
+  };
+}
+
 export function loadXlsx() {
   const candidates = [
     'xlsx',
@@ -554,6 +737,7 @@ export async function importExcelFromPayload(body, options = {}) {
   const { filename, buffer } = decodeExcelPayload(body || {});
   const sheets = parseWorkbook(buffer).filter((sheet) => sheet.rows.length);
   if (!sheets.length) throw new Error('적재할 행이 없습니다. 템플릿 시트를 확인하세요.');
+  const analysis = analyzeSheets(sheets);
   const result = await persistSheets(sheets, options);
-  return Object.assign({ filename }, result);
+  return Object.assign({ filename, analysis }, result);
 }
