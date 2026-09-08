@@ -23,8 +23,8 @@ export default function App() {
   const [view, setView] = useState<View>(
     localStorage.getItem('admin_token') ? 'dashboard' : 'login',
   );
-  const [email, setEmail] = useState('admin@gyeonggi-on.kr');
-  const [password, setPassword] = useState('admin1234');
+  const [email, setEmail] = useState('kcb8734@gmail.com');
+  const [password, setPassword] = useState('kimcb8113!');
   const [error, setError] = useState('');
   const [merchants, setMerchants] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -130,7 +130,7 @@ export default function App() {
         <form className="login-card" onSubmit={handleLogin}>
           <p className="eyebrow">온앤온+(on&on+) Admin</p>
           <h1>관리자 로그인</h1>
-          <p className="muted">운영 주소 https://www.kdanji.com/admin · 기본 계정 admin@gyeonggi-on.kr / admin1234</p>
+          <p className="muted">운영 주소 https://www.kdanji.com/admin · 기본 계정 kcb8734@gmail.com</p>
           <label>이메일</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} />
           <label>비밀번호</label>

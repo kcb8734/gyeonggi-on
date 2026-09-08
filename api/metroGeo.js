@@ -1,4 +1,4 @@
-import { METRO_LOCALITIES, REGION_META, normalizeMetroId } from './metroLocalities.js';
+import { AREA_CODE_BY_METRO, METRO_LOCALITIES, REGION_META, normalizeMetroId } from './metroLocalities.js';
 
 export const METRO_CENTERS = {
   SEOUL: { lat: 37.5665, lng: 126.9780 },
@@ -195,4 +195,49 @@ export function withCoords(item, metroHint) {
   }
   const geo = geocodePlace(`${row.address || ''} ${row.location_name || ''} ${row.title || ''}`, metroHint || row.metro);
   return { latitude: geo.lat, longitude: geo.lng };
+}
+
+const METRO_SPAN = {
+  SEOUL: 0.45,
+  BUSAN: 0.55,
+  DAEGU: 0.5,
+  INCHEON: 0.55,
+  GWANGJU: 0.4,
+  DAEJEON: 0.4,
+  ULSAN: 0.5,
+  SEJONG: 0.4,
+  GYEONGGI: 1.7,
+  GANGWON: 1.9,
+  CHUNGBUK: 1.2,
+  CHUNGNAM: 1.3,
+  JEONBUK: 1.3,
+  JEONNAM: 1.7,
+  GYEONGBUK: 1.7,
+  GYEONGNAM: 1.5,
+  JEJU: 0.9,
+};
+
+/** 장소 문구·좌표를 우선하고, 요청 권역으로 덮어쓴 태그는 후순위로 본다. */
+export function festivalBelongsToMetro(item, metroHint) {
+  const wanted = normalizeMetroId(metroHint);
+  const row = item || {};
+  const hay = [row.title, row.location_name, row.municipality_name, row.address].filter(Boolean).join(' ');
+  const inferred = metroFromPlace(hay);
+  if (inferred) return inferred === wanted;
+
+  const lat = Number(row.latitude ?? row.mapY);
+  const lng = Number(row.longitude ?? row.mapX);
+  if (hasValidCoords(lat, lng)) {
+    const center = METRO_CENTERS[wanted] || METRO_CENTERS.GYEONGGI;
+    const span = METRO_SPAN[wanted] || 1.2;
+    return Math.abs(lat - center.lat) <= span && Math.abs(lng - center.lng) <= span;
+  }
+
+  const taggedRaw = String(row.metro || row.regionalZone || '').trim();
+  if (taggedRaw) return normalizeMetroId(taggedRaw) === wanted;
+
+  const area = String(row.areaCode || row.areacode || '').trim();
+  if (area && area !== 'all') return area === String(AREA_CODE_BY_METRO[wanted] || '');
+
+  return false;
 }

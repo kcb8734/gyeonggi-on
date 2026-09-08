@@ -18,6 +18,8 @@ export interface TourFestival {
   overview?: string;
   fee?: string;
   eventPlace?: string;
+  homepage?: string;
+  areaCode?: string;
 }
 
 export interface TourPlace {

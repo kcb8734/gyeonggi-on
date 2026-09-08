@@ -2,6 +2,7 @@ import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
 import type { HomeFestival } from '../types/home';
 import type { FestivalMapResponse, FestivalPin, NearbyFestivalsResponse } from '../types/map';
+import { festivalsForMetro } from '../utils/festivalFeed';
 
 export async function fetchListedFestivals(metro?: string): Promise<HomeFestival[]> {
   try {
@@ -9,7 +10,10 @@ export async function fetchListedFestivals(metro?: string): Promise<HomeFestival
       params: metro ? { metro } : undefined,
     });
     const rows = res.data?.festivals?.length ? res.data.festivals : res.data?.data;
-    if (rows?.length) return rows;
+    if (rows?.length) {
+      const filtered = metro ? festivalsForMetro(rows, metro) : rows;
+      if (filtered.length) return filtered;
+    }
   } catch {
     // 미리보기 폴백
   }
@@ -36,7 +40,7 @@ export async function fetchNearbyFestivals(params?: {
   } catch {
     // 미리보기 폴백
   }
-  return PREVIEW_HOME.festivals;
+  return [];
 }
 
 export async function fetchFestivalMap(festivalId: string): Promise<FestivalMapResponse> {

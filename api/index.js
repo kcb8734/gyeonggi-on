@@ -49,6 +49,7 @@ import {
 import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
 import { mergeFestivalSources } from './festivalMerge.js';
 import { crawlCultureForMetro, cultureToHome } from './regionCultureCrawlers.js';
+import { festivalBelongsToMetro } from './metroGeo.js';
 import {
   buildTemplateBuffer,
   analyzeExcelFromPayload,
@@ -322,7 +323,8 @@ async function collectMetroFestivals(metroKey, query = {}) {
     .map((item) => homeFromTour(item, tourResult.metro || metroKey, tourResult.areaCode || METRO_AREA[metroKey]))
     .filter(Boolean);
   const cultureFestivals = (culture || []).map((item) => cultureToHome(item, metroKey));
-  const festivals = mergeFestivalSources(persisted, cultureFestivals, tourFestivals);
+  const festivals = mergeFestivalSources(persisted, cultureFestivals, tourFestivals)
+    .filter((item) => festivalBelongsToMetro(item, metroKey));
   const sources = [
     persisted.length ? 'db' : null,
     cultureFestivals.length ? 'culture' : null,
@@ -372,7 +374,8 @@ async function listFestivalsLive(req, res) {
     const builtin = fallbackTourFestivals({ metro: metroKey, areaCode: METRO_AREA[metroKey] })
       .map((item) => homeFromTour(item, metroKey, METRO_AREA[metroKey]))
       .filter(Boolean);
-    const festivals = persisted.length ? persisted : builtin;
+    const festivals = (persisted.length ? persisted : builtin)
+      .filter((item) => festivalBelongsToMetro(item, metroKey));
     send(res, 200, {
       success: true,
       metro: metroKey,
@@ -477,15 +480,15 @@ async function listTourFestivals(req, res) {
     send(res, 204, {}, headers);
     return;
   }
-  const query = readQuery(req);
-  try {
-    const result = await searchFestival2({
-      areaCode: query.areaCode || 'all',
-      metro: query.metro,
-      month: query.month,
-      year: query.year,
-      category: query.category,
-    });
+    const query = readQuery(req);
+    try {
+      const result = await searchFestival2({
+        areaCode: query.areaCode || 'all',
+        metro: query.metro || undefined,
+        month: query.month,
+        year: query.year,
+        category: query.category,
+      });
     send(res, 200, {
       success: true,
       areaCode: query.areaCode || 'all',
@@ -913,7 +916,9 @@ async function handler(req, res) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       const email = String(body.email || '').trim();
       const password = String(body.password || '');
-      if (email === 'admin@gyeonggi-on.kr' && password === 'admin1234') {
+      const expectedEmail = String(process.env.ADMIN_EMAIL || 'kcb8734@gmail.com').trim();
+      const expectedPassword = String(process.env.ADMIN_PASSWORD || 'kimcb8113!');
+      if (email === expectedEmail && password === expectedPassword) {
         send(res, 200, { success: true, data: { token: 'admin-local' }, message: '관리자 로그인' }, corsHeaders(req));
         return;
       }

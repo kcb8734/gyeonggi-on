@@ -74,6 +74,22 @@ test('GET /health returns ok without Express', async () => {
   assert.equal(typeof (result.body as { tour?: boolean }).tour, 'boolean');
 });
 
+test('POST /api/admin/login accepts the updated default account', async () => {
+  const ok = await invoke({
+    method: 'POST',
+    url: '/api/admin/login',
+    body: { email: 'kcb8734@gmail.com', password: 'kimcb8113!' },
+  });
+  assert.equal(ok.status, 200);
+  assert.equal((ok.body as { success: boolean }).success, true);
+  const denied = await invoke({
+    method: 'POST',
+    url: '/api/admin/login',
+    body: { email: 'admin@gyeonggi-on.kr', password: 'admin1234' },
+  });
+  assert.equal(denied.status, 401);
+});
+
 test('POST without business_number is treated as health', async () => {
   const result = await invoke({ method: 'POST', url: '/api', body: { title: '쿠폰' } });
   assert.equal(result.status, 200);

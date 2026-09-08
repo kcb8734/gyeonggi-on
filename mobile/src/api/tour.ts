@@ -1,6 +1,6 @@
 import { api } from './client';
 import { PREVIEW_HOME } from './previewHome';
-import { findFallbackFestival, REGION_FESTIVAL_FALLBACKS, regionByAreaCode } from '../constants/regionTour';
+import { findFallbackFestival, REGION_FESTIVAL_FALLBACKS, regionByAreaCode, regionById } from '../constants/regionTour';
 import { festivalImageFor } from '../constants/regionMedia';
 import type { HomeFestival } from '../types/home';
 import type {
@@ -12,7 +12,13 @@ import type {
   TourPlace,
 } from '../types/tour';
 
-export function homeFestivalFromTour(item: TourFestival): HomeFestival {
+export function homeFestivalFromTour(item: TourFestival, metro?: string): HomeFestival {
+  const fromArea = item.areaCode
+    ? regionByAreaCode(item.areaCode)
+    : undefined;
+  const fromMetro = metro ? regionById(metro) : undefined;
+  const zone = metro || (item.areaCode ? fromArea?.id : undefined);
+  const areaCode = item.areaCode || fromMetro?.code;
   return {
     id: `tour-${item.contentId}`,
     contentId: item.contentId,
@@ -30,7 +36,10 @@ export function homeFestivalFromTour(item: TourFestival): HomeFestival {
     tel: item.tel,
     description: item.overview,
     fee: item.fee,
-    hasCoupon: false,
+    metro: zone,
+    regionalZone: zone,
+    areaCode,
+    homepage: item.homepage,
   };
 }
 
@@ -52,6 +61,7 @@ export function homeFestivalFromDetail(item: TourDetail): HomeFestival {
     tel: item.tel,
     description: item.overview,
     fee: item.fee,
+    homepage: item.homepage,
   };
 }
 
@@ -74,11 +84,14 @@ function previewFestivals(areaCode?: string): TourFestival[] {
     category: (item.category as TourFestival['category']) ?? '문화/예술',
     overview: item.description ?? `${item.title} 상세 개요`,
     fee: item.fee ?? '현장 문의',
+    homepage: item.homepage,
+    areaCode: region.code,
   }));
 }
 
 export async function fetchTourFestivals(params?: {
   areaCode?: string;
+  metro?: string;
   month?: number;
   year?: number;
   category?: string;
@@ -88,6 +101,7 @@ export async function fetchTourFestivals(params?: {
       timeout: 15000,
       params: {
         areaCode: params?.areaCode ?? 'all',
+        metro: params?.metro,
         month: params?.month,
         year: params?.year,
         category: params?.category,

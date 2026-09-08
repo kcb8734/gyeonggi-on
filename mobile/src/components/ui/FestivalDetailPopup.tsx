@@ -15,6 +15,11 @@ import { ddayLabel, formatRange } from '../../utils/date';
 import { formatTel, telHref } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
 import ModalExitButton from './ModalExitButton';
+import {
+  extractHomepageUrl,
+  gyeonggiEventCopy,
+  isGenericFestivalOverview,
+} from '../../constants/gyeonggiEventGuides';
 
 interface Props {
   festival: HomeFestival | null;
@@ -57,6 +62,12 @@ export default function FestivalDetailPopup({
   const inquiry = festival.inquiryTel || festival.tel;
   const callUrl = telHref(inquiry);
   const telLabel = formatTel(inquiry) || inquiry;
+  const guide = gyeonggiEventCopy(festival.title, festival.contentId, festival.metro || festival.regionalZone);
+  const overview = (!isGenericFestivalOverview(festival.description) ? String(festival.description || '').trim() : '')
+    || guide?.overview
+    || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.';
+  const homepageUrl = extractHomepageUrl(festival.homepage) || extractHomepageUrl(guide?.homepage);
+  const homepageLabel = guide?.homepageLabel || '행사 홈페이지 열기';
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -91,9 +102,14 @@ export default function FestivalDetailPopup({
                 <Text style={styles.meta}>담당자 메일 {festival.managerEmail}</Text>
               ) : null}
               {festival.fee ? <Text style={styles.meta}>이용요금 {festival.fee}</Text> : null}
-              <Text style={styles.overview} numberOfLines={6}>
-                {festival.description || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.'}
+              <Text style={styles.overview}>
+                {overview}
               </Text>
+              {homepageUrl ? (
+                <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(homepageUrl)}>
+                  <Text style={styles.linkBtnText}>{homepageLabel}</Text>
+                </TouchableOpacity>
+              ) : null}
 
               <View style={styles.actions}>
                 <TouchableOpacity style={[styles.ghost, liked && styles.favOn]} onPress={onFavorite}>
@@ -207,6 +223,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: '#111827' },
   meta: { fontSize: 13, color: '#6B7280', marginTop: 4 },
   overview: { fontSize: 14, lineHeight: 21, color: '#374151', marginTop: 12 },
+  linkBtn: {
+    marginTop: 12,
+    backgroundColor: '#1D4ED8',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  linkBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   tabRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
   tab: {
     borderWidth: 1,

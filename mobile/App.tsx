@@ -57,6 +57,7 @@ export type RootStackParamList = {
     longitude?: number;
     metro?: string;
     imageUrl?: string;
+    homepage?: string;
   };
   MerchantSettlement: undefined;
   Support: { topic?: 'notice' | 'help' | 'privacy' };
@@ -236,6 +237,7 @@ export default function App() {
                   fallbackLongitude={route.params.longitude}
                   fallbackMetro={route.params.metro}
                   fallbackImageUrl={route.params.imageUrl}
+                  fallbackHomepage={route.params.homepage}
                 />
               )}
             </Stack.Screen>

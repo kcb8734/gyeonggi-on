@@ -103,3 +103,18 @@ test('searchFestival2 returns Seoul fallback when TourAPI rate-limits', async ()
     else process.env.TOUR_API_SERVICE_KEY = prev;
   }
 });
+
+test('Jeju fallback is Jeju festivals, not Gyeonggi', async () => {
+  const { fallbackTourFestivals } = await import('./tourLive.js');
+  const rows = fallbackTourFestivals({ metro: 'JEJU' });
+  assert.ok(rows.length > 0);
+  assert.ok(rows.every((item) => String(item.address || '').includes('제주') || String(item.title || '').includes('제주') || String(item.title || '').includes('서귀포')));
+  assert.equal(rows.some((item) => String(item.title || '').includes('수원화성')), false);
+});
+
+test('Busan fallback is not Gyeonggi', async () => {
+  const { fallbackTourFestivals } = await import('./tourLive.js');
+  const rows = fallbackTourFestivals({ metro: 'BUSAN' });
+  assert.ok(rows.some((item) => String(item.title || '').includes('부산')));
+  assert.equal(rows.some((item) => String(item.title || '').includes('수원화성')), false);
+});
