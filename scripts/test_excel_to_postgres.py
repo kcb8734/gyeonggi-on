@@ -202,6 +202,11 @@ class TemplateExcelTest(unittest.TestCase):
         month_only = map_survey_letters(row, 2026)
         self.assertEqual(month_only["시작일"], date(2026, 9, 1))
         self.assertEqual(month_only["종료일"], date(2026, 9, 30))
+        row[12] = None
+        row[15] = None
+        year_only = map_survey_letters(row, 2026)
+        self.assertEqual(year_only["시작일"], date(2026, 1, 1))
+        self.assertEqual(year_only["종료일"], date(2026, 12, 31))
 
     def test_survey_year_header_does_not_override_iso_date(self):
         mapped = apply_profile(

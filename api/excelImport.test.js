@@ -369,7 +369,8 @@ test('recordsFromSurveyAoa reads letter columns even with title/header rows', ()
 
 test('survey start/end year headers do not fail date mapping', () => {
   assert.equal(combineYmdParts(2026, 9, 1, 2026), '2026-09-01');
-  assert.equal(combineYmdParts(2026, null, null, 2026), null);
+  assert.equal(combineYmdParts(2026, null, null, 2026, 'start'), '2026-01-01');
+  assert.equal(combineYmdParts(2026, null, null, 2026, 'end'), '2026-12-31');
   assert.equal(combineYmdParts(2026, 9, null, 2026, 'start'), '2026-09-01');
   assert.equal(combineYmdParts(2026, 9, '미정', 2026, 'end'), '2026-09-30');
   const rows = recordsFromSurveyAoa([
@@ -428,6 +429,38 @@ test('survey year-month without day uses first and last day', () => {
   }, 'festivals', { yearHint: 2026 });
   assert.equal(profile.start_date, '2026-09-01');
   assert.equal(profile.end_date, '2026-09-30');
+});
+
+test('year-only survey dates use Jan 1 to Dec 31 and undated rows are skipped', () => {
+  const yearOnly = mapSurveyLetters(letterRow({
+    title: '연도축제', place: '광장', si: '수원', gu: '시',
+    sy: 2026, sm: '', sd: '', ey: 2026, em: '', ed: '',
+  }), 2026);
+  assert.equal(yearOnly.시작일, '2026-01-01');
+  assert.equal(yearOnly.종료일, '2026-12-31');
+  const profile = applyProfile({
+    ...yearOnly,
+    __sheet: '조사표',
+    __surveyLetters: true,
+    __cells: letterRow({
+      title: '연도축제', place: '광장', si: '수원', gu: '시',
+      sy: 2026, sm: '', sd: '', ey: 2026, em: '', ed: '',
+    }),
+  }, 'festivals', { yearHint: 2026 });
+  assert.equal(profile.start_date, '2026-01-01');
+  assert.equal(profile.end_date, '2026-12-31');
+
+  const analysis = analyzeSheets([{
+    name: '조사표',
+    rows: [{
+      축제명: '일정 없는 축제',
+      시군구: '수원시',
+      장소: '광장',
+    }],
+  }], { yearHint: 2026 });
+  assert.equal(analysis.totals.valid, 0);
+  assert.equal(analysis.totals.errors, 0);
+  assert.equal(analysis.totals.skippedUndated, 1);
 });
 
 test('persistSheets batches festival inserts', async () => {
