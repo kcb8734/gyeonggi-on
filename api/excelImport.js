@@ -276,31 +276,73 @@ export function looksLikeCompleteDate(value) {
   return false;
 }
 
-export function combineYmdParts(yearPart, monthPart, dayPart, yearHint = new Date().getFullYear()) {
-  if (yearPart instanceof Date && !Number.isNaN(yearPart.getTime()) && isBlank(monthPart) && isBlank(dayPart)) {
+const UNDETERMINED_PARTS = new Set(['미정', '미확정', '추후', '없음', '해당없음', '-', '0', '00']);
+
+export function isMissingYmdPart(value) {
+  if (isBlank(value)) return true;
+  const text = String(value).trim();
+  return UNDETERMINED_PARTS.has(text) || UNDETERMINED_PARTS.has(canon(text));
+}
+
+export function lastDayOfMonth(year, month) {
+  return new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate();
+}
+
+function calendarMonth(value) {
+  if (isMissingYmdPart(value)) return NaN;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.getUTCMonth() + 1;
+  if (typeof value === 'number' && value > 30000 && value < 80000) {
+    return Number(excelSerialToDate(value).slice(5, 7));
+  }
+  const text = textPart(value);
+  const iso = text.match(/^\d{4}-(\d{2})/);
+  if (iso) return Number(iso[1]);
+  const n = parseInt(text, 10);
+  return n >= 1 && n <= 12 ? n : NaN;
+}
+
+function calendarDay(value) {
+  if (isMissingYmdPart(value)) return NaN;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.getUTCDate();
+  if (typeof value === 'number' && value > 30000 && value < 80000) {
+    return Number(excelSerialToDate(value).slice(8, 10));
+  }
+  const text = textPart(value);
+  const iso = text.match(/^\d{4}-\d{2}-(\d{2})/);
+  if (iso) return Number(iso[1]);
+  const n = parseInt(text, 10);
+  return n >= 1 && n <= 31 ? n : NaN;
+}
+
+export function combineYmdParts(yearPart, monthPart, dayPart, yearHint = new Date().getFullYear(), bound = 'start') {
+  if (yearPart instanceof Date && !Number.isNaN(yearPart.getTime()) && isMissingYmdPart(monthPart) && isMissingYmdPart(dayPart)) {
     return yearPart.toISOString().slice(0, 10);
   }
-  if (typeof yearPart === 'number' && yearPart > 30000 && yearPart < 80000 && isBlank(monthPart)) {
+  if (typeof yearPart === 'number' && yearPart > 30000 && yearPart < 80000 && isMissingYmdPart(monthPart)) {
     return excelSerialToDate(yearPart);
   }
   const yText = textPart(yearPart);
   const mText = textPart(monthPart);
   const dText = textPart(dayPart);
-  if (yText && !mText && !dText) {
+  if (yText && isMissingYmdPart(monthPart) && isMissingYmdPart(dayPart)) {
     if (isYearOnlyValue(yearPart) || isYearOnlyValue(yText)) return null;
     try { return toDate(yText, yearHint); } catch { /* continue */ }
     const parsed = parsePeriod(yText, yearHint);
-    return parsed.start;
+    return bound === 'end' ? (parsed.end || parsed.start) : parsed.start;
   }
   let year = parseInt(yText, 10);
   if (Number.isFinite(year) && year < 100) year += 2000;
   if (!Number.isFinite(year) || year < 1900) year = yearHint;
-  const month = parseInt(mText, 10);
-  const day = parseInt(dText, 10);
+  const month = calendarMonth(monthPart);
+  let day = calendarDay(dayPart);
+  if (month && !day) day = bound === 'end' ? lastDayOfMonth(year, month) : 1;
   if (month && day) return padIso(year, month, day);
   const joined = [yText, mText, dText].filter(Boolean).join('.');
   if (!joined) return null;
-  try { return toDate(joined, yearHint); } catch { return parsePeriod(joined, yearHint).start; }
+  try { return toDate(joined, yearHint); } catch {
+    const parsed = parsePeriod(joined, yearHint);
+    return bound === 'end' ? (parsed.end || parsed.start) : parsed.start;
+  }
 }
 
 export function mapSurveyLetters(values, yearHint = new Date().getFullYear()) {
@@ -312,12 +354,14 @@ export function mapSurveyLetters(values, yearHint = new Date().getFullYear()) {
     cellAt(values, SURVEY_LAYOUT.start[1]),
     cellAt(values, SURVEY_LAYOUT.start[2]),
     yearHint,
+    'start',
   );
   const end = combineYmdParts(
     cellAt(values, SURVEY_LAYOUT.end[0]),
     cellAt(values, SURVEY_LAYOUT.end[1]),
     cellAt(values, SURVEY_LAYOUT.end[2]),
     yearHint,
+    'end',
   );
   return {
     축제명: title || null,
@@ -730,8 +774,21 @@ function resolveTableForSheet(sheet, forced) {
   return detectTableFromHeaders(headers);
 }
 
+function summarizeErrors(errors) {
+  const counts = new Map();
+  (errors || []).forEach((item) => {
+    const key = String(item && item.error ? item.error : item || '오류');
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([error, count]) => ({ error, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+}
+
 function sheetPayload(sheet, extra) {
   const table = extra.table || null;
+  const errors = extra.errors || [];
   return Object.assign({
     sheet: sheet.name,
     table,
@@ -741,8 +798,9 @@ function sheetPayload(sheet, extra) {
     reason: extra.reason || '',
     rows: (sheet.rows || []).length,
     valid: extra.valid || 0,
-    errorCount: extra.errors ? extra.errors.length : 0,
-    errors: (extra.errors || []).slice(0, 8),
+    errorCount: errors.length,
+    errors: errors.slice(0, 8),
+    errorSummary: extra.errorSummary || summarizeErrors(errors),
     samples: extra.samples || [],
   }, extra.more || {});
 }
@@ -1148,7 +1206,7 @@ async function oneId(client, sql, params) {
   return row && row.id ? String(row.id) : null;
 }
 
-async function resolveMunicipalityId(client, raw, mapped, createMissing) {
+async function resolveMunicipalityId(client, raw, mapped, createMissing, cache = new Map()) {
   if (mapped.municipality_id) return mapped.municipality_id;
   const rawName = toText(pick(raw, [
     'municipality', 'municipality_name', '지자체', '지자체명', '시군구명', '시군구', '시군', '기초단체',
@@ -1158,6 +1216,18 @@ async function resolveMunicipalityId(client, raw, mapped, createMissing) {
     || cityFromText(pick(raw, ['주소', '개최장소', '장소', 'location_name']));
   const region = toText(pick(raw, ['region_code', '지역코드'])) || (name ? municipalityRegionCode(name) : null);
   if (!name && !region) return null;
+  const cacheKey = `${name || ''}|${region || ''}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
+  if (name && cache.has(`${name}|`)) {
+    const hit = cache.get(`${name}|`);
+    cache.set(cacheKey, hit);
+    return hit;
+  }
+  if (region && cache.has(`|${region}`)) {
+    const hit = cache.get(`|${region}`);
+    cache.set(cacheKey, hit);
+    return hit;
+  }
   const found = await oneId(
     client,
     `SELECT id FROM municipalities
@@ -1166,13 +1236,18 @@ async function resolveMunicipalityId(client, raw, mapped, createMissing) {
      LIMIT 1`,
     [name, region],
   );
-  if (found) return found;
+  if (found) {
+    cache.set(cacheKey, found);
+    if (name) cache.set(`${name}|`, found);
+    if (region) cache.set(`|${region}`, found);
+    return found;
+  }
   if (!createMissing || !name) return null;
   const metro = toText(pick(raw, ['metro_region', '권역']))
     || metroFromText(pick(raw, ['시도', '시도명']))
     || metroFromText(name)
     || 'GYEONGGI';
-  return oneId(
+  const created = await oneId(
     client,
     `INSERT INTO municipalities (name, region_code, budget_balance, metro_region)
      VALUES ($1, $2, 0, COALESCE($3, 'GYEONGGI'))
@@ -1180,6 +1255,12 @@ async function resolveMunicipalityId(client, raw, mapped, createMissing) {
      RETURNING id`,
     [name, region, metro],
   );
+  if (created) {
+    cache.set(cacheKey, created);
+    if (name) cache.set(`${name}|`, created);
+    if (region) cache.set(`|${region}`, created);
+  }
+  return created;
 }
 
 async function resolveMerchantId(client, raw, mapped) {
@@ -1233,6 +1314,57 @@ function buildUpsert(table, row, conflict) {
   return { sql, values: cols.map((col) => row[col]) };
 }
 
+const FESTIVAL_BATCH_COLS = [
+  'municipality_id', 'title', 'description', 'start_date', 'end_date',
+  'location_name', 'latitude', 'longitude', 'category', 'image_url',
+  'is_trending', 'tour_content_id', 'tel', 'source',
+];
+const FESTIVAL_BATCH_SIZE = 80;
+
+function buildFestivalBatchUpsert(rows) {
+  const values = [];
+  const placeholders = rows.map((row, index) => {
+    const offset = index * FESTIVAL_BATCH_COLS.length;
+    FESTIVAL_BATCH_COLS.forEach((col) => {
+      let value = row[col];
+      if (col === 'category' && isBlank(value)) value = '문화/예술';
+      if (col === 'source' && isBlank(value)) value = 'excel';
+      if (col === 'is_trending' && value == null) value = false;
+      values.push(value == null ? null : value);
+    });
+    return `(${FESTIVAL_BATCH_COLS.map((_, i) => '$' + (offset + i + 1)).join(', ')})`;
+  });
+  const sql = `INSERT INTO festivals (${FESTIVAL_BATCH_COLS.join(', ')}) VALUES ${placeholders.join(', ')}
+    ON CONFLICT (tour_content_id) DO UPDATE SET
+      title = EXCLUDED.title,
+      description = COALESCE(EXCLUDED.description, festivals.description),
+      start_date = EXCLUDED.start_date,
+      end_date = EXCLUDED.end_date,
+      location_name = COALESCE(EXCLUDED.location_name, festivals.location_name),
+      municipality_id = COALESCE(EXCLUDED.municipality_id, festivals.municipality_id),
+      category = EXCLUDED.category,
+      source = EXCLUDED.source
+    RETURNING id`;
+  return { sql, values };
+}
+
+async function loadMunicipalityCache(client) {
+  const cache = new Map();
+  try {
+    const result = await client.query('SELECT id, name, region_code FROM municipalities');
+    (result.rows || []).forEach((row) => {
+      const id = row && row.id ? String(row.id) : '';
+      if (!id) return;
+      if (row.name) cache.set(`${row.name}|`, id);
+      if (row.region_code) cache.set(`|${row.region_code}`, id);
+      if (row.name && row.region_code) cache.set(`${row.name}|${row.region_code}`, id);
+    });
+  } catch {
+    // 캐시 없이 행 단위 조회로 진행
+  }
+  return cache;
+}
+
 export async function persistSheets(sheets, options = {}) {
   const dryRun = Boolean(options.dryRun);
   const createMissing = options.createMissing !== false;
@@ -1257,6 +1389,7 @@ export async function persistSheets(sheets, options = {}) {
   const summary = [];
   try {
     await client.query('BEGIN');
+    const muniCache = await loadMunicipalityCache(client);
     for (const sheet of ordered) {
       if (isSkippedSheet(sheet.name)) {
         summary.push({
@@ -1284,6 +1417,7 @@ export async function persistSheets(sheets, options = {}) {
       }
       let inserted = 0;
       const errors = [];
+      const festivalBatch = [];
       for (let i = 0; i < sheet.rows.length; i += 1) {
         const raw = sheet.rows[i];
         if (table === 'festivals' && isIgnorableFestivalRow(raw, yearHint)) continue;
@@ -1291,7 +1425,13 @@ export async function persistSheets(sheets, options = {}) {
           const mapped = applyProfile(raw, table, { yearHint });
           const sourced = table === 'festivals' ? enrichFestivalRow(raw, yearHint) : raw;
           if (table === 'festivals' || table === 'merchants' || table === 'coupons') {
-            const municipalityId = await resolveMunicipalityId(client, sourced, mapped, createMissing && table !== 'coupons');
+            const municipalityId = await resolveMunicipalityId(
+              client,
+              sourced,
+              mapped,
+              createMissing && table !== 'coupons',
+              muniCache,
+            );
             if (municipalityId) mapped.municipality_id = municipalityId;
             else if (table !== 'coupons') throw new Error('지자체(지자체명 또는 지역코드)를 찾을 수 없습니다');
           }
@@ -1307,12 +1447,13 @@ export async function persistSheets(sheets, options = {}) {
           if (table === 'festivals') {
             mapped.source = mapped.source || 'excel';
             if (!mapped.tour_content_id) {
-              mapped.tour_content_id = 'excel-' + canon(mapped.title) + '-' + String(mapped.start_date || '');
+              mapped.tour_content_id = ('excel-' + canon(mapped.title) + '-' + String(mapped.start_date || '')).slice(0, 40);
             }
+            festivalBatch.push(usableRow(mapped));
+            continue;
           }
           const row = usableRow(mapped);
           let conflict = profile.conflict;
-          if (table === 'festivals' && !row.tour_content_id) conflict = row.id ? ['id'] : [];
           if (table === 'discount_promotions' && !row.id) conflict = [];
           const { sql, values } = buildUpsert(table, row, conflict);
           await client.query(sql, values);
@@ -1326,6 +1467,14 @@ export async function persistSheets(sheets, options = {}) {
           throw new Error(message);
         }
       }
+      if (table === 'festivals' && festivalBatch.length) {
+        for (let offset = 0; offset < festivalBatch.length; offset += FESTIVAL_BATCH_SIZE) {
+          const chunk = festivalBatch.slice(offset, offset + FESTIVAL_BATCH_SIZE);
+          const { sql, values } = buildFestivalBatchUpsert(chunk);
+          await client.query(sql, values);
+          inserted += chunk.length;
+        }
+      }
       if (!inserted && errors.length) {
         throw new Error(errors[0].error.startsWith(sheet.name) ? errors[0].error : `${sheet.name} ${errors[0].row}행: ${errors[0].error}`);
       }
@@ -1336,6 +1485,7 @@ export async function persistSheets(sheets, options = {}) {
         inserted,
         errorCount: errors.length,
         errors: errors.slice(0, 8),
+        errorSummary: summarizeErrors(errors),
       });
     }
     if (dryRun) await client.query('ROLLBACK');
