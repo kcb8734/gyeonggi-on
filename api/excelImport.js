@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { getPool, municipalityRegionCode, persistTourFestivals } from './festivalDbSync.js';
 import { METRO_LOCALITIES, REGION_LABEL, REGION_META, normalizeMetroId } from './metroLocalities.js';
 import { searchFestival2 } from './tourLive.js';
+import { crawlVisitkoreaCalendar } from './visitkoreaCalendar.js';
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -76,7 +77,18 @@ const PLACE_FIELDS = [
   'address', '주소', 'location_name', '장소', '개최장소', 'metro_region', '권역',
   '시도', '시도명', '기초단체', '개최지역', '지역',
 ];
-const SKIP_TITLES = new Set(['합계', '소계', '총계', '계', 'total', 'sum', '평균']);
+const SKIP_TITLES = new Set([
+  '합계', '소계', '총계', '계', 'total', 'sum', '평균',
+  '축제명', '행사명', '명칭', '제목', '이름', '개최장소', '장소',
+]);
+
+export const SURVEY_LAYOUT = {
+  title: 'E',
+  location: 'G',
+  city: ['I', 'J'],
+  start: ['L', 'M', 'N'],
+  end: ['O', 'P', 'Q'],
+};
 
 export const LOAD_ORDER = [
   'municipalities',
@@ -206,8 +218,114 @@ export function skipReason(sheetName) {
   return hit ? hit[1] : '';
 }
 
-export function isSkippedSheet(sheetName) {
-  return Boolean(skipReason(sheetName));
+export function isSurveySheet(sheetName) {
+  const key = canon(sheetName);
+  return ['조사표', '개최계획', '개최현황'].includes(key);
+}
+
+export function colIndex(letter) {
+  const raw = String(letter || '').toUpperCase().replace(/[^A-Z]/g, '');
+  let n = 0;
+  for (let i = 0; i < raw.length; i += 1) n = n * 26 + (raw.charCodeAt(i) - 64);
+  return n - 1;
+}
+
+function cellAt(values, letter) {
+  return Array.isArray(values) ? values[colIndex(letter)] : undefined;
+}
+
+function textPart(value) {
+  if (isBlank(value)) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  if (typeof value === 'number' && value > 30000 && value < 80000) return excelSerialToDate(value);
+  return String(value).replace(/[년월일]/g, '').trim();
+}
+
+export function joinSigungu(left, right) {
+  const a = textPart(left);
+  const b = textPart(right);
+  if (!a) return b;
+  if (!b) return a;
+  if (a.includes(b) || b.includes(a)) return a.length >= b.length ? a : b;
+  if (/^(시|군|구)$/.test(b)) return a.endsWith(b) ? a : a + b;
+  if (/^(시|군|구)$/.test(a)) return b.endsWith(a) ? b : b + a;
+  return `${a} ${b}`.trim();
+}
+
+export function isYearOnlyValue(value) {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1900 && value <= 2100) return true;
+  const text = String(value == null ? '' : value).trim().replace(/\.0$/, '').replace(/년$/, '').trim();
+  return /^(19|20)\d{2}$/.test(text);
+}
+
+export function isDateFragmentHeader(header) {
+  const normalized = normalizeHeader(header);
+  const key = canon(normalized || header);
+  if (['년', '연도', 'year', '월', 'month', '일', 'day', '시작년', '시작월', '종료년', '종료월'].includes(key)) return true;
+  return /^(시작|종료)(년|월)$/.test(key);
+}
+
+export function looksLikeCompleteDate(value) {
+  if (isBlank(value) || isYearOnlyValue(value)) return false;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return true;
+  if (typeof value === 'number' && value > 30000 && value < 80000) return true;
+  const text = String(value).trim();
+  if (/(20\d{2})\s*[.\-\/년]?\s*(\d{1,2})\s*[.\-\/월]?\s*(\d{1,2})/.test(text)) return true;
+  if (/^(20\d{2})(\d{2})(\d{2})$/.test(text)) return true;
+  if (/^\d{1,2}[.\-\/]\d{1,2}/.test(text)) return true;
+  return false;
+}
+
+export function combineYmdParts(yearPart, monthPart, dayPart, yearHint = new Date().getFullYear()) {
+  if (yearPart instanceof Date && !Number.isNaN(yearPart.getTime()) && isBlank(monthPart) && isBlank(dayPart)) {
+    return yearPart.toISOString().slice(0, 10);
+  }
+  if (typeof yearPart === 'number' && yearPart > 30000 && yearPart < 80000 && isBlank(monthPart)) {
+    return excelSerialToDate(yearPart);
+  }
+  const yText = textPart(yearPart);
+  const mText = textPart(monthPart);
+  const dText = textPart(dayPart);
+  if (yText && !mText && !dText) {
+    if (isYearOnlyValue(yearPart) || isYearOnlyValue(yText)) return null;
+    try { return toDate(yText, yearHint); } catch { /* continue */ }
+    const parsed = parsePeriod(yText, yearHint);
+    return parsed.start;
+  }
+  let year = parseInt(yText, 10);
+  if (Number.isFinite(year) && year < 100) year += 2000;
+  if (!Number.isFinite(year) || year < 1900) year = yearHint;
+  const month = parseInt(mText, 10);
+  const day = parseInt(dText, 10);
+  if (month && day) return padIso(year, month, day);
+  const joined = [yText, mText, dText].filter(Boolean).join('.');
+  if (!joined) return null;
+  try { return toDate(joined, yearHint); } catch { return parsePeriod(joined, yearHint).start; }
+}
+
+export function mapSurveyLetters(values, yearHint = new Date().getFullYear()) {
+  const title = textPart(cellAt(values, SURVEY_LAYOUT.title));
+  const location = textPart(cellAt(values, SURVEY_LAYOUT.location));
+  const city = joinSigungu(cellAt(values, SURVEY_LAYOUT.city[0]), cellAt(values, SURVEY_LAYOUT.city[1]));
+  const start = combineYmdParts(
+    cellAt(values, SURVEY_LAYOUT.start[0]),
+    cellAt(values, SURVEY_LAYOUT.start[1]),
+    cellAt(values, SURVEY_LAYOUT.start[2]),
+    yearHint,
+  );
+  const end = combineYmdParts(
+    cellAt(values, SURVEY_LAYOUT.end[0]),
+    cellAt(values, SURVEY_LAYOUT.end[1]),
+    cellAt(values, SURVEY_LAYOUT.end[2]),
+    yearHint,
+  );
+  return {
+    축제명: title || null,
+    개최장소: location || null,
+    시군구: city || null,
+    시작일: start || null,
+    종료일: end || start || null,
+  };
 }
 
 export function isBlank(value) {
@@ -215,6 +333,10 @@ export function isBlank(value) {
   if (typeof value === 'string' && value.trim() === '') return true;
   if (typeof value === 'number' && Number.isNaN(value)) return true;
   return false;
+}
+
+export function isSkippedSheet(sheetName) {
+  return Boolean(skipReason(sheetName));
 }
 
 function aliasIndex(profile) {
@@ -300,7 +422,7 @@ export function toDate(value, yearHint = new Date().getFullYear()) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
-  if (typeof value === 'number' && value > 59 && value < 80000) {
+  if (typeof value === 'number' && value > 30000 && value < 80000) {
     return excelSerialToDate(value);
   }
   const text = String(value).trim();
@@ -325,6 +447,7 @@ export function toDate(value, yearHint = new Date().getFullYear()) {
     const iso = padIso(yearHint, short[1], short[2]);
     if (iso) return iso;
   }
+  if (isYearOnlyValue(value) || isYearOnlyValue(text)) return null;
   throw new Error('날짜로 변환할 수 없습니다: ' + value);
 }
 
@@ -334,7 +457,7 @@ export function parsePeriod(value, yearHint = new Date().getFullYear()) {
     const iso = value.toISOString().slice(0, 10);
     return { start: iso, end: iso };
   }
-  if (typeof value === 'number' && value > 59 && value < 80000) {
+  if (typeof value === 'number' && value > 30000 && value < 80000) {
     const iso = excelSerialToDate(value);
     return { start: iso, end: iso };
   }
@@ -367,6 +490,14 @@ export function parsePeriod(value, yearHint = new Date().getFullYear()) {
 
 export function enrichFestivalRow(raw, yearHint = new Date().getFullYear()) {
   const out = Object.assign({}, raw);
+  if (Array.isArray(raw && raw.__cells) && (raw.__surveyLetters || isSurveySheet(raw.__sheet))) {
+    const lettered = mapSurveyLetters(raw.__cells, yearHint);
+    if (lettered.축제명) out['축제명'] = lettered.축제명;
+    if (lettered.개최장소) out['개최장소'] = lettered.개최장소;
+    if (lettered.시군구) out['시군구'] = lettered.시군구;
+    if (lettered.시작일) out['시작일'] = lettered.시작일;
+    if (lettered.종료일) out['종료일'] = lettered.종료일;
+  }
   const period = pick(out, ['개최기간', '행사기간', '축제기간', '기간', '개최일시', '행사일시']);
   const parsed = parsePeriod(period, yearHint);
   const hasStart = !isBlank(pick(out, ['시작일', 'start_date', '축제시작일자', '축제시작일', '개최시작일', '시작일자', '개최기간시작']));
@@ -486,13 +617,26 @@ export function applyProfile(raw, table, options = {}) {
   const source = table === 'festivals' ? enrichFestivalRow(raw, yearHint) : raw;
   const index = aliasIndex(profile);
   const out = {};
+  if (table === 'festivals') {
+    const startValue = pick(source, ['시작일', 'start_date', '축제시작일자', '축제시작일', '개최시작일', '시작일자', '개최기간시작']);
+    const endValue = pick(source, ['종료일', 'end_date', '축제종료일자', '축제종료일', '개최종료일', '종료일자', '개최기간종료']);
+    if (looksLikeCompleteDate(startValue)) {
+      try { out.start_date = toDate(startValue, yearHint); } catch { /* scanned below */ }
+    }
+    if (looksLikeCompleteDate(endValue)) {
+      try { out.end_date = toDate(endValue, yearHint); } catch { /* scanned below */ }
+    }
+  }
   Object.entries(source || {}).forEach(([header, value]) => {
+    if (String(header).startsWith('__') || isDateFragmentHeader(header)) return;
     const column = lookupColumn(index, header);
     if (!column || isBlank(value) || !isBlank(out[column])) return;
+    const isDateCol = column === 'start_date' || column === 'end_date';
+    if (isDateCol && !looksLikeCompleteDate(value)) return;
     const convert = CONVERTERS[column] || toText;
-    out[column] = convert.length > 1 && (column === 'start_date' || column === 'end_date')
-      ? toDate(value, yearHint)
-      : convert(value);
+    const converted = isDateCol ? toDate(value, yearHint) : convert(value);
+    if (isDateCol && isBlank(converted)) return;
+    out[column] = converted;
   });
   if (table === 'merchants' && !out.owner_user_id) out.owner_user_id = randomUUID();
   if (table === 'discount_promotions' && out.remaining_quantity == null && out.total_quantity != null) {
@@ -611,6 +755,7 @@ export function analyzeSheets(sheets, options = {}) {
   let errorTotal = 0;
   let crawlHints = 0;
   const yearHint = options.yearHint || new Date().getFullYear();
+  const crawlMonths = new Set();
 
   (sheets || []).forEach((sheet) => {
     if (isSkippedSheet(sheet.name)) {
@@ -642,6 +787,10 @@ export function analyzeSheets(sheets, options = {}) {
       try {
         const mapped = applyProfile(raw, table, { yearHint });
         valid += 1;
+        if (mapped.start_date) {
+          const month = Number(String(mapped.start_date).slice(5, 7));
+          if (month >= 1 && month <= 12) crawlMonths.add(month);
+        }
         const place = pick(Object.assign({}, raw, mapped), PLACE_FIELDS);
         const city = mapped.name && table === 'municipalities'
           ? mapped.name
@@ -651,8 +800,12 @@ export function analyzeSheets(sheets, options = {}) {
           || metroFromText(place)
           || metroFromText(city);
         if (metro) {
-          const prev = metroNeed.get(metro) || { metro, cities: new Set(), hints: 0 };
+          const prev = metroNeed.get(metro) || { metro, cities: new Set(), hints: 0, months: new Set() };
           if (city) prev.cities.add(city);
+          if (mapped.start_date) {
+            const month = Number(String(mapped.start_date).slice(5, 7));
+            if (month >= 1 && month <= 12) prev.months.add(month);
+          }
           if (needsTourCrawl(table, mapped)) {
             prev.hints += 1;
             crawlHints += 1;
@@ -679,29 +832,33 @@ export function analyzeSheets(sheets, options = {}) {
   });
 
   if (!metroNeed.size && (validTotal || cities.size)) {
-    metroNeed.set('GYEONGGI', { metro: 'GYEONGGI', cities, hints: crawlHints || 1 });
+    metroNeed.set('GYEONGGI', { metro: 'GYEONGGI', cities, hints: crawlHints || 1, months: crawlMonths });
   }
 
   const crawlPlan = [...metroNeed.values()].map((item) => ({
     metro: item.metro,
     label: REGION_LABEL[item.metro] || item.metro,
     cities: [...item.cities],
+    months: [...(item.months || [])].sort((a, b) => a - b),
     hints: item.hints,
     reason: item.hints
-      ? `엑셀 ${item.hints}건을 TourAPI 축제 정보로 보강`
-      : `${item.cities.size || 1}개 시군 축제를 동기화`,
+      ? `엑셀 ${item.hints}건을 구석구석 일자별 달력으로 보강`
+      : `${item.cities.size || 1}개 시군 축제를 구석구석 달력에서 동기화`,
   }));
 
   return {
     sheets: analyzed,
     cities: [...cities],
     crawlPlan,
+    year: yearHint,
+    months: [...crawlMonths].sort((a, b) => a - b),
     totals: {
       sheets: analyzed.length,
       rows: analyzed.reduce((sum, row) => sum + row.rows, 0),
       valid: validTotal,
       errors: errorTotal,
       crawlMetros: crawlPlan.length,
+      crawlMonths: crawlMonths.size,
     },
   };
 }
@@ -726,12 +883,28 @@ export function analyzeExcelFromPayload(body) {
 export async function crawlPlannedMetros(metros, options = {}) {
   const unique = [...new Set((metros || []).map((item) => normalizeMetroId(item)).filter(Boolean))].slice(0, 8);
   if (!unique.length) unique.push('GYEONGGI');
+  const year = Number(options.year) || new Date().getFullYear();
+  const months = Array.isArray(options.months) && options.months.length
+    ? options.months.map(Number).filter((month) => month >= 1 && month <= 12)
+    : [new Date().getMonth() + 1];
   const search = options.searchFestival2 || searchFestival2;
   const persist = options.persistTourFestivals || persistTourFestivals;
+  const calendar = options.crawlVisitkoreaCalendar || crawlVisitkoreaCalendar;
+  let kfes = { festivals: [], byMetro: new Map(), source: 'visitkorea', days: 0, message: '' };
+  try {
+    kfes = await calendar({ year, months, metros: unique, date: options.date, maxMonths: options.maxMonths || 6 });
+  } catch (err) {
+    kfes.message = err && err.message ? err.message : String(err);
+  }
   const runs = [];
   for (const metro of unique) {
-    const result = await search({ metro });
-    const festivals = (result && result.festivals) || [];
+    let festivals = (kfes.byMetro && kfes.byMetro.get(metro)) || [];
+    let source = 'visitkorea';
+    if (!festivals.length) {
+      const result = await search({ metro, year, month: months[0] });
+      festivals = (result && result.festivals) || [];
+      source = (result && result.source) || 'searchFestival2';
+    }
     const saved = await persist(festivals);
     runs.push({
       metro,
@@ -740,8 +913,9 @@ export async function crawlPlannedMetros(metros, options = {}) {
       upserted: saved && saved.upserted ? saved.upserted : 0,
       skipped: saved && saved.skipped ? saved.skipped : 0,
       persisted: Boolean(saved && saved.ok),
-      source: (result && result.source) || 'none',
-      message: (saved && saved.message) || '',
+      source,
+      days: kfes.days || 0,
+      message: (saved && saved.message) || kfes.message || '',
     });
   }
   const upserted = runs.reduce((sum, row) => sum + row.upserted, 0);
@@ -751,7 +925,8 @@ export async function crawlPlannedMetros(metros, options = {}) {
     crawled: runs.length,
     fetched,
     upserted,
-    message: runs.map((row) => `${row.label} ${row.fetched}건 수집/${row.upserted}건 저장`).join(' · '),
+    source: runs.some((row) => row.source === 'visitkorea') ? 'visitkorea' : (runs[0] && runs[0].source),
+    message: runs.map((row) => `${row.label} ${row.fetched}건 수집/${row.upserted}건 저장 (${row.source})`).join(' · '),
     runs,
   };
 }
@@ -811,7 +986,10 @@ export function parseWorkbook(buffer, options = {}) {
   return (workbook.SheetNames || []).map((name) => {
     const sheet = workbook.Sheets[name];
     const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
-    return { name, rows: recordsFromAoa(aoa, { yearHint }) };
+    const rows = isSurveySheet(name)
+      ? recordsFromSurveyAoa(aoa, { yearHint, sheetName: name })
+      : recordsFromAoa(aoa, { yearHint, sheetName: name });
+    return { name, rows };
   });
 }
 
@@ -880,11 +1058,55 @@ export function recordsFromAoa(aoa, options = {}) {
   for (let r = dataStart; r < rows.length; r += 1) {
     const values = rows[r] || [];
     if (!values.some((cell) => !isBlank(cell))) continue;
-    const record = { __yearHint: yearHint };
+    const record = { __yearHint: yearHint, __sheet: options.sheetName || '', __cells: values };
     headers.forEach((header, i) => {
       if (header && !isBlank(values[i])) record[header] = values[i];
     });
     if (Object.keys(record).some((key) => !key.startsWith('__'))) records.push(record);
+  }
+  return records;
+}
+
+function isSurveyTitleCell(value) {
+  const title = textPart(value);
+  if (!title || title.length < 2) return false;
+  if (SKIP_TITLES.has(canon(title))) return false;
+  return /[가-힣A-Za-z]/.test(title);
+}
+
+export function recordsFromSurveyAoa(aoa, options = {}) {
+  const rows = Array.isArray(aoa) ? aoa : [];
+  const yearHint = options.yearHint || new Date().getFullYear();
+  const titleCol = colIndex(SURVEY_LAYOUT.title);
+  let dataStart = rows.findIndex((row) => isSurveyTitleCell((row || [])[titleCol]));
+  if (dataStart < 0) return recordsFromAoa(rows, options);
+  const headerRows = rows.slice(0, dataStart);
+  let headers = [];
+  if (headerRows.length) {
+    const scored = headerRows.map((row, index) => ({ index, score: scoreHeaderRow(row) }));
+    scored.sort((a, b) => b.score - a.score);
+    if (scored[0] && scored[0].score >= 2) {
+      headers = (headerRows[scored[0].index] || []).map((cell) => cellText(cell));
+      const next = headerRows[scored[0].index + 1];
+      if (next && looksLikeSubHeader(next)) headers = mergeHeaderRows(headers, next);
+    }
+  }
+  const records = [];
+  for (let r = dataStart; r < rows.length; r += 1) {
+    const values = rows[r] || [];
+    const lettered = mapSurveyLetters(values, yearHint);
+    if (isBlank(lettered.축제명) || SKIP_TITLES.has(canon(lettered.축제명))) continue;
+    const record = {
+      __yearHint: yearHint,
+      __sheet: options.sheetName || '조사표',
+      __cells: values,
+      __surveyLetters: true,
+    };
+    headers.forEach((header, i) => {
+      if (header && !isBlank(values[i]) && !isDateFragmentHeader(header)) record[header] = values[i];
+    });
+    Object.assign(record, lettered);
+    records.push(record);
   }
   return records;
 }

@@ -398,7 +398,11 @@ export const crawlAdminExcel = async (req: Request, res: Response) => {
   try {
     const { crawlPlannedMetros } = await loadExcelImport();
     const metros = Array.isArray(req.body?.metros) ? req.body.metros : (req.body?.metro ? [req.body.metro] : []);
-    const result = await crawlPlannedMetros(metros);
+    const result = await crawlPlannedMetros(metros, {
+      year: req.body?.year,
+      months: req.body?.months,
+      date: req.body?.date,
+    });
     return res.json({ success: true, message: result.message, data: result });
   } catch (error) {
     return res.status(502).json({

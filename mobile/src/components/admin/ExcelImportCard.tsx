@@ -21,7 +21,7 @@ type SheetRow = {
   inserted?: number;
 };
 
-type CrawlPlan = { metro: string; label?: string; cities?: string[]; reason?: string; hints?: number };
+type CrawlPlan = { metro: string; label?: string; cities?: string[]; reason?: string; hints?: number; months?: number[] };
 type CrawlRun = { metro: string; label?: string; fetched?: number; upserted?: number; persisted?: boolean; source?: string };
 
 const STEPS = [
@@ -41,6 +41,7 @@ export default function ExcelImportCard() {
   const [cities, setCities] = useState<string[]>([]);
   const [plan, setPlan] = useState<CrawlPlan[]>([]);
   const [totals, setTotals] = useState<{ valid?: number; errors?: number; rows?: number } | null>(null);
+  const [year, setYear] = useState<number | undefined>();
   const [saved, setSaved] = useState(false);
   const [crawlRuns, setCrawlRuns] = useState<CrawlRun[]>([]);
   const fileRef = useRef<File | null>(null);
@@ -52,6 +53,7 @@ export default function ExcelImportCard() {
     setCities(Array.isArray(analysis?.cities) ? analysis.cities : []);
     setPlan(Array.isArray(analysis?.crawlPlan) ? analysis.crawlPlan : []);
     setTotals(analysis?.totals || null);
+    if (analysis?.year) setYear(Number(analysis.year));
   };
 
   const handleTemplate = async () => {
@@ -120,11 +122,12 @@ export default function ExcelImportCard() {
     setError('');
     try {
       const metros = plan.map((item) => item.metro);
-      const result = await crawlExcelMetros(metros);
+      const months = [...new Set(plan.flatMap((item) => item.months || []))];
+      const result = await crawlExcelMetros(metros, { months, year });
       const data = result.data || result;
       setCrawlRuns(Array.isArray(data.runs) ? data.runs : []);
       setStep('crawl');
-      setMessage(result.message || data.message || 'TourAPI 크롤링을 마쳤습니다.');
+      setMessage(result.message || data.message || '구석구석 달력 크롤링을 마쳤습니다.');
     } catch (err) {
       setError(err instanceof Error ? err.message : '크롤링에 실패했습니다.');
     } finally {
@@ -141,7 +144,7 @@ export default function ExcelImportCard() {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>엑셀 업로드 · 분석 · 저장 · 크롤링</Text>
       <Text style={styles.hint}>
-        엑셀을 올리면 시트와 시군을 분석하고 PostgreSQL에 저장한 뒤, 부족한 축제 정보는 TourAPI로 크롤링합니다. 문체부 개최계획(조사표) 파일은 축제명·시작일·종료일·장소·시군구로 읽습니다.
+        엑셀을 올리면 조사표 E열 축제명, G열 장소, I·J열 시군구, L·M·N열(년·월·일) 시작일, O·P·Q열(년·월·일) 종료일을 읽어 PostgreSQL에 저장합니다. 부족한 축제 정보는 대한민국 구석구석 일자별 달력에서 크롤링합니다.
       </Text>
       <View style={styles.steps}>
         {STEPS.map((item, index) => {

@@ -149,7 +149,7 @@ export async function analyzeExcel(file: File) {
   return data;
 }
 
-export async function crawlExcel(metros: string[]) {
+export async function crawlExcel(metros: string[], options?: { year?: number; months?: number[] }) {
   const token = localStorage.getItem('admin_token');
   const res = await fetch(`${API_BASE}/api/admin/excel/crawl`, {
     method: 'POST',
@@ -157,7 +157,7 @@ export async function crawlExcel(metros: string[]) {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ metros }),
+    body: JSON.stringify({ metros, year: options?.year, months: options?.months }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || '크롤링 실패');
