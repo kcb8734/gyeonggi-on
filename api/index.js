@@ -821,7 +821,11 @@ async function handler(req, res) {
       if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
       try {
         const metros = Array.isArray(body.metros) ? body.metros : (body.metro ? [body.metro] : []);
-        const result = await crawlPlannedMetros(metros);
+        const result = await crawlPlannedMetros(metros, {
+          year: body.year,
+          months: body.months,
+          date: body.date,
+        });
         send(res, 200, { success: true, message: result.message, data: result }, corsHeaders(req));
       } catch (err) {
         send(res, 502, {

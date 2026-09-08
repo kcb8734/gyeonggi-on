@@ -175,6 +175,26 @@ class TemplateExcelTest(unittest.TestCase):
         self.assertEqual(mapped["end_date"], date(2026, 9, 30))
         self.assertEqual(mapped["location_name"], "수원화성 행궁광장")
 
+    def test_survey_letter_columns(self):
+        from excel_to_postgres import join_sigungu, map_survey_letters
+        self.assertEqual(join_sigungu("수원", "시"), "수원시")
+        row = [""] * 17
+        row[4] = "수원화성문화제"
+        row[6] = "행궁광장"
+        row[8] = "수원"
+        row[9] = "시"
+        row[11] = 2026
+        row[12] = 9
+        row[13] = 1
+        row[14] = 2026
+        row[15] = 9
+        row[16] = 30
+        mapped = map_survey_letters(row, 2026)
+        self.assertEqual(mapped["축제명"], "수원화성문화제")
+        self.assertEqual(mapped["시군구"], "수원시")
+        self.assertEqual(mapped["시작일"], date(2026, 9, 1))
+        self.assertEqual(mapped["종료일"], date(2026, 9, 30))
+
 
 class CliTest(unittest.TestCase):
     def test_parse_dry_run(self):

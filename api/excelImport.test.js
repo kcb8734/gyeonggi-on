@@ -10,12 +10,15 @@ import {
   decodeExcelPayload,
   importExcelFromPayload,
   isSkippedSheet,
+  joinSigungu,
   loadXlsx,
+  mapSurveyLetters,
   metroFromText,
   parsePeriod,
   parseWorkbook,
   persistSheets,
   recordsFromAoa,
+  recordsFromSurveyAoa,
   resolveTableName,
   toBool,
   toDate,
@@ -169,6 +172,7 @@ test('analyzeExcelFromPayload returns crawl plan', () => {
 
 test('crawlPlannedMetros uses injected search and persist', async () => {
   const result = await crawlPlannedMetros(['GYEONGGI'], {
+    crawlVisitkoreaCalendar: async () => ({ festivals: [], byMetro: new Map(), days: 0 }),
     searchFestival2: async () => ({
       festivals: [{ contentId: 'x1', title: '수원화성문화제', eventStartDate: '2026-09-01' }],
       source: 'fake',
@@ -182,7 +186,22 @@ test('crawlPlannedMetros uses injected search and persist', async () => {
   assert.equal(result.runs[0].source, 'fake');
 });
 
-function surveyWorkbook(options = {}) {
+function letterRow({ title, place, si, gu, sy, sm, sd, ey, em, ed }) {
+  const row = Array(17).fill('');
+  row[4] = title;
+  row[6] = place;
+  row[8] = si;
+  row[9] = gu;
+  row[11] = sy;
+  row[12] = sm;
+  row[13] = sd;
+  row[14] = ey;
+  row[15] = em;
+  row[16] = ed;
+  return row;
+}
+
+function surveyWorkbook() {
   const XLSX = loadXlsx();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
@@ -191,20 +210,24 @@ function surveyWorkbook(options = {}) {
     ['건수', 2],
     ['작성', '공개용'],
   ]), '총괄');
-  const surveyRows = options.twoRowHeader
-    ? [
-      ['연번', '시도', '시군구', '축제명', '개최기간', '개최기간', '개최장소'],
-      ['', '', '', '', '시작', '종료', ''],
-      [1, '경기도', '수원시', '수원화성문화제', '2026-09-01', '2026-09-30', '수원화성 행궁광장'],
-      [2, '경기도', '용인시', '한국민속촌 축제', '2026-09-01', '2026-09-11', '한국민속촌'],
-    ]
-    : [
-      ['2026년 지역축제 개최 계획 현황'],
-      ['1. 시도', '2. 시군구', '3. 축제명', '4. 개최기간', '5. 개최장소', '축제내용'],
-      ['경기도', '수원시', '수원화성문화제', '2026.09.01 ~ 2026.09.30', '수원화성 행궁광장', '야간 퍼레이드'],
-      ['경기도', '용인시', '한국민속촌 축제', '9.1~9.11', '한국민속촌', '전통 체험'],
-      ['', '', '합계', '', '', ''],
-    ];
+  const header = letterRow({
+    title: '축제명', place: '장소', si: '시', gu: '군구',
+    sy: '년', sm: '월', sd: '일', ey: '년', em: '월', ed: '일',
+  });
+  header[0] = '연번';
+  const surveyRows = [
+    ['2026년 지역축제 개최 계획 현황'],
+    header,
+    letterRow({
+      title: '수원화성문화제', place: '수원화성 행궁광장', si: '수원', gu: '시',
+      sy: 2026, sm: 9, sd: 1, ey: 2026, em: 9, ed: 30,
+    }),
+    letterRow({
+      title: '한국민속촌 축제', place: '한국민속촌', si: '용인시', gu: '',
+      sy: 2026, sm: 9, sd: 1, ey: 2026, em: 9, ed: 11,
+    }),
+    letterRow({ title: '합계', place: '', si: '', gu: '', sy: '', sm: '', sd: '', ey: '', em: '', ed: '' }),
+  ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(surveyRows), '조사표');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     ['문항', '항목'],
@@ -293,4 +316,62 @@ test('public-data festival columns map without 조사표 sheet name', () => {
   assert.equal(analysis.sheets[0].table, 'festivals');
   assert.equal(analysis.sheets[0].valid, 1);
   assert.equal(analysis.cities[0], '구리시');
+});
+
+test('조사표 letter map uses E G I.J L.M.N O.P.Q', () => {
+  assert.equal(joinSigungu('수원', '시'), '수원시');
+  const mapped = mapSurveyLetters(letterRow({
+    title: '수원화성문화제',
+    place: '행궁광장',
+    si: '수원',
+    gu: '시',
+    sy: 2026,
+    sm: 9,
+    sd: 1,
+    ey: 2026,
+    em: 9,
+    ed: 30,
+  }), 2026);
+  assert.equal(mapped.축제명, '수원화성문화제');
+  assert.equal(mapped.개최장소, '행궁광장');
+  assert.equal(mapped.시군구, '수원시');
+  assert.equal(mapped.시작일, '2026-09-01');
+  assert.equal(mapped.종료일, '2026-09-30');
+});
+
+test('recordsFromSurveyAoa reads letter columns even with title/header rows', () => {
+  const rows = recordsFromSurveyAoa([
+    ['2026년 지역축제 개최 계획 현황'],
+    letterRow({
+      title: '축제명', place: '장소', si: '시', gu: '군구',
+      sy: '년', sm: '월', sd: '일', ey: '년', em: '월', ed: '일',
+    }),
+    letterRow({
+      title: '자라섬 재즈페스티벌', place: '자라섬', si: '가평', gu: '군',
+      sy: 2026, sm: 8, sd: 22, ey: 2026, em: 9, ed: 5,
+    }),
+  ], { yearHint: 2026, sheetName: '조사표' });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].축제명, '자라섬 재즈페스티벌');
+  assert.equal(rows[0].시군구, '가평군');
+  assert.equal(rows[0].시작일, '2026-08-22');
+  assert.equal(rows[0].종료일, '2026-09-05');
+  assert.equal(rows[0].개최장소, '자라섬');
+});
+
+test('crawlPlannedMetros prefers 구석구석 calendar', async () => {
+  const byMetro = new Map([['GYEONGGI', [{ contentId: 'kfes-1', title: '수원화성문화제', eventStartDate: '2026-09-01' }]]]);
+  const result = await crawlPlannedMetros(['GYEONGGI'], {
+    year: 2026,
+    months: [9],
+    crawlVisitkoreaCalendar: async (input) => {
+      assert.equal(input.year, 2026);
+      assert.deepEqual(input.months, [9]);
+      return { festivals: byMetro.get('GYEONGGI'), byMetro, days: 8, source: 'visitkorea' };
+    },
+    searchFestival2: async () => { throw new Error('should not call TourAPI'); },
+    persistTourFestivals: async (rows) => ({ ok: true, upserted: rows.length, skipped: 0, message: 'ok' }),
+  });
+  assert.equal(result.runs[0].source, 'visitkorea');
+  assert.equal(result.fetched, 1);
 });

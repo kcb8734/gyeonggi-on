@@ -533,6 +533,77 @@ def apply_profile(row: dict[str, Any], profile: TableProfile) -> dict[str, Any]:
     return out
 
 
+def col_index(letter: str) -> int:
+    n = 0
+    for char in str(letter or "").upper():
+        if "A" <= char <= "Z":
+            n = n * 26 + (ord(char) - 64)
+    return n - 1
+
+
+def is_survey_sheet(name: str) -> bool:
+    return canon(name) in {"조사표", "개최계획", "개최현황"}
+
+
+def join_sigungu(left: Any, right: Any) -> str:
+    a = "" if is_blank(left) else str(left).strip()
+    b = "" if is_blank(right) else str(right).strip()
+    if not a:
+        return b
+    if not b:
+        return a
+    if a in b or b in a:
+        return a if len(a) >= len(b) else b
+    if b in {"시", "군", "구"}:
+        return a if a.endswith(b) else a + b
+    return f"{a} {b}".strip()
+
+
+def map_survey_letters(values: tuple[Any, ...] | list[Any], year_hint: int | None = None) -> dict[str, Any]:
+    def at(letter: str) -> Any:
+        index = col_index(letter)
+        return values[index] if index < len(values) else None
+
+    y, m, d = at("L"), at("M"), at("N")
+    ey, em, ed = at("O"), at("P"), at("Q")
+    start_date = None
+    end_date = None
+    if not is_blank(y) and is_blank(m) and is_blank(d):
+        start_date, _ = parse_period(y, year_hint)
+    else:
+        year = year_hint or date.today().year
+        raw_year = str(y).replace("년", "").strip() if not is_blank(y) else ""
+        if raw_year.isdigit():
+            year = int(raw_year)
+            if year < 100:
+                year += 2000
+        try:
+            start_date = date(year, int(str(m).replace("월", "")), int(str(d).replace("일", ""))) if not is_blank(m) and not is_blank(d) else None
+        except (TypeError, ValueError):
+            start_date, _ = parse_period(".".join(str(part) for part in (y, m, d) if not is_blank(part)), year_hint)
+    if not is_blank(ey) and is_blank(em) and is_blank(ed):
+        end_date, _ = parse_period(ey, year_hint)
+    else:
+        year = year_hint or date.today().year
+        raw_year = str(ey).replace("년", "").strip() if not is_blank(ey) else ""
+        if raw_year.isdigit():
+            year = int(raw_year)
+            if year < 100:
+                year += 2000
+        try:
+            end_date = date(year, int(str(em).replace("월", "")), int(str(ed).replace("일", ""))) if not is_blank(em) and not is_blank(ed) else start_date
+        except (TypeError, ValueError):
+            end_date, _ = parse_period(".".join(str(part) for part in (ey, em, ed) if not is_blank(part)), year_hint)
+    title = None if is_blank(at("E")) else str(at("E")).strip()
+    return {
+        "축제명": title,
+        "개최장소": None if is_blank(at("G")) else str(at("G")).strip(),
+        "시군구": join_sigungu(at("I"), at("J")) or None,
+        "시작일": start_date,
+        "종료일": end_date or start_date,
+    }
+
+
 def read_excel_sheets(path: Path) -> list[tuple[str, list[str], list[dict[str, Any]]]]:
     try:
         from openpyxl import load_workbook
@@ -543,7 +614,18 @@ def read_excel_sheets(path: Path) -> list[tuple[str, list[str], list[dict[str, A
     sheets: list[tuple[str, list[str], list[dict[str, Any]]]] = []
     try:
         for worksheet in workbook.worksheets:
-            rows = worksheet.iter_rows(values_only=True)
+            aoa = list(worksheet.iter_rows(values_only=True))
+            if is_survey_sheet(worksheet.title):
+                records = []
+                for values in aoa:
+                    values = tuple(values or ())
+                    lettered = map_survey_letters(values)
+                    if not lettered.get("축제명") or lettered["축제명"] in {"축제명", "합계", "소계", "총계"}:
+                        continue
+                    records.append(lettered)
+                sheets.append((worksheet.title, ["축제명", "시군구", "시작일", "종료일", "개최장소"], records))
+                continue
+            rows = iter(aoa)
             try:
                 header_row = next(rows)
             except StopIteration:
@@ -551,7 +633,7 @@ def read_excel_sheets(path: Path) -> list[tuple[str, list[str], list[dict[str, A
             if not header_row or all(is_blank(cell) for cell in header_row):
                 continue
             headers = [str(cell).strip() if not is_blank(cell) else "" for cell in header_row]
-            records: list[dict[str, Any]] = []
+            records = []
             for values in rows:
                 if not values or all(is_blank(cell) for cell in values):
                     continue

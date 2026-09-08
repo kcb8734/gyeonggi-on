@@ -64,12 +64,17 @@ export async function analyzeExcelFile(file: File, apiBase = '') {
   return data;
 }
 
-export async function crawlExcelMetros(metros: string[], apiBase = '') {
-  const base = apiBase.replace(/\/$/, '');
+export async function crawlExcelMetros(metros: string[], options?: { apiBase?: string; year?: number; months?: number[]; date?: string }) {
+  const base = (options?.apiBase || '').replace(/\/$/, '');
   const response = await fetch(`${base}/api/admin/excel/crawl`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ metros }),
+    body: JSON.stringify({
+      metros,
+      year: options?.year,
+      months: options?.months,
+      date: options?.date,
+    }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {

@@ -106,7 +106,7 @@ export async function persistTourFestivals(items) {
          ) VALUES (
            $1, $2, $3, $4, $5,
            $6, $7, $8, $9, $10, $11,
-           $12, $13, 'tour'
+           $12, $13, $14
          )
          ON CONFLICT (tour_content_id) DO UPDATE SET
            title = EXCLUDED.title,
@@ -120,7 +120,7 @@ export async function persistTourFestivals(items) {
            image_url = COALESCE(EXCLUDED.image_url, festivals.image_url),
            is_trending = EXCLUDED.is_trending,
            tel = COALESCE(EXCLUDED.tel, festivals.tel),
-           source = 'tour'`,
+           source = COALESCE(EXCLUDED.source, festivals.source)`,
         [
           municipalityId,
           title.slice(0, 100),
@@ -135,6 +135,7 @@ export async function persistTourFestivals(items) {
           Boolean(item.firstImage || item.image_url),
           contentId,
           item.tel || null,
+          item.source || 'tour',
         ],
       );
       upserted += 1;
