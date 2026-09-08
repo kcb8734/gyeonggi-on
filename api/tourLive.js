@@ -138,6 +138,7 @@ export function toTourFestival(item) {
     tel: text(item.tel) || undefined,
     category: classifyFestival(title, item.overview || ''),
     overview: stripHtml(item.overview) || undefined,
+    homepage: stripHtml(item.homepage) || undefined,
     areaCode: text(item.areacode) || undefined,
   };
 }
@@ -167,6 +168,7 @@ export function toHomeFestival(item, metro, areaCode) {
     metro: metro,
     areaCode: resolvedArea,
     moiCode: MOI_CODE_BY_METRO[metro] || '41',
+    homepage: tour.homepage,
   };
 }
 

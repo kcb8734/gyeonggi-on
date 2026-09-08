@@ -882,5 +882,6 @@ export function toHomeFestival(festival: TourFestival, regionalZone?: string) {
     metro: zone,
     areaCode: festival.areaCode ?? preset.code,
     moiCode: preset.moiCode,
+    homepage: festival.homepage,
   };
 }

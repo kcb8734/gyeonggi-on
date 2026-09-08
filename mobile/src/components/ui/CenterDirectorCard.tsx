@@ -72,8 +72,8 @@ export function CenterCardFaces({
                 <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066), color: CARD_COLORS.title }]} numberOfLines={1}>{model.title}</Text>
               </View>
               <View style={[styles.brandBlock, { paddingBottom: mm(CARD_MM.brandAboveRule) }]}>
-                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand }]}>온앤온+</Text>
-                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+                <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), lineHeight: Math.round(cardH * 0.078 * 1.65), color: CARD_COLORS.brand }]}>온앤온+</Text>
+                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), lineHeight: Math.round(cardH * 0.068 * 1.65), color: CARD_COLORS.brand }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
               </View>
             </View>
             {model.photoUrl ? (
@@ -165,7 +165,7 @@ export default function CenterDirectorCard({
                   }
                 }}
               >
-                <Text style={styles.downloadText}>{busy === 'front' ? '전면 저장 중...' : `전면 JPEG 다운로드 · ${CARD_PRINT_CM.width}cm × ${CARD_PRINT_CM.height}cm`}</Text>
+                <Text style={styles.downloadText}>{busy === 'front' ? '전면 저장 중...' : '전면 JPEG 다운로드'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.download}
@@ -180,7 +180,7 @@ export default function CenterDirectorCard({
                   }
                 }}
               >
-                <Text style={styles.downloadText}>{busy === 'back' ? '후면 저장 중...' : `후면 JPEG 다운로드 · ${CARD_PRINT_CM.width}cm × ${CARD_PRINT_CM.height}cm`}</Text>
+                <Text style={styles.downloadText}>{busy === 'back' ? '후면 저장 중...' : '후면 JPEG 다운로드'}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.downloadHint}>저장 크기 가로 {CARD_PRINT_CM.width}cm × 세로 {CARD_PRINT_CM.height}cm (실물 명함)</Text>
@@ -232,9 +232,9 @@ const styles = StyleSheet.create({
   name: { fontWeight: '800', color: '#111827' },
   bar: { color: '#D1D5DB', fontWeight: '400' },
   title: { color: CARD_COLORS.title, fontWeight: '500', flexShrink: 1 },
-  brandBlock: { marginTop: 'auto' as const, paddingTop: 8 },
-  brand: { fontWeight: '800', color: CARD_COLORS.brand },
-  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
+  brandBlock: { marginTop: 'auto' as const, paddingTop: 10, overflow: 'visible' },
+  brand: { fontWeight: '800', color: CARD_COLORS.brand, paddingTop: 4, includeFontPadding: true },
+  dedicated: { marginTop: 6, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand, paddingTop: 3, includeFontPadding: true },
   rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 0, marginBottom: 0 },
   grid: { gap: 4 },
   contactRow: { flexDirection: 'row', gap: 8 },

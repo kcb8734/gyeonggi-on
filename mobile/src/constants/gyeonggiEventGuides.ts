@@ -115,6 +115,89 @@ export function visitkoreaSearchUrl(title: string): string {
   return `https://korean.visitkorea.or.kr/search/search_list.do?keyword=${encodeURIComponent(title)}`;
 }
 
+const KTO_HOST = /visitkorea\.or\.kr|korean\.visitkorea|tourapi\.or\.kr/i;
+
+export function isKtoUrl(url?: string | null): boolean {
+  return KTO_HOST.test(String(url || ''));
+}
+
+export function extractAllUrls(raw?: string | null): string[] {
+  const text = String(raw || '');
+  if (!text.trim()) return [];
+  const out: string[] = [];
+  const push = (value: string) => {
+    const url = value.replace(/[),.;]+$/g, '');
+    if (url && !out.includes(url)) out.push(url);
+  };
+  for (const match of text.matchAll(/https?:\/\/[^\s"'<>]+/gi)) push(match[0]);
+  for (const match of text.matchAll(/\bwww\.[^\s"'<>]+/gi)) push(`https://${match[0]}`);
+  return out;
+}
+
+export function officialEventUrls(input: {
+  homepage?: string | null;
+  description?: string | null;
+}): string[] {
+  const fromHome = extractAllUrls(input.homepage).filter((url) => !isKtoUrl(url));
+  const fromDesc = extractAllUrls(input.description).filter((url) => !isKtoUrl(url));
+  const out: string[] = [];
+  for (const url of [...fromHome, ...fromDesc]) {
+    if (!out.includes(url)) out.push(url);
+  }
+  return out;
+}
+
+export function eventLinkLabel(url: string, named?: string): string {
+  if (named) return named;
+  if (isKtoUrl(url)) return '한국관광공사에서 행사 정보 보기';
+  try {
+    const path = new URL(url).pathname.replace(/\/+$/, '');
+    const depth = path.split('/').filter(Boolean).length;
+    if (!path || depth <= 1) return '행사 홈페이지';
+  } catch {
+    /* ignore */
+  }
+  return '링크주소';
+}
+
+export function isTourApiEvent(source?: string | null, contentId?: string | null): boolean {
+  const src = String(source || '').toLowerCase();
+  if (src === 'tour' || src === 'gov') return true;
+  if (src && src !== 'tour') return false;
+  const id = String(contentId || '').replace(/^tour-/, '');
+  return /^\d{5,}$/.test(id);
+}
+
+export function resolveEventLink(opts: {
+  title?: string | null;
+  contentId?: string | null;
+  metro?: string | null;
+  source?: string | null;
+  homepage?: string | null;
+  description?: string | null;
+}): { url: string; label: string } | null {
+  const named = resolveGyeonggiEventGuide(opts.title || undefined, opts.contentId || undefined);
+  if (named && !isKtoUrl(named.homepage)) {
+    return { url: named.homepage, label: named.homepageLabel };
+  }
+  const official = officialEventUrls({
+    homepage: opts.homepage,
+    description: opts.description,
+  });
+  if (official[0]) {
+    return { url: official[0], label: eventLinkLabel(official[0]) };
+  }
+  const ktoFromFields = extractAllUrls(opts.homepage).find((url) => isKtoUrl(url));
+  const name = String(opts.title || '').trim() || '축제';
+  if (ktoFromFields || isTourApiEvent(opts.source, opts.contentId) || opts.metro) {
+    return {
+      url: ktoFromFields || visitkoreaSearchUrl(name),
+      label: '한국관광공사에서 행사 정보 보기',
+    };
+  }
+  return null;
+}
+
 export function resolveGyeonggiEventGuide(title?: string, contentId?: string): GyeonggiEventGuide | null {
   const hay = String(title || '');
   const id = String(contentId || '');

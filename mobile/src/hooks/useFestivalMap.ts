@@ -7,7 +7,7 @@ import { regionById } from '../constants/regionTour';
 import { useSelectedRegionPreset } from '../stores/regionStore';
 import type { FestivalPin, MerchantPin } from '../types/map';
 import type { TourPlace } from '../types/tour';
-import { validLatLng } from '../utils/mapCamera';
+import { coordsInMetroBBox, isMetroCenterCoord, validLatLng } from '../utils/mapCamera';
 import { withinKm } from '../utils/mapPins';
 import { requestUserLocation, type UserLocationResult } from '../utils/userLocation';
 
@@ -28,13 +28,9 @@ function toFestivalPin(item: {
   contentTypeId?: string;
   tel?: string;
   image_url?: string | null;
-}, fallback?: { latitude: number; longitude: number }): FestivalPin | null {
-  let latitude = item.latitude;
-  let longitude = item.longitude;
-  if (!validLatLng(latitude, longitude) && fallback && validLatLng(fallback.latitude, fallback.longitude)) {
-    latitude = fallback.latitude;
-    longitude = fallback.longitude;
-  }
+}): FestivalPin | null {
+  const latitude = item.latitude;
+  const longitude = item.longitude;
   if (!validLatLng(latitude, longitude)) return null;
   return {
     id: item.id,
@@ -114,16 +110,19 @@ export function useFestivalMap(initialFestivalId?: string) {
         fetchHomeFeed(region.id).catch(() => null),
         fetchTourNearby({ mapX: center.longitude, mapY: center.latitude, radius: TOUR_RADIUS_M }).catch(() => [] as TourPlace[]),
       ]);
-      const fallback = {
-        latitude: preset.latitude || GYEONGGI_DEFAULT_REGION.latitude,
-        longitude: preset.longitude || GYEONGGI_DEFAULT_REGION.longitude,
-      };
       const nearbyFestivals = list.filter((item) =>
-        validLatLng(item.latitude, item.longitude) && withinKm(item, center, NEARBY_KM),
+        validLatLng(item.latitude, item.longitude)
+        && coordsInMetroBBox(item.latitude, item.longitude, region.id)
+        && !isMetroCenterCoord(item.latitude, item.longitude, presetCenter)
+        && withinKm(item, center, NEARBY_KM),
       );
       const feedPins = (feed?.festivals ?? [])
-        .map((item) => toFestivalPin(item, fallback))
-        .filter((item): item is FestivalPin => Boolean(item));
+        .map((item) => toFestivalPin(item))
+        .filter((item): item is FestivalPin => Boolean(item))
+        .filter((item) =>
+          coordsInMetroBBox(item.latitude, item.longitude, region.id)
+          && !isMetroCenterCoord(item.latitude, item.longitude, presetCenter),
+        );
       const byId = new Map<string, FestivalPin>();
       feedPins.forEach((item) => byId.set(item.id, item));
       nearbyFestivals.forEach((item) => {

@@ -21,12 +21,12 @@ export const REGION_PRESETS: RegionPreset[] = [
   { id: 'SEOUL', label: '서울온', code: '1', name: '서울특별시', areaCodes: ['1'], officialMatching: false, latitude: 37.5665, longitude: 126.9780, latitudeDelta: 0.35, longitudeDelta: 0.35 },
   { id: 'BUSAN', label: '부산온', code: '6', name: '부산광역시', areaCodes: ['6'], officialMatching: false, latitude: 35.1796, longitude: 129.0756, latitudeDelta: 0.45, longitudeDelta: 0.45 },
   { id: 'DAEGU', label: '대구온', code: '4', name: '대구광역시', areaCodes: ['4'], officialMatching: false, latitude: 35.8714, longitude: 128.6014, latitudeDelta: 0.4, longitudeDelta: 0.4 },
-  { id: 'INCHEON', label: '인천온', code: '2', name: '인천광역시', areaCodes: ['2'], officialMatching: false, latitude: 37.4563, longitude: 126.7052, latitudeDelta: 0.45, longitudeDelta: 0.45 },
+  { id: 'INCHEON', label: '인천온', code: '2', name: '인천광역시', areaCodes: ['2'], officialMatching: false, latitude: 37.4563, longitude: 126.7052, latitudeDelta: 0.22, longitudeDelta: 0.28 },
   { id: 'GWANGJU', label: '광주온', code: '5', name: '광주광역시', areaCodes: ['5'], officialMatching: false, latitude: 35.1595, longitude: 126.8526, latitudeDelta: 0.35, longitudeDelta: 0.35 },
   { id: 'DAEJEON', label: '대전온', code: '3', name: '대전광역시', areaCodes: ['3'], officialMatching: false, latitude: 36.3504, longitude: 127.3845, latitudeDelta: 0.35, longitudeDelta: 0.35 },
   { id: 'ULSAN', label: '울산온', code: '7', name: '울산광역시', areaCodes: ['7'], officialMatching: false, latitude: 35.5384, longitude: 129.3114, latitudeDelta: 0.4, longitudeDelta: 0.4 },
-  { id: 'SEJONG', label: '세종온', code: '8', name: '세종특별자치시', areaCodes: ['8'], officialMatching: false, latitude: 36.4800, longitude: 127.2890, latitudeDelta: 0.35, longitudeDelta: 0.35 },
-  { id: 'GYEONGGI', label: '경기온', code: '31', name: '경기도', areaCodes: ['31'], officialMatching: true, latitude: 37.4138, longitude: 127.5183, latitudeDelta: 1.6, longitudeDelta: 1.6 },
+  { id: 'SEJONG', label: '세종온', code: '8', name: '세종특별자치시', areaCodes: ['8'], officialMatching: false, latitude: 36.4800, longitude: 127.2890, latitudeDelta: 0.18, longitudeDelta: 0.18 },
+  { id: 'GYEONGGI', label: '경기온', code: '31', name: '경기도', areaCodes: ['31'], officialMatching: true, latitude: 37.4138, longitude: 127.5183, latitudeDelta: 0.95, longitudeDelta: 0.95 },
   { id: 'GANGWON', label: '강원온', code: '32', name: '강원특별자치도', areaCodes: ['32'], officialMatching: false, latitude: 37.8228, longitude: 128.1555, latitudeDelta: 1.8, longitudeDelta: 1.8 },
   { id: 'CHUNGBUK', label: '충북온', code: '33', name: '충청북도', areaCodes: ['33'], officialMatching: false, latitude: 36.6357, longitude: 127.4914, latitudeDelta: 1.1, longitudeDelta: 1.1 },
   { id: 'CHUNGNAM', label: '충남온', code: '34', name: '충청남도', areaCodes: ['34'], officialMatching: false, latitude: 36.5184, longitude: 126.8000, latitudeDelta: 1.2, longitudeDelta: 1.2 },
@@ -34,7 +34,7 @@ export const REGION_PRESETS: RegionPreset[] = [
   { id: 'JEONNAM', label: '전남온', code: '36', name: '전라남도', areaCodes: ['36'], officialMatching: false, latitude: 34.8161, longitude: 126.4629, latitudeDelta: 1.6, longitudeDelta: 1.6 },
   { id: 'GYEONGBUK', label: '경북온', code: '37', name: '경상북도', areaCodes: ['37'], officialMatching: false, latitude: 36.4919, longitude: 128.8889, latitudeDelta: 1.6, longitudeDelta: 1.6 },
   { id: 'GYEONGNAM', label: '경남온', code: '38', name: '경상남도', areaCodes: ['38'], officialMatching: false, latitude: 35.4606, longitude: 128.2132, latitudeDelta: 1.4, longitudeDelta: 1.4 },
-  { id: 'JEJU', label: '제주온', code: '39', name: '제주특별자치도', areaCodes: ['39'], officialMatching: false, latitude: 33.4996, longitude: 126.5312, latitudeDelta: 0.7, longitudeDelta: 0.7 },
+  { id: 'JEJU', label: '제주온', code: '39', name: '제주특별자치도', areaCodes: ['39'], officialMatching: false, latitude: 33.4996, longitude: 126.5312, latitudeDelta: 0.42, longitudeDelta: 0.52 },
 ];
 
 export function regionById(id?: string) {

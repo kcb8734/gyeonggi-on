@@ -16,9 +16,9 @@ import { formatTel, telHref } from '../../utils/phone';
 import { setImeModalLock } from '../../utils/nativeImeHost';
 import ModalExitButton from './ModalExitButton';
 import {
-  extractHomepageUrl,
   gyeonggiEventCopy,
   isGenericFestivalOverview,
+  resolveEventLink,
 } from '../../constants/gyeonggiEventGuides';
 
 interface Props {
@@ -66,8 +66,14 @@ export default function FestivalDetailPopup({
   const overview = (!isGenericFestivalOverview(festival.description) ? String(festival.description || '').trim() : '')
     || guide?.overview
     || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.';
-  const homepageUrl = extractHomepageUrl(festival.homepage) || extractHomepageUrl(guide?.homepage);
-  const homepageLabel = guide?.homepageLabel || '행사 홈페이지 열기';
+  const action = resolveEventLink({
+    title: festival.title,
+    contentId: festival.contentId,
+    metro: festival.metro || festival.regionalZone,
+    source: festival.source,
+    homepage: festival.homepage || guide?.homepage,
+    description: `${festival.description || ''} ${festival.summary || ''}`,
+  });
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -105,9 +111,9 @@ export default function FestivalDetailPopup({
               <Text style={styles.overview}>
                 {overview}
               </Text>
-              {homepageUrl ? (
-                <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(homepageUrl)}>
-                  <Text style={styles.linkBtnText}>{homepageLabel}</Text>
+              {action ? (
+                <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(action.url)}>
+                  <Text style={styles.linkBtnText}>{action.label}</Text>
                 </TouchableOpacity>
               ) : null}
 
