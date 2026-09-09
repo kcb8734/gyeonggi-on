@@ -4,27 +4,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>온앤온+ AAB — Play 업로드 키 필요</title>
+  <title>온앤온+ Play 업로드 키 재설정 · AAB</title>
   <style>
     body { margin: 0; background: #F7F8FA; color: #111827; font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
     main { max-width: 640px; margin: 48px auto; padding: 0 18px; }
     h1 { font-size: 22px; margin: 0 0 12px; }
-    p { color: #4B5563; line-height: 1.6; }
-    code { font-size: 13px; background: #EEF2FF; padding: 1px 6px; border-radius: 6px; }
+    p, li { color: #4B5563; line-height: 1.6; }
+    code { font-size: 13px; background: #EEF2FF; padding: 1px 6px; border-radius: 6px; word-break: break-all; }
+    .btn {
+      display: inline-block; margin: 8px 8px 8px 0; background: #1E6FEA; color: #fff;
+      font-weight: 800; text-decoration: none; padding: 12px 18px; border-radius: 12px;
+    }
+    .warn { background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 12px; padding: 12px 14px; }
   </style>
 </head>
 <body>
   <main>
-    <h1>Play에 올릴 AAB를 잠시 내려 두었습니다</h1>
-    <p>
-      이전에 올려 둔 1.0.6 AAB는 Play 업로드 키가 아닙니다.
-      서명이 <code>FA:79:5A:BC:…</code> 이라서 콘솔이 거부합니다.
-      Play가 요구하는 지문은 <code>E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F</code> 입니다.
+    <h1>새 업로드 키로 서명한 AAB</h1>
+    <p class="warn">
+      같은 비밀번호로 키스토어를 새로 만들어도 Play에 등록된
+      <code>E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F</code>
+      와는 달라집니다. <b>지금 AAB를 올리면 또 거절됩니다.</b>
     </p>
-    <p>
-      <code>upload-keystore.jks</code> 원본이 이 서버에 없어 올바른 키로 다시 서명할 수 없습니다.
-      그 파일을 채팅에 올리면 다시 서명해서 이 페이지에 올리겠습니다.
-    </p>
+    <p>이번 키 SHA1: <code>30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42</code></p>
+    <ol>
+      <li>Play Console → 앱 서명 → <b>업로드 키 재설정 요청</b></li>
+      <li>아래 PEM 인증서를 첨부해 제출</li>
+      <li>Google이 재설정을 완료했다고 안내한 뒤에만 AAB 업로드</li>
+    </ol>
+    <a class="btn" href="https://www.kdanji.com/downloads/upload_certificate.pem" download="upload_certificate.pem">1. PEM 인증서 받기</a>
+    <a class="btn" href="https://www.kdanji.com/downloads/onandon_plus_1.0.6_vc7.aab" download="onandon_plus_1.0.6_vc7.aab">2. AAB 받기 (재설정 후)</a>
+    <p>versionName 1.0.6 · versionCode 7</p>
   </main>
 </body>
 </html>

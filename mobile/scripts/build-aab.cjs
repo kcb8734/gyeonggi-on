@@ -40,8 +40,8 @@ const defaultKeystoreCandidates = [
 function defaultKeystorePath() {
   return defaultKeystoreCandidates.find((file) => fs.existsSync(file)) || defaultKeystoreCandidates[0];
 }
-/** Play Console 업로드 키 SHA1. 다른 키로 서명하면 콘솔이 거부한다. */
-const PLAY_UPLOAD_CERT_SHA1 = 'E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F';
+/** 이번에 새로 만든 업로드 키 SHA1. Play 콘솔 업로드 키 재설정이 끝난 뒤에만 이 키로 올린다. */
+const PLAY_UPLOAD_CERT_SHA1 = '30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42';
 const outDir = path.join(root, 'dist', 'android');
 const gradleAab = path.join(root, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 const copiedAab = path.join(outDir, 'app-release.aab');
