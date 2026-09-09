@@ -310,7 +310,8 @@ function main() {
   log(`크기:           ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
-  log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
+  log('Play Console 업로드 키 재설정이 승인된 뒤에만 이 .aab를 올립니다.');
+  log('재신청 PEM: mobile/public/downloads/upload_certificate.pem');
 }
 
 main();

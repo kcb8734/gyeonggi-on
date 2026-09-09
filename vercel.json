@@ -61,6 +61,14 @@
         { "key": "Content-Disposition", "value": "attachment" },
         { "key": "Cache-Control", "value": "private, no-store" }
       ]
+    },
+    {
+      "source": "/downloads/upload_certificate.pem",
+      "headers": [
+        { "key": "Content-Type", "value": "application/x-pem-file" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"upload_certificate.pem\"" },
+        { "key": "Cache-Control", "value": "private, no-store" }
+      ]
     }
   ],
   "env": {
