@@ -18,8 +18,10 @@ import ModalExitButton from './ModalExitButton';
 import {
   extractHomepageUrl,
   gyeonggiEventCopy,
-  isGenericFestivalOverview,
+  officialFestivalOverview,
+  resolveGyeonggiEventGuide,
 } from '../../constants/gyeonggiEventGuides';
+import FestivalAiSummaryCard from './FestivalAiSummaryCard';
 
 interface Props {
   festival: HomeFestival | null;
@@ -63,11 +65,12 @@ export default function FestivalDetailPopup({
   const callUrl = telHref(inquiry);
   const telLabel = formatTel(inquiry) || inquiry;
   const guide = gyeonggiEventCopy(festival.title, festival.contentId, festival.metro || festival.regionalZone);
-  const overview = (!isGenericFestivalOverview(festival.description) ? String(festival.description || '').trim() : '')
-    || guide?.overview
-    || '한국관광공사 TourAPI에서 수집한 행사 개요입니다.';
+  const named = resolveGyeonggiEventGuide(festival.title, festival.contentId);
+  const officialOverview = officialFestivalOverview(festival.description, named);
+  const overview = officialOverview;
   const homepageUrl = extractHomepageUrl(festival.homepage) || extractHomepageUrl(guide?.homepage);
   const homepageLabel = guide?.homepageLabel || '행사 홈페이지 열기';
+  const isFood = String(festival.category || '').includes('먹거리');
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -102,9 +105,24 @@ export default function FestivalDetailPopup({
                 <Text style={styles.meta}>담당자 메일 {festival.managerEmail}</Text>
               ) : null}
               {festival.fee ? <Text style={styles.meta}>이용요금 {festival.fee}</Text> : null}
-              <Text style={styles.overview}>
-                {overview}
-              </Text>
+              {overview ? (
+                <Text style={styles.overview}>{overview}</Text>
+              ) : null}
+              {!isFood ? (
+                <FestivalAiSummaryCard
+                  title={festival.title}
+                  place={festival.location_name}
+                  startDate={festival.start_date}
+                  endDate={festival.end_date}
+                  metro={festival.metro || festival.regionalZone}
+                  category={festival.category}
+                  officialOverview={officialOverview}
+                />
+              ) : (
+                overview ? null : (
+                  <Text style={styles.overview}>한국관광공사 TourAPI에서 수집한 행사 개요입니다.</Text>
+                )
+              )}
               {homepageUrl ? (
                 <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(homepageUrl)}>
                   <Text style={styles.linkBtnText}>{homepageLabel}</Text>

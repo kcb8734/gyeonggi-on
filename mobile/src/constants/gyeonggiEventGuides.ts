@@ -93,12 +93,26 @@ const GENERIC_MARKERS = [
   '의 상세 개요입니다',
   'TourAPI에서 수집한 행사',
   'TourAPI에서 수집한 축제',
+  'TourAPI에서 수집한 맛집',
+  '주최 기관 안내를 따르며',
 ];
 
 export function isGenericFestivalOverview(text?: string | null): boolean {
   const value = String(text || '').trim();
   if (!value) return true;
   return GENERIC_MARKERS.some((marker) => value.includes(marker));
+}
+
+/** 한국관광공사·지정 가이드의 실제 개요만 남긴다. 껍데기 문장은 빈 값. */
+export function officialFestivalOverview(
+  raw?: string | null,
+  namedGuide?: GyeonggiEventGuide | null,
+): string {
+  if (!isGenericFestivalOverview(raw)) return String(raw || '').trim();
+  if (namedGuide?.overview && namedGuide.homepageLabel !== '한국관광공사에서 행사 정보 보기') {
+    return namedGuide.overview;
+  }
+  return '';
 }
 
 export function extractHomepageUrl(raw?: string | null): string | null {

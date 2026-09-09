@@ -17,7 +17,10 @@ import {
   extractHomepageUrl,
   gyeonggiEventCopy,
   isGenericFestivalOverview,
+  officialFestivalOverview,
+  resolveGyeonggiEventGuide,
 } from '../constants/gyeonggiEventGuides';
+import FestivalAiSummaryCard from '../components/ui/FestivalAiSummaryCard';
 import { fetchTourDetail, homeFestivalFromDetail } from '../api/tour';
 import { MapView, Marker } from '../components/map/CompatibleMap';
 import { isFavorite, toggleFavorite, useAppState } from '../stores/appStore';
@@ -175,12 +178,15 @@ export default function FestivalDetailScreen({
   const gyeonggiGuide = !isRestaurant
     ? gyeonggiEventCopy(detail.title || fallbackTitle, contentId, fallbackMetro)
     : null;
+  const named = !isRestaurant
+    ? resolveGyeonggiEventGuide(detail.title || fallbackTitle, contentId)
+    : null;
   const rawOverview = detail.overview?.trim() || known?.description || '';
-  const overview = (!isGenericFestivalOverview(rawOverview) ? rawOverview : '')
-    || gyeonggiGuide?.overview
-    || (contentTypeId === '39' || fallbackKind === 'food' || detail.contentTypeId === '39'
+  const officialOverview = officialFestivalOverview(rawOverview, named);
+  const overview = officialOverview
+    || (isRestaurant
       ? '한국관광공사 TourAPI에서 수집한 맛집 정보입니다. 상세 소개가 확인되는 대로 자동 반영됩니다.'
-      : EMPTY_COPY.overview);
+      : '');
   const homepageUrl = extractHomepageUrl(detail.homepage)
     || extractHomepageUrl(fallbackHomepage)
     || extractHomepageUrl(gyeonggiGuide?.homepage)
@@ -224,7 +230,21 @@ export default function FestivalDetailScreen({
 
         <View style={styles.card}>
           <Text style={styles.label}>상세 개요</Text>
-          <Text style={styles.overview}>{overview}</Text>
+          {overview ? <Text style={styles.overview}>{overview}</Text> : null}
+          {!isRestaurant ? (
+            <FestivalAiSummaryCard
+              title={detail.title || fallbackTitle || '축제'}
+              place={address}
+              startDate={detail.eventStartDate}
+              endDate={detail.eventEndDate}
+              metro={fallbackMetro}
+              category={detail.category}
+              officialOverview={officialOverview}
+              embedded
+            />
+          ) : (
+            overview ? null : <Text style={styles.overview}>{EMPTY_COPY.overview}</Text>
+          )}
           {homepageUrl ? (
             <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(homepageUrl)}>
               <Text style={styles.linkBtnText}>{homepageLabel}</Text>

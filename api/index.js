@@ -50,6 +50,7 @@ import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.j
 import { mergeFestivalSources } from './festivalMerge.js';
 import { crawlCultureForMetro, cultureToHome } from './regionCultureCrawlers.js';
 import { festivalBelongsToMetro } from './metroGeo.js';
+import { geminiConfigured, summarizeFestival } from './geminiFestival.js';
 import {
   buildTemplateBuffer,
   analyzeExcelFromPayload,
@@ -951,8 +952,31 @@ async function handler(req, res) {
       await getTourDetail(req, res, decodeURIComponent(tourDetail[1]));
       return;
     }
+    if (/\/api\/festivals\/ai-summary/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      try {
+        const query = readQuery(req);
+        const title = body.title || query.title || '';
+        const result = await summarizeFestival({
+          title,
+          place: body.place || body.location_name || query.place || '',
+          startDate: body.startDate || body.start_date || query.startDate || '',
+          endDate: body.endDate || body.end_date || query.endDate || '',
+          metro: body.metro || query.metro || '',
+          category: body.category || query.category || '',
+          overview: body.overview || body.description || query.overview || '',
+        });
+        send(res, 200, { success: true, data: result }, corsHeaders(req));
+      } catch (err) {
+        send(res, err && err.status === 400 ? 400 : 502, {
+          success: false,
+          message: err && err.message ? err.message : 'AI 요약을 만들지 못했습니다.',
+        }, corsHeaders(req));
+      }
+      return;
+    }
     if (/\/api\/festivals\/?(\?|$)/i.test(path) || /\/api\/festivals["\s]/i.test(path) || /(^|[^\w])\/api\/festivals([^\w]|$)/i.test(path)) {
-      if (!/festivals\/(nearby|sync|[^/]+\/map)/i.test(path)) {
+      if (!/festivals\/(nearby|sync|ai-summary|[^/]+\/map)/i.test(path)) {
         await listFestivalsLive(req, res);
         return;
       }
@@ -981,6 +1005,7 @@ async function handler(req, res) {
         nts: Boolean(String(process.env.NTS_SERVICE_KEY || '').trim()),
         email: resendConfigured(),
         tour: Boolean(tourServiceKey()),
+        gemini: geminiConfigured(),
       }, corsHeaders(req));
       return;
     }
