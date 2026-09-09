@@ -72,6 +72,52 @@ test('GET /health returns ok without Express', async () => {
   assert.equal(result.status, 200);
   assert.equal((result.body as { status: string }).status, 'ok');
   assert.equal(typeof (result.body as { tour?: boolean }).tour, 'boolean');
+  assert.equal(typeof (result.body as { gemini?: boolean }).gemini, 'boolean');
+});
+
+test('POST /api/festivals/ai-summary without a title is 400', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/festivals/ai-summary', body: {} });
+  assert.equal(result.status, 400);
+  assert.equal((result.body as { success: boolean }).success, false);
+});
+
+test('POST /api/festivals/ai-summary returns highlights and tips', async () => {
+  const prev = process.env.GEMINI_API_KEY;
+  const prevAlt = process.env.GOOGLE_GEMINI_API_KEY;
+  const prevGen = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GOOGLE_GEMINI_API_KEY;
+  delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  try {
+    const result = await invoke({
+      method: 'POST',
+      url: '/api/festivals/ai-summary',
+      body: {
+        title: '세종축제',
+        place: '세종특별자치시',
+        startDate: '2026-10-10',
+        endDate: '2026-10-12',
+        metro: 'SEJONG',
+      },
+    });
+    assert.equal(result.status, 200);
+    const body = result.body as {
+      success: boolean;
+      data?: { overview?: string; highlights?: string[]; tips?: string; source?: string };
+    };
+    assert.equal(body.success, true);
+    assert.match(String(body.data?.overview), /세종축제/);
+    assert.equal(body.data?.highlights?.length, 3);
+    assert.ok(String(body.data?.tips || '').length > 10);
+    assert.equal(body.data?.source, 'fallback');
+  } finally {
+    if (prev !== undefined) process.env.GEMINI_API_KEY = prev;
+    else delete process.env.GEMINI_API_KEY;
+    if (prevAlt !== undefined) process.env.GOOGLE_GEMINI_API_KEY = prevAlt;
+    else delete process.env.GOOGLE_GEMINI_API_KEY;
+    if (prevGen !== undefined) process.env.GOOGLE_GENERATIVE_AI_API_KEY = prevGen;
+    else delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  }
 });
 
 test('POST /api/admin/login accepts the updated default account', async () => {
