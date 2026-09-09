@@ -13,6 +13,9 @@ test('build:aab script prints gradle and dist AAB paths', () => {
   assert.match(source, /ensureSplashColor/);
   assert.match(source, /bundleRelease/);
   assert.match(source, /Play Console/);
+  assert.match(source, /PLAY_UPLOAD_CERT_SHA1/);
+  assert.match(source, /E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F/);
+  assert.doesNotMatch(source, /기존 키스토어가 없어 업로드 키를 새로 만듭니다/);
 });
 
 test('build:aab installs Android SDK 36 instead of 34', () => {
