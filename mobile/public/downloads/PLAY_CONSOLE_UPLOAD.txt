@@ -1,27 +1,21 @@
-온앤온+ Play Console AAB 업로드
-트랙: 비공개 테스트 (Alpha)
-파일: onandon_plus_1.0.18_vc19.aab
-패키지: kr.gyeonggion.app
-versionName: 1.0.18
-versionCode: 19  (Play에 있는 18 / 1.0.17 다음)
-서명 SHA-1: 30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
-다운로드: https://www.kdanji.com/downloads/onandon_plus_1.0.18_vc19.aab
+온앤온+ 업로드 키 재설정 후 AAB 업로드
 
-올리지 말 것
-- onandon_plus_1.0.6_vc7.aab (이미 사용된 번호)
-- APK, .jks, PEM, 비밀번호
+새 키 (2026-09-20 생성, 아직 Play 미등록)
+- SHA-1:  C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1
+- SHA-256: 08:58:6F:37:72:A5:A4:02:BA:19:21:7C:BC:9C:DC:1B:65:9F:6C:D8:B9:8D:09:88:17:71:7A:32:3C:E4:D8:AC
+- MD5:    10:AE:3F:33:23:98:75:20:AD:77:CC:ED:DC:C1:E1:9A
+- PEM:    upload_certificate.pem
+- JKS:    upload-keystore.jks  (git 금지, 로컬에 보관)
+- 백업:    upload-keystore-2026-09-20T14-05-56-000Z.jks
 
-순서
-1. Play Console → 온앤온+ (kr.gyeonggion.app)
-2. 테스트 및 출시 → 테스트 → 비공개 테스트 (Alpha)
-3. 출시 → 새 버전 만들기
-4. onandon_plus_1.0.18_vc19.aab 업로드
-5. versionCode 19, SHA-1 30:70:7C:…:2C:42 확인
-6. 출시 이름 1.0.18 (19)
-7. 저장 및 출시
+지금 Play에 있는 키
+- SHA-1: 30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
 
-출시 노트
-ko-KR
-온앤온+ 1.0.18
-- 비공개 테스트 Alpha 후속 (versionCode 19)
-- 업로드 키 재등록 이후 스토어용 앱 번들
+1. Play Console → 온앤온+ → 앱 서명 → 업로드 키 재설정 요청
+   사유: 업로드 키를 분실했습니다
+   PEM만 첨부 (.jks 금지)
+
+2. Google이 완료했다고 한 뒤에만
+   비공개 테스트 (Alpha) → 새 버전 만들기
+   onandon_plus_1.0.18_vc19.aab
+   versionName 1.0.18 / versionCode 19

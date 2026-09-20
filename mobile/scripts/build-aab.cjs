@@ -41,8 +41,8 @@ const defaultKeystoreCandidates = [
 function defaultKeystorePath() {
   return defaultKeystoreCandidates.find((file) => fs.existsSync(file)) || defaultKeystoreCandidates[0];
 }
-/** Play Console 「업로드 키 인증서」 SHA-1 (2026-09-20 등록 확인). 이 값과 다른 키를 만들지 않는다. */
-const PLAY_UPLOAD_CERT_SHA1 = '30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42';
+/** Play 재설정용 새 업로드 키 SHA-1 (2026-09-20 생성). 콘솔 승인이 끝나기 전에는 이 키로 올리지 않는다. */
+const PLAY_UPLOAD_CERT_SHA1 = 'C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1';
 const outDir = path.join(root, 'dist', 'android');
 const gradleAab = path.join(root, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 const copiedAab = path.join(outDir, 'app-release.aab');
