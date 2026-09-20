@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>온앤온+ 1.0.18 AAB 업로드</title>
+  <style>
+    body { margin: 0; background: #F7F8FA; color: #111827; font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+    main { max-width: 720px; margin: 40px auto; padding: 0 18px 56px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    h2 { font-size: 16px; margin: 28px 0 10px; }
+    p, li { color: #4B5563; line-height: 1.65; }
+    code { font-size: 12.5px; background: #EEF2FF; padding: 1px 6px; border-radius: 6px; word-break: break-all; }
+    .btn {
+      display: inline-block; margin: 8px 8px 8px 0; background: #1E6FEA; color: #fff;
+      font-weight: 800; text-decoration: none; padding: 14px 20px; border-radius: 12px; font-size: 15px;
+    }
+    .btn.secondary { background: #111827; font-size: 14px; padding: 12px 18px; }
+    .ok { background: #ECFDF5; border: 1px solid #34D399; border-radius: 12px; padding: 12px 14px; }
+    .warn { background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 12px; padding: 12px 14px; }
+    textarea {
+      width: 100%; min-height: 88px; box-sizing: border-box; font-size: 13px; line-height: 1.5;
+      border: 1px solid #D1D5DB; border-radius: 12px; padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>비공개 테스트(Alpha)에 올릴 AAB</h1>
+    <p class="ok">Play에 이미 <b>18 (1.0.17)</b>이 있으므로 이 파일은 <b>19 (1.0.18)</b>입니다. 7 (1.0.6)은 올리지 마세요.</p>
+    <p>
+      파일 <code>onandon_plus_1.0.18_vc19.aab</code><br />
+      앱 온앤온+ · 패키지 <code>kr.gyeonggion.app</code><br />
+      versionName <b>1.0.18</b> · versionCode <b>19</b><br />
+      서명 SHA-1 <code>30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42</code>
+    </p>
+    <a class="btn" href="./onandon_plus_1.0.18_vc19.aab" download="onandon_plus_1.0.18_vc19.aab">AAB 다운로드</a>
+    <a class="btn secondary" href="./PLAY_CONSOLE_UPLOAD.txt" download="PLAY_CONSOLE_UPLOAD.txt">업로드 순서 저장</a>
+
+    <h2>Play Console (비공개 테스트 · Alpha)</h2>
+    <ol>
+      <li><a href="https://play.google.com/console" target="_blank" rel="noopener">Play Console</a> → 온앤온+ (<code>kr.gyeonggion.app</code>)</li>
+      <li><b>테스트 및 출시</b> → <b>테스트</b> → <b>비공개 테스트</b> (트랙 이름이 Alpha면 그것을 고릅니다)</li>
+      <li><b>출시</b> → <b>새 버전 만들기</b></li>
+      <li>App Bundle에 <code>onandon_plus_1.0.18_vc19.aab</code>만 올립니다. APK·jks·PEM은 올리지 않습니다.</li>
+      <li>Play가 versionCode <b>19</b>, 서명 SHA-1 <code>30:70:7C:…:2C:42</code>를 보여 주면 정상입니다.</li>
+      <li>출시 이름 <code>1.0.18 (19)</code> · 아래 출시 노트 붙여 넣기</li>
+      <li><b>다음</b> → <b>저장 및 출시</b> → 비공개 테스트 트랙으로 출시 저장</li>
+    </ol>
+    <textarea readonly>ko-KR
+온앤온+ 1.0.18
+- 비공개 테스트 Alpha 후속 (versionCode 19)
+- 업로드 키 재등록 이후 스토어용 앱 번들</textarea>
+    <p class="warn">1.0.6 / versionCode 7 파일은 이미 거절된 번호입니다. 18 (1.0.17)보다 낮은 번호도 올리지 마세요.</p>
+  </main>
+</body>
+</html>

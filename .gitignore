@@ -38,3 +38,5 @@ lerna-debug.log*
 *.p12
 upload-keystore.jks
 upload_certificate.pem
+!mobile/public/downloads/
+!mobile/public/downloads/**

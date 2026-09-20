@@ -1,0 +1,27 @@
+온앤온+ Play Console AAB 업로드
+트랙: 비공개 테스트 (Alpha)
+파일: onandon_plus_1.0.18_vc19.aab
+패키지: kr.gyeonggion.app
+versionName: 1.0.18
+versionCode: 19  (Play에 있는 18 / 1.0.17 다음)
+서명 SHA-1: 30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
+다운로드: https://www.kdanji.com/downloads/onandon_plus_1.0.18_vc19.aab
+
+올리지 말 것
+- onandon_plus_1.0.6_vc7.aab (이미 사용된 번호)
+- APK, .jks, PEM, 비밀번호
+
+순서
+1. Play Console → 온앤온+ (kr.gyeonggion.app)
+2. 테스트 및 출시 → 테스트 → 비공개 테스트 (Alpha)
+3. 출시 → 새 버전 만들기
+4. onandon_plus_1.0.18_vc19.aab 업로드
+5. versionCode 19, SHA-1 30:70:7C:…:2C:42 확인
+6. 출시 이름 1.0.18 (19)
+7. 저장 및 출시
+
+출시 노트
+ko-KR
+온앤온+ 1.0.18
+- 비공개 테스트 Alpha 후속 (versionCode 19)
+- 업로드 키 재등록 이후 스토어용 앱 번들

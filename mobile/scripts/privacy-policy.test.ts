@@ -19,5 +19,5 @@ test('vercel serves /privacy as a static file instead of the SPA', () => {
   const vercel = readFileSync(join(here, '../../vercel.json'), 'utf8');
   assert.match(vercel, /"\/privacy"/);
   assert.match(vercel, /privacy\/index\.html/);
-  assert.match(vercel, /\(\?!_expo\/\|assets\/\|privacy\)/);
+  assert.match(vercel, /\(\?!_expo\/\|assets\/\|privacy\|downloads\)/);
 });

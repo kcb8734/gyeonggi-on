@@ -37,13 +37,14 @@ test('build:aab logs versionName and versionCode from app.json', () => {
   assert.match(source, /onandon-\$\{versionName\}-vc\$\{versionCode\}\.aab/);
   assert.match(source, /rootAab/);
   assert.match(source, /PLAY_UPLOAD_CERT_SHA1/);
-  assert.match(source, /E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F/);
+  assert.match(source, /30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42/);
+  assert.doesNotMatch(source, /E4:CA:DA:50:1D:6C:94:5B:9D:11:FA:9A:B5:79:DF:26:22:AB:11:9F/);
   assert.match(source, /upload-keystore\.jks/);
   assert.match(source, /assertAabUploadCert/);
   assert.match(source, /keystoreCertSha1/);
   assert.doesNotMatch(source, /기존 키스토어가 없어 업로드 키를 새로 만듭니다/);
-  assert.equal(appJson.expo.version, '1.0.17');
-  assert.equal(appJson.expo.android.versionCode, 18);
+  assert.equal(appJson.expo.version, '1.0.18');
+  assert.equal(appJson.expo.android.versionCode, 19);
   assert.equal(appJson.expo.icon, './assets/icon.png');
   assert.equal(appJson.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
   assert.ok(appJson.expo.android.permissions.includes('INTERNET'));
