@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>온앤온+ Play AAB 업로드</title>
+  <style>
+    body { margin: 0; background: #F7F8FA; color: #111827; font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+    main { max-width: 720px; margin: 40px auto; padding: 0 18px 56px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    h2 { font-size: 16px; margin: 28px 0 10px; }
+    p, li { color: #4B5563; line-height: 1.65; }
+    code { font-size: 12.5px; background: #EEF2FF; padding: 1px 6px; border-radius: 6px; word-break: break-all; }
+    .btn {
+      display: inline-block; margin: 8px 8px 8px 0; background: #1E6FEA; color: #fff;
+      font-weight: 800; text-decoration: none; padding: 14px 20px; border-radius: 12px; border: 0; font-size: 15px;
+    }
+    .btn.secondary { background: #111827; font-size: 14px; padding: 12px 18px; }
+    .ok { background: #ECFDF5; border: 1px solid #34D399; border-radius: 12px; padding: 12px 14px; }
+    .warn { background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 12px; padding: 12px 14px; }
+    .meta { font-size: 13px; color: #6B7280; }
+    ol { padding-left: 22px; }
+    textarea {
+      width: 100%; min-height: 88px; box-sizing: border-box; font-size: 13px; line-height: 1.5;
+      border: 1px solid #D1D5DB; border-radius: 12px; padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Play Console에 올릴 AAB</h1>
+    <p class="ok">업로드 키가 Play에 등록되어 있습니다. 아래 AAB만 올리면 됩니다. 재설정 요청은 하지 마세요.</p>
+    <p>
+      파일 <code>onandon_plus_1.0.6_vc7.aab</code><br />
+      앱 온앤온+ · 패키지 <code>kr.gyeonggion.app</code><br />
+      versionName <b>1.0.6</b> · versionCode <b>7</b><br />
+      서명 SHA-1 <code>30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42</code>
+    </p>
+    <a class="btn" href="./onandon_plus_1.0.6_vc7.aab" download="onandon_plus_1.0.6_vc7.aab">AAB 다운로드</a>
+    <a class="btn secondary" href="./PLAY_CONSOLE_UPLOAD.txt" download="PLAY_CONSOLE_UPLOAD.txt">업로드 순서 저장</a>
+
+    <h2>1. 파일 받기</h2>
+    <ol>
+      <li>위 <b>AAB 다운로드</b>를 눌러 <code>onandon_plus_1.0.6_vc7.aab</code>를 저장합니다. 약 31MB입니다.</li>
+      <li>확장자가 <code>.aab</code>인지 확인합니다. 압축을 풀지 마세요.</li>
+      <li><code>.jks</code>, PEM, 비밀번호는 올리지 않습니다.</li>
+    </ol>
+
+    <h2>2. Play Console 업로드 (내부 테스트 먼저)</h2>
+    <ol>
+      <li><a href="https://play.google.com/console" target="_blank" rel="noopener">Play Console</a>에 로그인합니다.</li>
+      <li>앱 <b>온앤온+</b> (<code>kr.gyeonggion.app</code>)을 엽니다.</li>
+      <li>왼쪽: <b>테스트 및 출시</b> → <b>테스트</b> → <b>내부 테스트</b></li>
+      <li><b>출시</b> 탭에서 <b>새 버전 만들기</b></li>
+      <li>App Bundle 업로드에 <code>onandon_plus_1.0.6_vc7.aab</code>만 선택합니다.</li>
+      <li>Play가 서명 SHA-1을 <code>30:70:7C:…:2C:42</code>로 표시하면 정상입니다.</li>
+      <li>출시 이름에 <code>1.0.6 (7)</code>을 넣고, 출시 노트는 아래 문구를 붙여 넣습니다.</li>
+      <li><b>다음</b> → <b>저장 및 출시</b> → <b>내부 테스트 트랙으로 출시 저장</b></li>
+    </ol>
+    <textarea readonly>ko-KR
+온앤온+ 1.0.6
+- Play 업로드 키 재등록 이후 스토어용 앱 번들
+- 축제 상세 소개·핵심 포인트·방문 팁</textarea>
+
+    <h2>3. 내부 테스트가 끝난 뒤 스토어 출시</h2>
+    <ol>
+      <li>같은 앱에서 <b>테스트 및 출시</b> → <b>프로덕션</b></li>
+      <li><b>새 버전 만들기</b></li>
+      <li>방금 올린 App Bundle을 라이브러리에서 고르거나, 같은 AAB를 다시 올립니다.</li>
+      <li>국가·출시 비율을 확인한 뒤 <b>저장 및 출시</b> → <b>프로덕션 트랙으로 출시 저장</b></li>
+    </ol>
+    <p class="meta">프로덕션은 심사 후 스토어에 반영됩니다. 내부 테스트는 보통 몇 분이면 테스터에게 보입니다.</p>
+
+    <h2>올리면 안 되는 것</h2>
+    <p class="warn">
+      APK, <code>.jks</code>, 비밀번호, PEM은 버전 업로드에 쓰지 마세요.
+      서명 오류가 나면 키를 새로 만들지 말고 이 AAB인지 확인하세요.
+      versionCode 7이 이미 사용됨으로 나오면 알려 주세요.
+    </p>
+    <p class="meta">인증서 원본: <a href="./upload_certificate.pem" download="upload_certificate.pem">PEM</a> · <a href="./PLAY_UPLOAD_CERTIFICATE.txt" download="PLAY_UPLOAD_CERTIFICATE.txt">지문 기록</a></p>
+  </main>
+</body>
+</html>

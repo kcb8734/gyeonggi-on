@@ -33,7 +33,17 @@ const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
 const credDir = path.join(root, 'credentials', 'android');
 const propsPath = path.join(credDir, 'keystore.properties');
-const defaultKeystore = path.join(credDir, 'upload.keystore');
+const defaultKeystoreCandidates = [
+  path.join(credDir, 'upload-keystore.jks'),
+  path.join(credDir, 'upload.keystore'),
+];
+function defaultKeystorePath() {
+  return defaultKeystoreCandidates.find((file) => fs.existsSync(file)) || defaultKeystoreCandidates[0];
+}
+/** Play Console 「업로드 키 인증서」 SHA-1. 이 값과 다른 키를 만들거나 쓰지 않는다. */
+const PLAY_UPLOAD_CERT_SHA1 = '30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42';
+const PLAY_UPLOAD_CERT_SHA256 = '7C:37:5E:67:B2:0C:E4:0E:8F:95:4E:DB:E8:A3:43:A3:37:08:48:1E:32:3E:31:83:C4:FB:C9:5C:5E:97:86:53';
+const PLAY_UPLOAD_CERT_MD5 = '46:75:CA:CC:9B:12:17:1F:E2:06:87:2F:F3:86:FD:77';
 const outDir = path.join(root, 'dist', 'android');
 const gradleAab = path.join(root, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
 const copiedAab = path.join(outDir, 'app-release.aab');
@@ -79,34 +89,75 @@ function writeProps(file, rows) {
   fs.writeFileSync(file, `${body}\n`);
 }
 
+function parseColonFingerprint(text, label) {
+  const match = String(text || '').match(new RegExp(`${label}:\\s*([0-9A-F]{2}(?::[0-9A-F]{2})+)`, 'i'));
+  return match ? match[1].toUpperCase() : '';
+}
+
+function keystoreCertFingerprints(signing) {
+  const listed = spawnSync(
+    'keytool',
+    ['-list', '-v', '-keystore', signing.storeFile, '-storepass', signing.storePassword, '-alias', signing.keyAlias],
+    { encoding: 'utf8' },
+  );
+  const sha1 = parseColonFingerprint(listed.stdout, 'SHA1');
+  const sha256 = parseColonFingerprint(listed.stdout, 'SHA256');
+  if (listed.status !== 0 || !sha1) {
+    fail('업로드 키스토어 SHA1을 확인하지 못했습니다. 파일·비밀번호·별칭을 확인하세요.');
+  }
+  return { sha1, sha256 };
+}
+
+function assertRegisteredUploadCert({ sha1, sha256 }) {
+  if (sha1 !== PLAY_UPLOAD_CERT_SHA1) {
+    fail(`키스토어 SHA1이 Play 업로드 키와 다릅니다. 실제=${sha1} 기대=${PLAY_UPLOAD_CERT_SHA1}. 이 키로 서명하지 않습니다.`);
+  }
+  if (sha256 && sha256 !== PLAY_UPLOAD_CERT_SHA256) {
+    fail(`키스토어 SHA256이 Play 업로드 키와 다릅니다. 실제=${sha256} 기대=${PLAY_UPLOAD_CERT_SHA256}. 이 키로 서명하지 않습니다.`);
+  }
+}
+
+function readAabCertSha1(aabPath) {
+  const listed = spawnSync('keytool', ['-printcert', '-jarfile', aabPath], { encoding: 'utf8' });
+  const sha1 = parseColonFingerprint(listed.stdout, 'SHA1');
+  if (listed.status !== 0 || !sha1) {
+    fail(`AAB 업로드 인증서 SHA1을 확인하지 못했습니다: ${aabPath}`);
+  }
+  return sha1;
+}
+
+function assertAabUploadCert(aabPath) {
+  const actual = readAabCertSha1(aabPath);
+  if (actual !== PLAY_UPLOAD_CERT_SHA1) {
+    fail(
+      `AAB 업로드 인증서 SHA1이 Play 등록 키와 다릅니다. 실제=${actual} 기대=${PLAY_UPLOAD_CERT_SHA1}. 이 파일을 Play에 올리지 마세요.`,
+    );
+  }
+  log(`[build:aab] verified upload cert SHA1=${actual} MD5=${PLAY_UPLOAD_CERT_MD5}`);
+  return actual;
+}
+
 function ensureKeystore() {
   const existing = readProps(propsPath);
-  const storeFile = process.env.ANDROID_KEYSTORE_FILE || existing.storeFile || defaultKeystore;
+  const storeFile = process.env.ANDROID_KEYSTORE_FILE || existing.storeFile || defaultKeystorePath();
   const storePassword = process.env.ANDROID_KEYSTORE_PASSWORD || existing.storePassword;
   const keyAlias = process.env.ANDROID_KEY_ALIAS || existing.keyAlias || 'upload';
   const keyPassword = process.env.ANDROID_KEY_PASSWORD || existing.keyPassword || storePassword;
   if (fs.existsSync(storeFile) && storePassword && keyAlias && keyPassword) {
+    const signing = { storeFile, storePassword, keyAlias, keyPassword };
+    const fingerprints = keystoreCertFingerprints(signing);
+    assertRegisteredUploadCert(fingerprints);
     writeProps(propsPath, { storeFile, storePassword, keyAlias, keyPassword });
-    return { storeFile, storePassword, keyAlias, keyPassword };
+    log(`[build:aab] keystore SHA1=${fingerprints.sha1}`);
+    return signing;
   }
-  if (!storePassword) {
-    const generated = `onandon-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
-    log('[build:aab] 기존 키스토어가 없어 업로드 키를 새로 만듭니다. 이 파일을 Play Console과 이후 업데이트에 반드시 보관하세요.');
-    fs.mkdirSync(path.dirname(storeFile), { recursive: true });
-    run('keytool', [
-      '-genkeypair', '-v', '-storetype', 'PKCS12',
-      '-keystore', storeFile,
-      '-alias', keyAlias,
-      '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000',
-      '-storepass', generated, '-keypass', generated,
-      '-dname', 'CN=OnAndOn Plus, OU=Mobile, O=kdanji, L=Suwon, ST=Gyeonggi, C=KR',
-    ], root);
-    writeProps(propsPath, { storeFile, storePassword: generated, keyAlias, keyPassword: generated });
-    log(`[build:aab] 키스토어: ${storeFile}`);
-    log(`[build:aab] 속성 파일: ${propsPath} (gitignore, Play 업로드 키로 보관)`);
-    return { storeFile, storePassword: generated, keyAlias, keyPassword: generated };
+  if (fs.existsSync(storeFile) && !storePassword) {
+    fail('업로드 키스토어 파일은 있으나 비밀번호가 없습니다. ANDROID_KEYSTORE_PASSWORD 또는 credentials/android/keystore.properties 를 넣으세요. 새 키를 만들지 않습니다.');
   }
-  fail('키스토어 파일을 찾을 수 없습니다. ANDROID_KEYSTORE_FILE 또는 credentials/android/upload.keystore 를 확인하세요.');
+  fail(
+    'Play 업로드 키스토어(upload-keystore.jks)가 없습니다. 새 키를 만들면 Play가 SHA1 불일치로 거부하고 또 재설정해야 합니다. '
+    + `기대 SHA1=${PLAY_UPLOAD_CERT_SHA1} SHA256=${PLAY_UPLOAD_CERT_SHA256} MD5=${PLAY_UPLOAD_CERT_MD5}.`,
+  );
 }
 
 function sdkHome() {
@@ -288,6 +339,7 @@ function main() {
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
+  assertAabUploadCert(copiedAab);
   const stat = fs.statSync(copiedAab);
   log('\n=== AAB 빌드 완료 ===');
   log(`Gradle 산출물: ${gradleAab}`);
@@ -295,7 +347,8 @@ function main() {
   log(`크기:           ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
-  log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
+  log(`Play 등록 업로드 키 SHA1=${PLAY_UPLOAD_CERT_SHA1}`);
+  log('인증서 PEM: public/downloads/upload_certificate.pem');
 }
 
 main();
