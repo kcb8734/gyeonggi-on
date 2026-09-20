@@ -45,22 +45,24 @@ test('PEM copies match Play Console fingerprints', () => {
   }
 });
 
-test('downloads page lists the registered cert and no reset request', () => {
+test('downloads page is the Play Console AAB upload guide', () => {
   const html = readFileSync(join(downloads, 'index.html'), 'utf8');
-  const sheet = readFileSync(join(downloads, 'PLAY_UPLOAD_CERTIFICATE.txt'), 'utf8');
-  assert.match(html, /Play 업로드 키 인증서/);
-  assert.match(html, /재설정 요청을 다시 하지 마세요/);
+  const guide = readFileSync(join(downloads, 'PLAY_CONSOLE_UPLOAD.txt'), 'utf8');
+  assert.match(html, /Play Console에 올릴 AAB/);
+  assert.match(html, /내부 테스트/);
+  assert.match(html, /새 버전 만들기/);
   assert.match(html, /kr\.gyeonggion\.app/);
-  assert.match(html, new RegExp(record.md5));
-  assert.match(html, new RegExp(record.sha1));
-  assert.match(html, new RegExp(record.sha256));
-  assert.match(html, /upload_certificate\.pem/);
   assert.match(html, /onandon_plus_1\.0\.6_vc7\.aab/);
+  assert.match(html, /versionCode/);
+  assert.match(html, new RegExp(record.sha1));
+  assert.match(html, /upload_certificate\.pem/);
+  assert.match(html, /PLAY_CONSOLE_UPLOAD\.txt/);
   assert.doesNotMatch(html, /업로드 키 재설정 요청/);
   assert.doesNotMatch(html, /PLAY_UPLOAD_KEY_RESET/);
-  assert.match(sheet, new RegExp(record.md5));
-  assert.match(sheet, new RegExp(record.sha1));
-  assert.match(sheet, new RegExp(record.sha256));
+  assert.match(guide, /내부 테스트/);
+  assert.match(guide, /프로덕션/);
+  assert.match(guide, /onandon_plus_1\.0\.6_vc7\.aab/);
+  assert.match(guide, new RegExp(record.sha1));
 });
 
 test('store AAB is signed with the registered upload cert', () => {
