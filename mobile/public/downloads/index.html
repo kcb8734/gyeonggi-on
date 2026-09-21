@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>온앤온+ 업로드 키 재설정 · 1.0.18 AAB</title>
+  <title>온앤온+ Play 업로드 키 재등록 · 1.0.19</title>
   <style>
     body { margin: 0; background: #F7F8FA; color: #111827; font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
     main { max-width: 720px; margin: 40px auto; padding: 0 18px 56px; }
@@ -20,39 +20,48 @@
     .ok { background: #ECFDF5; border: 1px solid #34D399; border-radius: 12px; padding: 12px 14px; }
     .warn { background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 12px; padding: 12px 14px; }
     textarea {
-      width: 100%; min-height: 140px; box-sizing: border-box; font-size: 13px; line-height: 1.5;
+      width: 100%; min-height: 160px; box-sizing: border-box; font-size: 13px; line-height: 1.5;
       border: 1px solid #D1D5DB; border-radius: 12px; padding: 12px;
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>1. 새 업로드 키 재설정</h1>
-    <p class="warn">방금 만든 키 SHA-1은 <code>C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1</code> 입니다. Play에 있는 <code>30:70:7C:…</code> 와 다르므로, <b>재설정이 끝나기 전에 AAB를 올리면 거절됩니다.</b></p>
+    <h1>Play 업로드 키 재등록을 계속합니다</h1>
+    <p class="warn">지금 Play에 등록된 SHA-1은 <code>30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42</code> 입니다. 새 키는 <code>C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1</code> 이라서, <b>재설정이 끝나기 전에 AAB를 올리면 거절됩니다.</b></p>
+
+    <h2>1. 콘솔에 PEM 제출 (지금)</h2>
     <ol>
-      <li>아래 PEM만 받습니다. <code>.jks</code>와 비밀번호는 올리지 마세요.</li>
-      <li>Play Console → 온앤온+ → 앱 서명 → <b>업로드 키 재설정 요청</b></li>
-      <li>사유: 업로드 키를 분실했습니다</li>
-      <li>PEM을 첨부하고 제출한 뒤, Google 완료 메일을 기다립니다.</li>
+      <li><a href="https://play.google.com/console" target="_blank" rel="noopener">Play Console</a> → 온앤온+ (<code>kr.gyeonggion.app</code>)</li>
+      <li>보호된 앱 → Play 앱 서명 관리 → 업로드 키 인증서 → <b>업로드 키 재설정 요청</b></li>
+      <li>사유: <b>업로드 키를 분실했습니다</b></li>
+      <li>아래 PEM만 첨부합니다. <code>.jks</code>와 비밀번호는 올리지 마세요.</li>
     </ol>
     <a class="btn" href="./upload_certificate.pem" download="upload_certificate.pem">PEM 받기</a>
-    <a class="btn secondary" href="./PLAY_CONSOLE_UPLOAD.txt" download="PLAY_CONSOLE_UPLOAD.txt">신청·업로드 문구</a>
-    <textarea readonly>앱 온앤온+(kr.gyeonggion.app)의 업로드 키스토어를 분실했습니다.
-현재 Play 등록 SHA-1: 30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
-새 업로드 키 PEM을 첨부합니다.
-- SHA-1: C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1
-- SHA-256: 08:58:6F:37:72:A5:A4:02:BA:19:21:7C:BC:9C:DC:1B:65:9F:6C:D8:B9:8D:09:88:17:71:7A:32:3C:E4:D8:AC
-- MD5: 10:AE:3F:33:23:98:75:20:AD:77:CC:ED:DC:C1:E1:9A
-재설정 승인 후 1.0.18 (versionCode 19) AAB를 비공개 테스트(Alpha)에 올리겠습니다.</textarea>
+    <a class="btn secondary" href="./PLAY_CONSOLE_UPLOAD.txt" download="PLAY_CONSOLE_UPLOAD.txt">신청 문구 받기</a>
+    <textarea readonly>앱 온앤온+(패키지 kr.gyeonggion.app)의 업로드 키스토어를 분실했습니다.
 
-    <h2>2. 승인 뒤에만 AAB 업로드</h2>
-    <p class="ok">비공개 테스트(Alpha)에는 이미 18 (1.0.17)이 있으므로 <b>19 (1.0.18)</b>만 올립니다.</p>
-    <p>파일 <code>onandon_plus_1.0.18_vc19.aab</code> · 서명 SHA-1 <code>C6:5A:7E:…:C5:D1</code></p>
-    <a class="btn" href="./onandon_plus_1.0.18_vc19.aab" download="onandon_plus_1.0.18_vc19.aab">AAB 다운로드 (재설정 후)</a>
+현재 Play 등록 업로드 키
+- SHA-1: 30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
+
+새 업로드 키 인증서(upload_certificate.pem)를 첨부합니다.
+- MD5:    10:AE:3F:33:23:98:75:20:AD:77:CC:ED:DC:C1:E1:9A
+- SHA-1:  C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1
+- SHA-256: 08:58:6F:37:72:A5:A4:02:BA:19:21:7C:BC:9C:DC:1B:65:9F:6C:D8:B9:8D:09:88:17:71:7A:32:3C:E4:D8:AC
+- 주체: CN=OnAndOn Plus, OU=Mobile, O=kdanji, L=Suwon, ST=Gyeonggi, C=KR
+- 유효: 2026-09-20 ~ 2054-02-05
+- alias: upload
+
+재설정이 승인되면 이 키로 서명한 AAB(versionName 1.0.19, versionCode 20)를 비공개 테스트(Alpha)에 올리겠습니다.</textarea>
+
+    <h2>2. Google 승인 뒤에만 AAB 업로드</h2>
+    <p class="ok">비공개 테스트(Alpha)에는 이미 18 (1.0.17)이 있으므로 <b>20 (1.0.19)</b>만 올립니다.</p>
+    <p>파일 <code>onandon_plus_1.0.19_vc20.aab</code> · 서명 SHA-1 <code>C6:5A:7E:…:C5:D1</code></p>
+    <a class="btn" href="./onandon_plus_1.0.19_vc20.aab" download="onandon_plus_1.0.19_vc20.aab">AAB 받기 (재설정 후)</a>
     <ol>
       <li>테스트 및 출시 → 테스트 → <b>비공개 테스트 (Alpha)</b> → 새 버전 만들기</li>
       <li>위 AAB만 올립니다. APK·jks·PEM은 올리지 마세요.</li>
-      <li>versionCode 19, SHA-1 <code>C6:5A:7E:…</code> 인지 확인한 뒤 저장 및 출시</li>
+      <li>versionCode 20, SHA-1 <code>C6:5A:7E:…</code> 인지 확인한 뒤 저장 및 출시</li>
     </ol>
   </main>
 </body>

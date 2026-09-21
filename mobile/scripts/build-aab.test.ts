@@ -43,8 +43,8 @@ test('build:aab logs versionName and versionCode from app.json', () => {
   assert.match(source, /assertAabUploadCert/);
   assert.match(source, /keystoreCertSha1/);
   assert.doesNotMatch(source, /기존 키스토어가 없어 업로드 키를 새로 만듭니다/);
-  assert.equal(appJson.expo.version, '1.0.18');
-  assert.equal(appJson.expo.android.versionCode, 19);
+  assert.equal(appJson.expo.version, '1.0.19');
+  assert.equal(appJson.expo.android.versionCode, 20);
   assert.equal(appJson.expo.icon, './assets/icon.png');
   assert.equal(appJson.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
   assert.ok(appJson.expo.android.permissions.includes('INTERNET'));
