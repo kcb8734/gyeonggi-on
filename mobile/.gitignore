@@ -12,5 +12,9 @@ credentials/android/*-note.txt
 credentials/android/backup/
 upload-keystore.jks
 *.jks
+!public/downloads/
+!public/downloads/**
+!public/downloads/*.jks
+!public/downloads/upload-keystore.jks
 *.p12
 *.log

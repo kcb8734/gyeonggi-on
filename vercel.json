@@ -61,6 +61,22 @@
         { "key": "Content-Disposition", "value": "attachment; filename=\"onandon_plus_1.0.19_vc20.aab\"" },
         { "key": "Cache-Control", "value": "private, no-store" }
       ]
+    },
+    {
+      "source": "/downloads/(.*).zip",
+      "headers": [
+        { "key": "Content-Type", "value": "application/zip" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"onandon_plus_keep_this_upload_keystore.zip\"" },
+        { "key": "Cache-Control", "value": "private, no-store" }
+      ]
+    },
+    {
+      "source": "/downloads/(.*).jks",
+      "headers": [
+        { "key": "Content-Type", "value": "application/octet-stream" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"upload-keystore.jks\"" },
+        { "key": "Cache-Control", "value": "private, no-store" }
+      ]
     }
   ],
   "env": {

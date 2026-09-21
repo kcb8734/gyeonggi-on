@@ -25,6 +25,14 @@ test('downloads page continues Play upload-key reset for versionCode 20', () => 
   assert.match(guide, /C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1/);
 });
 
+test('keystore zip and save page use GitHub raw downloads', () => {
+  const page = readFileSync(join(downloads, 'save_keystore.html'), 'utf8');
+  assert.equal(existsSync(join(downloads, 'upload-keystore.jks')), true);
+  assert.equal(existsSync(join(downloads, 'onandon_plus_keep_this_upload_keystore.zip')), true);
+  assert.match(page, /github.com\/kcb8734\/gyeonggi-on\/raw\/cursor\/aab-vc19-8391\/mobile\/public\/downloads\/onandon_plus_keep_this_upload_keystore\.zip/);
+  assert.match(page, /github.com\/kcb8734\/gyeonggi-on\/raw\/cursor\/aab-vc19-8391\/mobile\/public\/downloads\/upload-keystore\.jks/);
+});
+
 test('signed vc20 AAB matches the new upload cert when present', { skip: !existsSync(join(downloads, 'onandon_plus_1.0.19_vc20.aab')) }, () => {
   const listed = spawnSync(
     'keytool',
