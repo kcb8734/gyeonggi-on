@@ -17,6 +17,7 @@ import {
   extractHomepageUrl,
   gyeonggiEventCopy,
   isGenericFestivalOverview,
+  isRestaurantDetail,
   officialFestivalOverview,
   resolveGyeonggiEventGuide,
 } from '../constants/gyeonggiEventGuides';
@@ -168,7 +169,10 @@ export default function FestivalDetailScreen({
     );
   }
 
-  const isRestaurant = detail.contentTypeId === '39' || contentTypeId === '39' || fallbackKind === 'food' || detail.category === '먹거리';
+  const isRestaurant = isRestaurantDetail({
+    contentTypeId: detail.contentTypeId || contentTypeId,
+    kind: fallbackKind,
+  });
   const favorited = isFavorite(`tour-${detail.contentId}`);
   const hero = detail.images[0]?.originUrl ?? detail.firstImage;
   const hasMap = detail.mapX !== 0 && detail.mapY !== 0;
