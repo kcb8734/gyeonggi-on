@@ -103,6 +103,20 @@ export function isGenericFestivalOverview(text?: string | null): boolean {
   return GENERIC_MARKERS.some((marker) => value.includes(marker));
 }
 
+/**
+ * 맛집(TourAPI 39 / kind=food)만 식당 상세로 본다.
+ * 먹거리 카테고리 축제(contentType 15, 예: 파주 장단콩축제)는 행사 상세와 Gemini를 쓴다.
+ */
+export function isRestaurantDetail(input: {
+  contentTypeId?: string | null;
+  kind?: string | null;
+} = {}): boolean {
+  const type = String(input.contentTypeId || '').trim();
+  if (type === '15') return false;
+  if (type === '39') return true;
+  return String(input.kind || '').toLowerCase() === 'food';
+}
+
 /** 한국관광공사·지정 가이드의 실제 개요만 남긴다. 껍데기 문장은 빈 값. */
 export function officialFestivalOverview(
   raw?: string | null,

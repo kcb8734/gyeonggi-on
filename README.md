@@ -70,6 +70,7 @@ npx vercel --prod --yes
 ```
 
 - 루트 `.vercel/project.json` → `kdanji` → **https://www.kdanji.com**
+- `.vercel`은 gitignore라 클론 직후 파일이 없습니다. `npm run deploy:prod`가 `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`로 만들거나, 없으면 `npx vercel link --yes --project kdanji`로 연결합니다. (`npx vercel login`이 필요할 수 있습니다.)
 - `backend/.vercel` → 다른 프로젝트(`backend`)라 **사이트가 갱신되지 않습니다.**
 - `backend/`에서 `npx vercel --prod --yes` 를 실행하지 마세요. `o`/`O` 입력 실수로 그 경로에 들어가 있어도, `npm run deploy:prod` 는 루트로 강제합니다.
 

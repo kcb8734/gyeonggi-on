@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "deploy:prod": "node scripts/deploy-prod.mjs",
-    "build:aab": "node mobile/scripts/build-aab.cjs"
+    "build:aab": "node mobile/scripts/build-aab.cjs",
+    "test:deploy-prod": "node --test scripts/deploy-prod.test.mjs"
   }
 }

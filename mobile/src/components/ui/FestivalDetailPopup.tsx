@@ -18,6 +18,7 @@ import ModalExitButton from './ModalExitButton';
 import {
   extractHomepageUrl,
   gyeonggiEventCopy,
+  isRestaurantDetail,
   officialFestivalOverview,
   resolveGyeonggiEventGuide,
 } from '../../constants/gyeonggiEventGuides';
@@ -70,7 +71,9 @@ export default function FestivalDetailPopup({
   const overview = officialOverview;
   const homepageUrl = extractHomepageUrl(festival.homepage) || extractHomepageUrl(guide?.homepage);
   const homepageLabel = guide?.homepageLabel || '행사 홈페이지 열기';
-  const isFood = String(festival.category || '').includes('먹거리');
+  const isFood = isRestaurantDetail({
+    contentTypeId: festival.contentTypeId,
+  });
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
