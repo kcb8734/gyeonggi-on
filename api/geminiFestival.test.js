@@ -4,12 +4,83 @@ import {
   buildPrompt,
   cacheKey,
   clearGeminiCache,
+  generationConfigFor,
   isGenericFestivalOverview,
+  isThinkingConfigError,
   localFestivalSummary,
   normalizeSummary,
   parseModelJson,
   summarizeFestival,
+  thinkingConfigFor,
 } from './geminiFestival.js';
+
+test('thinkingConfig는 budget과 level을 동시에 보내지 않는다', () => {
+  const models = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.8-flash'];
+  for (const model of models) {
+    const thinking = thinkingConfigFor(model);
+    assert.equal(
+      Number('thinkingBudget' in thinking) + Number('thinkingLevel' in thinking),
+      1,
+      model,
+    );
+  }
+  assert.deepEqual(thinkingConfigFor('gemini-3.6-flash'), { thinkingLevel: 'minimal' });
+  assert.deepEqual(thinkingConfigFor('gemini-flash-latest'), { thinkingLevel: 'low' });
+  assert.deepEqual(thinkingConfigFor('gemini-2.5-flash'), { thinkingBudget: 0 });
+  const latest = generationConfigFor('gemini-flash-latest');
+  assert.equal(latest.temperature, undefined);
+  assert.equal(latest.thinkingConfig.thinkingLevel, 'low');
+  assert.equal('thinkingBudget' in latest.thinkingConfig, false);
+  const flash36 = generationConfigFor('gemini-3.6-flash');
+  assert.equal(flash36.thinkingConfig.thinkingLevel, 'minimal');
+  assert.equal('thinkingBudget' in flash36.thinkingConfig, false);
+  assert.equal(isThinkingConfigError(new Error('You can only set only one of thinking budget and thinking level.')), true);
+});
+
+test('thinking 설정 오류면 같은 모델에서 thinking 없이 한 번 더 친다', async () => {
+  clearGeminiCache();
+  let calls = 0;
+  const bodies = [];
+  const fetchImpl = async (_url, init) => {
+    calls += 1;
+    bodies.push(JSON.parse(init.body));
+    if (calls === 1) {
+      return {
+        ok: false,
+        status: 400,
+        json: async () => ({ error: { message: 'You can only set only one of thinking budget and thinking level.' } }),
+      };
+    }
+    return geminiOk('thinking 재시도 개요입니다.');
+  };
+  const result = await summarizeFestival({
+    title: '여주오곡나루축제',
+    place: '여주시',
+    metro: 'GYEONGGI',
+  }, { apiKey: 'test-key', fetchImpl, models: ['gemini-3.6-flash'], store: null });
+  assert.equal(calls, 2);
+  assert.equal('thinkingConfig' in bodies[0].generationConfig, true);
+  assert.equal('thinkingConfig' in bodies[1].generationConfig, false);
+  assert.equal(result.source, 'gemini');
+  assert.equal(result.overview, 'thinking 재시도 개요입니다.');
+});
+
+test('요청 body는 thinking 필드를 하나만 담는다', async () => {
+  clearGeminiCache();
+  let payload = null;
+  const fetchImpl = async (_url, init) => {
+    payload = JSON.parse(init.body);
+    return geminiOk('정상 개요입니다.');
+  };
+  await summarizeFestival({
+    title: '고양호수예술축제',
+    metro: 'GYEONGGI',
+  }, { apiKey: 'test-key', fetchImpl, models: ['gemini-flash-latest'], store: null });
+  const thinking = payload.generationConfig.thinkingConfig;
+  assert.equal(Object.keys(thinking).length, 1);
+  assert.equal(thinking.thinkingLevel, 'low');
+  assert.equal(thinking.thinkingBudget, undefined);
+});
 
 test('TourAPI 껍데기 개요는 Gemini 대체 대상으로 본다', () => {
   assert.equal(isGenericFestivalOverview('한국관광공사 TourAPI에서 수집한 행사 개요입니다.'), true);

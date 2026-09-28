@@ -88,7 +88,11 @@ export default function FestivalAiSummaryCard({
           {loading ? (
             <Text style={styles.pending}>한국관광공사 상세 개요가 없어 Gemini 요약을 준비하고 있습니다</Text>
           ) : (
-            <Text style={styles.body}>{data?.overview || error || '상세 개요를 아직 만들지 못했습니다'}</Text>
+            <Text style={styles.body}>
+              {data?.source === 'gemini'
+                ? (data.overview || '상세 개요를 아직 만들지 못했습니다')
+                : (error || 'Gemini 상세 개요를 아직 만들지 못했습니다. 화면을 다시 열면 재시도합니다.')}
+            </Text>
           )}
         </View>
       ) : null}
