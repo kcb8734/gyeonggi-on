@@ -1,12 +1,6 @@
-const GENERIC_MARKERS = [
-  '확인되는 대로',
-  '추천코스로 이을 수',
-  '의 상세 개요입니다',
-  'TourAPI에서 수집한 행사',
-  'TourAPI에서 수집한 축제',
-  'TourAPI에서 수집한 맛집',
-  '주최 기관 안내를 따르며',
-];
+import { isGenericFestivalOverview } from './genericOverview.js';
+
+export { isGenericFestivalOverview } from './genericOverview.js';
 
 /**
  * 신규 Gemini 키는 1.5/2.5 모델 id를 못 쓰는 경우가 많다.
@@ -40,12 +34,6 @@ export function geminiApiKey() {
 
 export function geminiConfigured() {
   return Boolean(geminiApiKey());
-}
-
-export function isGenericFestivalOverview(text) {
-  const value = String(text || '').trim();
-  if (!value) return true;
-  return GENERIC_MARKERS.some((marker) => value.includes(marker));
 }
 
 export function cacheKey(input) {

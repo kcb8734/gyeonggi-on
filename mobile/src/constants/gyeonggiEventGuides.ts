@@ -87,20 +87,25 @@ const GUIDES: Array<{ tokens: string[]; ids?: string[]; guide: GyeonggiEventGuid
   },
 ];
 
-const GENERIC_MARKERS = [
-  '확인되는 대로',
-  '추천코스로 이을 수',
-  '의 상세 개요입니다',
-  'TourAPI에서 수집한 행사',
-  'TourAPI에서 수집한 축제',
-  'TourAPI에서 수집한 맛집',
-  '주최 기관 안내를 따르며',
+const GENERIC_COMPACT_MARKERS = [
+  '확인되는대로',
+  '추천코스로이을수',
+  '의상세개요입니다',
+  'tourapi에서수집한',
+  '한국관광공사에서수집한',
+  '관광공사에서수집한',
+  '자동반영됩니다',
+  '주최기관안내를따르며',
+  '상세정보를불러오는중',
 ];
 
 export function isGenericFestivalOverview(text?: string | null): boolean {
   const value = String(text || '').trim();
   if (!value) return true;
-  return GENERIC_MARKERS.some((marker) => value.includes(marker));
+  const compact = value.replace(/\s+/g, '').toLowerCase();
+  if (GENERIC_COMPACT_MARKERS.some((marker) => compact.includes(marker))) return true;
+  if (compact.length <= 36 && /상세개요$/.test(compact) && !/[.。!?]/.test(value)) return true;
+  return false;
 }
 
 /**

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { fetchFestivalAiSummary, type FestivalAiQuery, type FestivalAiSummary } from '../../api/festivalAi';
+import { isGenericFestivalOverview } from '../../constants/gyeonggiEventGuides';
 
 type Props = FestivalAiQuery & {
   officialOverview?: string;
@@ -44,7 +45,7 @@ export default function FestivalAiSummaryCard({
       endDate,
       metro,
       category,
-      overview: officialOverview || overview,
+      overview: isGenericFestivalOverview(officialOverview || overview) ? '' : (officialOverview || overview),
     }).then((result) => {
       if (cancelled) return;
       setData(result);
@@ -63,7 +64,7 @@ export default function FestivalAiSummaryCard({
     };
   }, [title, place, startDate, endDate, metro, category, overview, officialOverview]);
 
-  const replaceOverview = !String(officialOverview || '').trim();
+  const replaceOverview = isGenericFestivalOverview(officialOverview);
   const sourceLabel = data?.source === 'gemini'
     ? ((data.stored || data.cached) ? '저장된 Gemini 요약' : 'Gemini 요약')
     : 'AI 안내 요약';

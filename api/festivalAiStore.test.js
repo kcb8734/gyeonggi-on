@@ -87,7 +87,7 @@ test('Gemini 상세만 저장하고 같은 축제는 재사용한다', async () 
     metro: 'GYEONGGI',
   }, {
     source: 'gemini',
-    overview: '장단콩 상세 개요',
+    overview: '파주 임진각 일대에서 장단콩을 주제로 한 미식 축제입니다.',
     highlights: ['핵심1', '핵심2', '핵심3'],
     tips: '대중교통을 이용하세요.',
     model: 'gemini-flash-latest',
@@ -107,13 +107,25 @@ test('Gemini 상세만 저장하고 같은 축제는 재사용한다', async () 
   assert.equal(skipped, false);
   assert.equal(pool.rows.length, 1);
 
+  const genericSkip = await saveStoredSummary({
+    title: '파주 장단콩축제',
+    metro: 'GYEONGGI',
+  }, {
+    source: 'gemini',
+    overview: '한국관광공사에서 수집한 행사 정보입니다. 상세개요가 확인되는대로 자동 반영됩니다.',
+    highlights: ['핵심1', '핵심2', '핵심3'],
+    tips: '팁',
+  }, { pool });
+  assert.equal(genericSkip, false);
+  assert.equal(pool.rows.length, 1);
+
   const loaded = await loadStoredSummary({
     title: '파주 장단콩축제',
     place: '경기도 파주시 임진각로',
     startDate: '2026-11-14',
     metro: 'GYEONGGI',
   }, { pool });
-  assert.equal(loaded.overview, '장단콩 상세 개요');
+  assert.equal(loaded.overview, '파주 임진각 일대에서 장단콩을 주제로 한 미식 축제입니다.');
   assert.equal(loaded.stored, true);
   assert.equal(loaded.source, 'gemini');
 });
