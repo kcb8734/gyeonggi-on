@@ -32,7 +32,7 @@ export default function FestivalAiSummaryCard({
       return;
     }
     const key = `${name}|${String(metro || '').trim()}`.toLowerCase();
-    if (storedKey.current === key) {
+    if (storedKey.current === key && data?.source === 'gemini') {
       setLoading(false);
       return;
     }
@@ -49,7 +49,7 @@ export default function FestivalAiSummaryCard({
     }).then((result) => {
       if (cancelled) return;
       setData(result);
-      storedKey.current = key;
+      if (result?.source === 'gemini') storedKey.current = key;
       if (!result) setError('요약을 불러오지 못했습니다');
     }).catch(() => {
       if (!cancelled) {

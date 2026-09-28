@@ -268,3 +268,34 @@ test('동시에 같은 축제를 열면 Gemini는 한 번만 호출한다', asyn
   assert.equal(second.cached, true);
 });
 
+test('폴백 실패는 캐시하지 않아 다음 요청에서 Gemini를 다시 친다', async () => {
+  clearGeminiCache();
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return { ok: false, status: 429, json: async () => ({ error: { message: 'prepayment credits are depleted' } }) };
+    }
+    return geminiOk('크레딧 충전 후 상세입니다.');
+  };
+  const input = { title: '여주오곡나루축제', place: '여주시', metro: 'GYEONGGI' };
+  const first = await summarizeFestival(input, {
+    apiKey: 'test-key',
+    fetchImpl,
+    models: ['gemini-flash-latest'],
+    store: null,
+  });
+  assert.equal(first.source, 'fallback');
+  assert.match(String(first.error || ''), /depleted|credits/i);
+  const second = await summarizeFestival(input, {
+    apiKey: 'test-key',
+    fetchImpl,
+    models: ['gemini-flash-latest'],
+    store: null,
+  });
+  assert.equal(calls, 2);
+  assert.equal(second.source, 'gemini');
+  assert.equal(second.cached, false);
+  assert.equal(second.overview, '크레딧 충전 후 상세입니다.');
+});
+

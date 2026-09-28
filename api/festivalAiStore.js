@@ -93,7 +93,9 @@ export async function loadStoredSummary(input, options = {}) {
       [ident.cacheKey, ident.titleNorm, ident.metro],
     );
     const row = result.rows && result.rows[0];
-    return rowToSummary(row);
+    const summary = rowToSummary(row);
+    if (summary && isGenericFestivalOverview(summary.overview)) return null;
+    return summary;
   } catch (err) {
     console.warn('[festival-ai-store] load', err && err.message ? err.message : err);
     return null;
