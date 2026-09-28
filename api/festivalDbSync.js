@@ -262,6 +262,8 @@ export async function findPersistedFestivalByContentId(contentId) {
     return null;
   }
 }
+
+export async function listPersistedFestivals(metro = 'GYEONGGI') {
   const db = getPool();
   if (!db) return [];
   const zone = normalizeMetroId(metro);
