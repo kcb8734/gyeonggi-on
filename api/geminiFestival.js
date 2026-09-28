@@ -16,8 +16,18 @@ const GENERIC_MARKERS = [
 const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash'];
 
 const cache = new Map();
+const inflight = new Map();
 const CACHE_LIMIT = 80;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+let defaultStorePromise = null;
+
+function getDefaultStore() {
+  if (!defaultStorePromise) {
+    defaultStorePromise = import('./festivalAiStore.js').then((mod) => mod.postgresSummaryStore);
+  }
+  return defaultStorePromise;
+}
 
 export function geminiApiKey() {
   return String(
@@ -40,13 +50,10 @@ export function isGenericFestivalOverview(text) {
 
 export function cacheKey(input) {
   const row = input || {};
-  return [
-    String(row.title || '').trim(),
-    String(row.place || '').trim(),
-    String(row.startDate || '').trim(),
-    String(row.endDate || '').trim(),
-    String(row.metro || '').trim(),
-  ].join('|').toLowerCase();
+  const title = String(row.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const metro = String(row.metro || '').trim().toUpperCase();
+  // 팝업·상세는 주소/일정이 달라도 같은 축제 상세를 재사용한다.
+  return `${title}|${metro}`;
 }
 
 export function parseModelJson(text) {
@@ -168,16 +175,16 @@ async function generateWithModel(model, prompt, key, fetchImpl, timeoutMs) {
   }
 }
 
-export async function summarizeFestival(input, options = {}) {
-  const title = String(input?.title || '').trim();
-  if (!title) {
-    const err = new Error('축제명이 필요합니다.');
-    err.status = 400;
-    throw err;
+async function summarizeFestivalUncached(input, options, key) {
+  const store = options.store === undefined ? await getDefaultStore() : options.store;
+  if (store && typeof store.load === 'function') {
+    const stored = await store.load(input);
+    if (stored && stored.overview) {
+      const value = { ...stored, source: 'gemini', cached: true, stored: true };
+      remember(key, value);
+      return value;
+    }
   }
-  const key = cacheKey(input);
-  const hit = cached(key);
-  if (hit) return { ...hit, cached: true };
 
   const fallback = localFestivalSummary(input);
   const apiKey = options.apiKey !== undefined
@@ -198,8 +205,11 @@ export async function summarizeFestival(input, options = {}) {
     try {
       const parsed = await generateWithModel(model, prompt, apiKey, fetchImpl, timeoutMs);
       if (!parsed) continue;
-      const value = { ...normalizeSummary(parsed, fallback), source: 'gemini', model };
+      const value = { ...normalizeSummary(parsed, fallback), source: 'gemini', model, stored: false };
       remember(key, value);
+      if (store && typeof store.save === 'function') {
+        try { await store.save(input, value); } catch { /* 저장 실패해도 응답은 준다 */ }
+      }
       return { ...value, cached: false };
     } catch (err) {
       lastError = err;
@@ -212,6 +222,32 @@ export async function summarizeFestival(input, options = {}) {
   return { ...value, cached: false };
 }
 
+export async function summarizeFestival(input, options = {}) {
+  const title = String(input?.title || '').trim();
+  if (!title) {
+    const err = new Error('축제명이 필요합니다.');
+    err.status = 400;
+    throw err;
+  }
+  const key = cacheKey(input);
+  const hit = cached(key);
+  if (hit) return { ...hit, cached: true };
+
+  if (inflight.has(key)) {
+    const shared = await inflight.get(key);
+    return { ...shared, cached: true };
+  }
+
+  const work = summarizeFestivalUncached(input, options, key);
+  inflight.set(key, work);
+  try {
+    return await work;
+  } finally {
+    inflight.delete(key);
+  }
+}
+
 export function clearGeminiCache() {
   cache.clear();
+  inflight.clear();
 }

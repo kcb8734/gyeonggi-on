@@ -8,6 +8,7 @@ export type FestivalAiSummary = {
   source: 'gemini' | 'fallback';
   model?: string;
   cached?: boolean;
+  stored?: boolean;
 };
 
 export type FestivalAiQuery = {
@@ -19,6 +20,31 @@ export type FestivalAiQuery = {
   category?: string | null;
   overview?: string | null;
 };
+
+const clientCache = new Map<string, FestivalAiSummary>();
+const clientInflight = new Map<string, Promise<FestivalAiSummary | null>>();
+
+export function festivalAiClientKey(query: FestivalAiQuery): string {
+  const title = String(query.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const metro = String(query.metro || '').trim().toUpperCase();
+  return `${title}|${metro}`;
+}
+
+export function clearFestivalAiClientCache() {
+  clientCache.clear();
+  clientInflight.clear();
+}
+
+export function readFestivalAiClientCache(query: FestivalAiQuery): FestivalAiSummary | null {
+  const hit = clientCache.get(festivalAiClientKey(query));
+  return hit || null;
+}
+
+export function rememberFestivalAiClientCache(query: FestivalAiQuery, value: FestivalAiSummary) {
+  if (!value?.overview) return;
+  if (value.source !== 'gemini') return;
+  clientCache.set(festivalAiClientKey(query), { ...value, cached: true });
+}
 
 export function localFestivalAiSummary(query: FestivalAiQuery): FestivalAiSummary {
   const title = String(query.title || '이 축제').trim() || '이 축제';
@@ -69,7 +95,7 @@ async function postCanonical(query: FestivalAiQuery): Promise<FestivalAiSummary 
   return readSummary(body);
 }
 
-export async function fetchFestivalAiSummary(query: FestivalAiQuery): Promise<FestivalAiSummary | null> {
+async function loadFestivalAiSummary(query: FestivalAiQuery): Promise<FestivalAiSummary | null> {
   const title = String(query.title || '').trim();
   if (!title) return null;
   const payload = summaryPayload(query);
@@ -90,4 +116,22 @@ export async function fetchFestivalAiSummary(query: FestivalAiQuery): Promise<Fe
     // 네트워크가 없어도 상세 화면은 로컬 안내를 보여 준다
   }
   return localFestivalAiSummary(query);
+}
+
+export async function fetchFestivalAiSummary(query: FestivalAiQuery): Promise<FestivalAiSummary | null> {
+  const title = String(query.title || '').trim();
+  if (!title) return null;
+  const cached = readFestivalAiClientCache(query);
+  if (cached) return cached;
+  const key = festivalAiClientKey(query);
+  const pending = clientInflight.get(key);
+  if (pending) return pending;
+  const work = loadFestivalAiSummary(query).then((result) => {
+    if (result?.source === 'gemini') rememberFestivalAiClientCache(query, result);
+    return result;
+  }).finally(() => {
+    clientInflight.delete(key);
+  });
+  clientInflight.set(key, work);
+  return work;
 }
