@@ -103,7 +103,9 @@ export default function FestivalDetailScreen({
             title: genericTitle ? (fallbackTitle || known?.title || data.title) : data.title,
             overview: data.overview && !isGenericFestivalOverview(data.overview)
               ? data.overview
-              : (known?.description || data.overview),
+              : (known?.description && !isGenericFestivalOverview(known.description)
+                ? known.description
+                : ''),
             address: (data.address && data.address !== '주소 확인 중')
               ? data.address
               : (fallbackAddress || known?.location_name || data.address),
@@ -124,9 +126,9 @@ export default function FestivalDetailScreen({
             contentTypeId: contentTypeId ?? (fallbackKind === 'food' ? '39' : '15'),
             tel: fallbackTel,
             title: fallbackTitle || known?.title || (fallbackKind === 'food' ? '맛집 상세' : '축제 상세'),
-            overview: known?.description || (fallbackKind === 'food' || contentTypeId === '39'
-              ? '한국관광공사 TourAPI에서 수집한 맛집 정보입니다. 상세 소개가 확인되는 대로 자동 반영됩니다.'
-              : EMPTY_COPY.overview),
+            overview: known?.description && !isGenericFestivalOverview(known.description)
+              ? known.description
+              : '',
             address: fallbackAddress || known?.location_name || EMPTY_COPY.address,
             fee: EMPTY_COPY.fee,
             mapX: fallbackLongitude || known?.longitude || 0,
