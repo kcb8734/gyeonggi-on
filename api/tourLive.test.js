@@ -104,6 +104,44 @@ test('searchFestival2 returns Seoul fallback when TourAPI rate-limits', async ()
   }
 });
 
+test('quota OpenAPI error does not retry areaCode and uses fallback', async () => {
+  const prev = process.env.TOUR_API_SERVICE_KEY;
+  process.env.TOUR_API_SERVICE_KEY = 'test-key';
+  const urls = [];
+  const fetchImpl = async (input) => {
+    urls.push(String(input));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        OpenAPI_ServiceResponse: {
+          cmmMsgHeader: {
+            errMsg: 'LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR',
+            returnAuthMsg: '일일 서비스 요청제한 횟수 초과 에러',
+            returnReasonCode: '22',
+          },
+        },
+      }),
+    };
+  };
+  try {
+    const { searchFestival2, tourOpenApiError, decodeTourServiceKey } = await import('./tourLive.js');
+    assert.equal(decodeTourServiceKey('ab%2Fcd'), 'ab/cd');
+    const parsed = tourOpenApiError({
+      OpenAPI_ServiceResponse: { cmmMsgHeader: { returnReasonCode: '22', returnAuthMsg: '일일 서비스 요청제한 횟수 초과 에러' } },
+    });
+    assert.equal(parsed.quota, true);
+    const result = await searchFestival2({ metro: 'GYEONGGI' }, fetchImpl);
+    assert.equal(urls.length, 1);
+    assert.ok(!urls[0].includes('areaCode='));
+    assert.equal(result.source, 'fallback');
+    assert.ok(result.festivals.some((item) => item.title.includes('수원화성')));
+  } finally {
+    if (prev === undefined) delete process.env.TOUR_API_SERVICE_KEY;
+    else process.env.TOUR_API_SERVICE_KEY = prev;
+  }
+});
+
 test('Jeju fallback is Jeju festivals, not Gyeonggi', async () => {
   const { fallbackTourFestivals } = await import('./tourLive.js');
   const rows = fallbackTourFestivals({ metro: 'JEJU' });

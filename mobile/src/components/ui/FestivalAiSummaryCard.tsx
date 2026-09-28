@@ -21,11 +21,17 @@ export default function FestivalAiSummaryCard({
   const [data, setData] = React.useState<FestivalAiSummary | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const storedKey = React.useRef('');
 
   React.useEffect(() => {
     let cancelled = false;
     const name = String(title || '').trim();
     if (!name) {
+      setLoading(false);
+      return;
+    }
+    const key = `${name}|${String(metro || '').trim()}`.toLowerCase();
+    if (storedKey.current === key) {
       setLoading(false);
       return;
     }
@@ -42,6 +48,7 @@ export default function FestivalAiSummaryCard({
     }).then((result) => {
       if (cancelled) return;
       setData(result);
+      storedKey.current = key;
       if (!result) setError('요약을 불러오지 못했습니다');
     }).catch(() => {
       if (!cancelled) {
@@ -57,7 +64,9 @@ export default function FestivalAiSummaryCard({
   }, [title, place, startDate, endDate, metro, category, overview, officialOverview]);
 
   const replaceOverview = !String(officialOverview || '').trim();
-  const sourceLabel = data?.source === 'gemini' ? 'Gemini 요약' : 'AI 안내 요약';
+  const sourceLabel = data?.source === 'gemini'
+    ? ((data.stored || data.cached) ? '저장된 Gemini 요약' : 'Gemini 요약')
+    : 'AI 안내 요약';
 
   return (
     <View style={styles.wrap} accessibilityLabel="축제 AI 요약">

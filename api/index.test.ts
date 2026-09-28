@@ -120,6 +120,23 @@ test('POST /api/festivals/ai-summary returns highlights and tips', async () => {
   }
 });
 
+test('GET /api/festivals/ai-summary reads title from query', async () => {
+  const result = await invoke({
+    method: 'GET',
+    url: '/api/festivals/ai-summary?title=%EC%84%B8%EC%A2%85%EC%B6%95%EC%A0%9C&place=%EC%84%B8%EC%A2%85&metro=SEJONG',
+  });
+  assert.equal(result.status, 200);
+  const body = result.body as { success: boolean; data?: { overview?: string; source?: string } };
+  assert.equal(body.success, true);
+  assert.match(String(body.data?.overview), /세종축제/);
+});
+
+test('missing Origin still gets CORS allow for native apps', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/health' });
+  assert.equal(result.status, 200);
+  assert.equal(result.headers['Access-Control-Allow-Origin'], '*');
+});
+
 test('POST /api/admin/login accepts the updated default account', async () => {
   const ok = await invoke({
     method: 'POST',

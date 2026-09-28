@@ -42,8 +42,29 @@ export function asList(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+export function decodeTourServiceKey(raw) {
+  const key = String(raw || '').trim();
+  if (!key) return '';
+  try {
+    if (/%[0-9A-Fa-f]{2}/.test(key)) return decodeURIComponent(key);
+  } catch {
+    // keep the original key
+  }
+  return key;
+}
+
 export function tourServiceKey() {
-  return String(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY || '').trim();
+  return decodeTourServiceKey(process.env.TOUR_API_SERVICE_KEY || process.env.NTS_SERVICE_KEY || '');
+}
+
+export function tourOpenApiError(payload) {
+  const header = payload && payload.OpenAPI_ServiceResponse && payload.OpenAPI_ServiceResponse.cmmMsgHeader;
+  if (!header) return null;
+  const msg = header.returnAuthMsg || header.errMsg || header.returnReasonCode || 'TourAPI 오류';
+  const err = new Error(String(msg));
+  err.code = String(header.returnReasonCode || '');
+  err.quota = err.code === '22' || /LIMITED_NUMBER|요청제한/.test(String(msg));
+  return err;
 }
 
 function metroForArea(areaCode, fallback) {
@@ -290,15 +311,31 @@ async function tourGet(path, query, fetchImpl) {
   const url = KOR_SERVICE2 + path + '?' + params.toString();
   let lastErr = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await (fetchImpl || fetch)(url, { headers: { Accept: 'application/json' } });
+    const controller = fetchImpl ? null : new AbortController();
+    const timer = controller ? setTimeout(() => controller.abort(), 8000) : null;
+    let response;
+    try {
+      response = await (fetchImpl || fetch)(url, {
+        headers: { Accept: 'application/json' },
+        signal: controller ? controller.signal : undefined,
+      });
+    } catch (err) {
+      if (timer) clearTimeout(timer);
+      if (err && err.name === 'AbortError') throw new Error('TourAPI timeout');
+      throw err;
+    }
+    if (timer) clearTimeout(timer);
     if (response.status === 429) {
       lastErr = new Error('TourAPI HTTP 429');
+      lastErr.quota = true;
       if (attempt < 3 && !fetchImpl) await sleep(350 * attempt);
       else if (attempt < 3 && fetchImpl) break;
       continue;
     }
     if (!response.ok) throw new Error('TourAPI HTTP ' + response.status);
     const payload = await response.json();
+    const openErr = tourOpenApiError(payload);
+    if (openErr) throw openErr;
     const code = payload && payload.response && payload.response.header && payload.response.header.resultCode;
     if (code && code !== '0000') {
       throw new Error(payload.response.header.resultMsg || code);

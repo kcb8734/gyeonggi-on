@@ -65,3 +65,17 @@ test('crawlVisitkoreaCalendar walks 일자별 list endpoints', async () => {
   assert.equal(result.festivals[0].title, '수원화성문화제');
   assert.equal(result.source, 'visitkorea');
 });
+
+test('crawlVisitkoreaCalendar respects maxDays', async () => {
+  const days = [];
+  const fetchImpl = async (url) => {
+    if (url.includes('festivalCalendarUp.do')) {
+      return { ok: true, json: async () => ({ data: [[{ day: 8, count: 1 }, { day: 9, count: 1 }]] }) };
+    }
+    const match = String(url).match(/day=(\d+)/);
+    days.push(Number(match && match[1]));
+    return { ok: true, json: async () => ({ dataList: { total: 0, items: [] } }) };
+  };
+  await crawlVisitkoreaCalendar({ year: 2026, months: [9], metros: ['GYEONGGI'], maxDays: 1 }, fetchImpl);
+  assert.deepEqual(days, [8]);
+});
