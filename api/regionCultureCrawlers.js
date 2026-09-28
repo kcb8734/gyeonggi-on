@@ -12,6 +12,16 @@ const CACHE = new Map();
 const CACHE_MS = 10 * 60 * 1000;
 
 export const CULTURE_SOURCES = {
+  SEOUL: [
+    { id: 'seoul', label: '서울시 문화행사', url: 'http://openapi.seoul.go.kr:8088/sample/json/culturalEventInfo/1/200/', kind: 'seoul' },
+  ],
+  GYEONGGI: [
+    { id: 'ggc', label: '경기관광 축제', url: 'https://ggtour.or.kr/api/v1/travel-info/festival', kind: 'ggc' },
+    { id: 'ggcf', label: '경기문화재단', url: 'https://www.ggcf.kr/events' },
+  ],
+  INCHEON: [
+    { id: 'ifac', label: '인천문화재단', url: 'https://www.ifac.or.kr/culturalInfo/cuturalEvents/performanceSrch/list.do?key=m2501152621396' },
+  ],
   BUSAN: [
     { id: 'bscf', label: '부산문화재단', url: 'https://www.bscf.or.kr/view.do?no=1016' },
     { id: 'bscf', label: '부산문화재단 축제', url: 'https://www.bscf.or.kr/view.do?no=1016&tab=C009' },
@@ -279,6 +289,149 @@ export function parseDaeguEvents(rows, metro = 'DAEGU') {
   }, metro, 'dgfca')).filter(Boolean);
 }
 
+function seoulOpenApiKey() {
+  return text(process.env.SEOUL_OPEN_API_KEY || process.env.SEOUL_API_KEY || 'sample') || 'sample';
+}
+
+function swapSeoulCoords(lat, lng) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (hasValidCoords(latitude, longitude)) return { mapY: latitude, mapX: longitude };
+  if (hasValidCoords(longitude, latitude)) return { mapY: longitude, mapX: latitude };
+  return { mapY: undefined, mapX: undefined };
+}
+
+function isUpcomingFestival(start, end, now = new Date()) {
+  const from = now.getTime() - 14 * 24 * 60 * 60 * 1000;
+  const to = now.getTime() + 210 * 24 * 60 * 60 * 1000;
+  const s = Date.parse(start);
+  const e = Date.parse(end || start);
+  if (!Number.isFinite(s)) return false;
+  const endAt = Number.isFinite(e) ? e : s;
+  return endAt >= from && s <= to;
+}
+
+export function parseSeoulEvents(payload, metro = 'SEOUL') {
+  const rows = payload && payload.culturalEventInfo && Array.isArray(payload.culturalEventInfo.row)
+    ? payload.culturalEventInfo.row
+    : (Array.isArray(payload) ? payload : []);
+  return rows.map((row) => {
+    const title = decodeHtml(stripTags(row.TITLE || row.title));
+    const start = parseYmd(row.STRTDATE || row.DATE || row.eventStartDate);
+    const end = parseYmd(row.END_DATE || row.DATE || row.eventEndDate) || start;
+    if (!isUpcomingFestival(start, end)) return null;
+    const coords = swapSeoulCoords(row.LAT, row.LOT);
+    const guname = text(row.GUNAME);
+    const place = text(row.PLACE);
+    return toCultureFestival({
+      title,
+      eventStartDate: start,
+      eventEndDate: end,
+      address: ['서울특별시', guname, place].filter(Boolean).join(' '),
+      tel: row.INQUIRY,
+      overview: row.PROGRAM || row.ETC_DESC || row.CODENAME,
+      firstImage: row.MAIN_IMG,
+      mapX: coords.mapX,
+      mapY: coords.mapY,
+      kind: row.CODENAME,
+      categoryHint: `${row.CODENAME || ''} ${row.THEMECODE || ''}`,
+    }, metro, 'seoul');
+  }).filter(Boolean);
+}
+
+export function parseGyeonggiTour(payload, metro = 'GYEONGGI') {
+  const data = payload && payload.data ? payload.data : payload;
+  const items = data && Array.isArray(data.items) ? data.items : (Array.isArray(payload) ? payload : []);
+  return items.map((row) => {
+    const extra = row.additionalFestivalMo || row.additionalDetail || {};
+    const coord = row.coordinate || {};
+    const start = parseYmd(extra.eventStartDate || row.eventStartDate);
+    const end = parseYmd(extra.eventEndDate || row.eventEndDate) || start;
+    if (start && !isUpcomingFestival(start, end)) return null;
+    const image = text(row.imageUrl || row.image);
+    return toCultureFestival({
+      contentId: row.contentId || row.cotId,
+      title: row.title,
+      eventStartDate: start,
+      eventEndDate: end,
+      address: extra.eventPlace || row.addr1 || '경기도',
+      tel: row.tel,
+      overview: extra.eventPlace || extra.playTime,
+      firstImage: image && image.startsWith('http') ? image : (image ? `https://image.ggtour.or.kr${image}` : undefined),
+      mapX: coord.mapX || coord.longitude,
+      mapY: coord.mapY || coord.latitude,
+      kind: extra.eventStatus || row.dbCategory1,
+      categoryHint: extra.eventPlace,
+    }, metro, 'ggc');
+  }).filter(Boolean);
+}
+
+export function parseGyeonggiHtml(html, metro = 'GYEONGGI') {
+  const blocks = String(html || '').match(/<a href="https:\/\/www\.ggcf\.kr\/events\/\d+"[\s\S]*?<\/a>/gi)
+    || String(html || '').match(/<p class="poster_title">[\s\S]*?<p class="date">[\s\S]*?<\/p>/gi)
+    || [];
+  return blocks.map((block) => {
+    const title = stripTags((block.match(/class="poster_title">([\s\S]*?)<\/p>/i) || [])[1] || '');
+    const period = parsePeriod((block.match(/class="date">([\s\S]*?)<\/p>/i) || [])[1] || '');
+    const place = stripTags((block.match(/장소\s*<\/strong>\s*([^<]*)/i) || [])[1] || '경기도');
+    return toCultureFestival({
+      title,
+      eventStartDate: period.start,
+      eventEndDate: period.end,
+      address: place || '경기도',
+      kind: title,
+    }, metro, 'ggcf');
+  }).filter(Boolean);
+}
+
+export function parseIncheonHtml(html, metro = 'INCHEON') {
+  const blocks = String(html || '').match(/<p class="title">[\s\S]*?<\/ul>/gi) || [];
+  return blocks.map((block) => {
+    const title = stripTags((block.match(/class="title">([\s\S]*?)<\/p>/i) || [])[1] || '');
+    const host = stripTags((block.match(/<b>주최<\/b>\s*<span>([\s\S]*?)<\/span>/i) || [])[1] || '');
+    const period = parsePeriod((block.match(/<b>모임기간<\/b>\s*<span>([\s\S]*?)<\/span>/i) || [])[1] || '');
+    const seq = (block.match(/goView\('(\d+)'\)/) || block.match(/eventSn=(\d+)/) || [])[1];
+    const address = host || '인천광역시';
+    const resolved = metroFromPlace(address);
+    if (resolved && resolved !== 'INCHEON' && resolved !== metro) return null;
+    return toCultureFestival({
+      contentId: seq ? `ifac-${seq}` : undefined,
+      title,
+      eventStartDate: period.start,
+      eventEndDate: period.end,
+      address,
+      kind: title,
+      overview: address,
+    }, metro, 'ifac');
+  }).filter(Boolean);
+}
+
+export function parseIncheonCalendar(payload, metro = 'INCHEON') {
+  const days = Array.isArray(payload) ? payload : [];
+  const rows = [];
+  days.forEach((day) => {
+    (day && Array.isArray(day.eventList) ? day.eventList : []).forEach((row) => rows.push(row));
+  });
+  return rows.map((row) => {
+    const address = text(row.facAdresBass || row.facNm) || '인천광역시';
+    const resolved = metroFromPlace(`${row.eventNm || ''} ${address}`);
+    if (resolved && resolved !== 'INCHEON' && resolved !== metro) return null;
+    return toCultureFestival({
+      contentId: row.eventSn != null ? `ifac-${row.eventSn}` : undefined,
+      title: decodeHtml(row.eventNm),
+      eventStartDate: row.eventBgnde,
+      eventEndDate: row.eventEndde,
+      address,
+      tel: row.telno,
+      overview: stripTags(row.eventInfo || row.keyword || ''),
+      mapX: row.facAdresLng,
+      mapY: row.facAdresLat,
+      kind: row.category1,
+      categoryHint: row.keyword,
+    }, metro, 'ifac');
+  }).filter(Boolean);
+}
+
 export function parseGenericHtml(html, metro, source) {
   const titles = [];
   const pats = [
@@ -477,7 +630,140 @@ async function crawlDaegu(options = {}) {
   return parseDaeguEvents(rows, 'DAEGU');
 }
 
+function monthList(now = new Date()) {
+  const month = now.getMonth() + 1;
+  const next = month === 12 ? 1 : month + 1;
+  return [month, next];
+}
+
+async function crawlSeoul(options = {}) {
+  const rawKey = seoulOpenApiKey();
+  const key = encodeURIComponent(rawKey);
+  const sample = rawKey === 'sample';
+  const urls = [];
+  if (sample) {
+    const codes = ['', '축제', '콘서트', '연극', '전시/미술', '클래식', '국악', '무용', '기타'];
+    for (const code of codes) {
+      const suffix = code ? `${encodeURIComponent(code)}/` : '';
+      urls.push(`http://openapi.seoul.go.kr:8088/${key}/json/culturalEventInfo/1/5/${suffix}`);
+    }
+  } else {
+    urls.push(`http://openapi.seoul.go.kr:8088/${key}/json/culturalEventInfo/1/200/`);
+    urls.push(`http://openapi.seoul.go.kr:8088/${key}/json/culturalEventInfo/1/100/${encodeURIComponent('축제')}/`);
+  }
+  const rows = [];
+  for (const url of urls) {
+    try {
+      const payload = await fetchCultureText(url, {
+        fetchImpl: options.fetchImpl,
+        signal: options.signal,
+        asJson: true,
+      });
+      rows.push(...parseSeoulEvents(payload, 'SEOUL'));
+    } catch {
+      // keep going
+    }
+  }
+  return rows;
+}
+
+async function crawlGyeonggi(options = {}) {
+  const rows = [];
+  for (const month of monthList(options.now || new Date())) {
+    for (const page of [1, 2]) {
+      try {
+        const payload = await fetchCultureText(
+          `https://ggtour.or.kr/api/v1/travel-info/festival?month=${month}&page=${page}`,
+          { fetchImpl: options.fetchImpl, signal: options.signal, asJson: true },
+        );
+        rows.push(...parseGyeonggiTour(payload, 'GYEONGGI'));
+      } catch {
+        // keep going
+      }
+    }
+  }
+  try {
+    const html = await fetchCultureText('https://www.ggcf.kr/events', {
+      fetchImpl: options.fetchImpl,
+      signal: options.signal,
+    });
+    if (typeof html === 'string') rows.push(...parseGyeonggiHtml(html, 'GYEONGGI'));
+  } catch {
+    // keep going
+  }
+  return rows;
+}
+
+async function crawlIncheon(options = {}) {
+  const rows = [];
+  try {
+    const html = await fetchCultureText(
+      'https://www.ifac.or.kr/culturalInfo/cuturalEvents/performanceSrch/list.do?key=m2501152621396',
+      { fetchImpl: options.fetchImpl, signal: options.signal },
+    );
+    if (typeof html === 'string') rows.push(...parseIncheonHtml(html, 'INCHEON'));
+  } catch {
+    // keep going
+  }
+  const stamp = (options.now || new Date()).toISOString().slice(0, 10);
+  try {
+    if (options.fetchImpl) {
+      const res = await options.fetchImpl(
+        'https://www.ifac.or.kr/culturalInfo/cuturalEvents/getCulList.do?key=m2501152619820',
+        {
+          method: 'POST',
+          headers: {
+            'User-Agent': UA,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: `date=${stamp}&sw=`,
+          signal: options.signal,
+        },
+      );
+      const payload = res && res.ok ? await res.json() : [];
+      rows.push(...parseIncheonCalendar(payload, 'INCHEON'));
+    } else {
+      const payload = await new Promise((resolve, reject) => {
+        const parsed = new URL('https://www.ifac.or.kr/culturalInfo/cuturalEvents/getCulList.do?key=m2501152619820');
+        const req = https.request({
+          protocol: parsed.protocol,
+          hostname: parsed.hostname,
+          path: parsed.pathname + parsed.search,
+          method: 'POST',
+          headers: {
+            'User-Agent': UA,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Content-Length': Buffer.byteLength(`date=${stamp}&sw=`),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          timeout: 8000,
+        }, (res) => {
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+            catch (err) { reject(err); }
+          });
+        });
+        req.on('timeout', () => req.destroy(new Error('timeout')));
+        req.on('error', reject);
+        req.write(`date=${stamp}&sw=`);
+        req.end();
+      });
+      rows.push(...parseIncheonCalendar(payload, 'INCHEON'));
+    }
+  } catch {
+    // keep going
+  }
+  return rows;
+}
+
 function parseBySource(source, payload, metro) {
+  if (source.id === 'seoul' || source.kind === 'seoul') return parseSeoulEvents(payload, metro);
+  if (source.id === 'ggc' || source.kind === 'ggc') return parseGyeonggiTour(payload, metro);
+  if (source.id === 'ggcf') return parseGyeonggiHtml(payload, metro);
+  if (source.id === 'ifac') return parseIncheonHtml(payload, metro);
   if (source.id === 'bscf') return parseBusanHtml(payload, metro);
   if (source.id === 'ulsan') return parseUlsanHtml(payload, metro);
   if (source.id === 'sjcf') return parseSejongHtml(payload, metro);
@@ -542,13 +828,19 @@ export async function crawlCultureForMetro(metroInput, options = {}) {
   try {
     if (metro === 'DAEGU') {
       items = await crawlDaegu({ ...options, signal });
+    } else if (metro === 'SEOUL') {
+      items = await crawlSeoul({ ...options, signal });
+    } else if (metro === 'GYEONGGI') {
+      items = await crawlGyeonggi({ ...options, signal });
+    } else if (metro === 'INCHEON') {
+      items = await crawlIncheon({ ...options, signal });
     } else {
       for (const source of sources) {
         try {
           const payload = await fetchCultureText(source.url, {
             fetchImpl: options.fetchImpl,
             signal,
-            asJson: source.kind === 'json',
+            asJson: source.kind === 'json' || source.kind === 'seoul' || source.kind === 'ggc',
           });
           const parsed = parseBySource(source, payload, metro);
           items = items.concat(parsed);

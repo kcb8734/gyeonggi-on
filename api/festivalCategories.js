@@ -3,7 +3,7 @@ export const FESTIVAL_CATEGORIES = ['먹거리', '체험', '공연', '문화/예
 const EXCEL_SOURCES = new Set(['excel', 'survey', 'xlsx', 'mcst']);
 const CULTURE_SOURCES = new Set([
   'culture', 'bscf', 'gacf', 'ulsan', 'sjcf', 'jeju', 'gwcf', 'dmgj', 'dcaf', 'dgfca',
-  'seoul', 'ggc', 'ifac', 'muni',
+  'seoul', 'ggc', 'ggcf', 'ifac', 'muni', 'visitkorea',
 ]);
 
 export function normalizeFestivalCategory(value) {
@@ -34,7 +34,7 @@ export function isExcelFestivalSource(source) {
 export function isCultureFestivalSource(source) {
   const value = String(source || '').toLowerCase();
   if (CULTURE_SOURCES.has(value)) return true;
-  return /culture|재단|bscf|gacf|ulsan|sjcf|jeju|gwcf|dmgj|dcaf|dgfca/.test(value);
+  return /culture|재단|bscf|gacf|ulsan|sjcf|jeju|gwcf|dmgj|dcaf|dgfca|seoul|ggc|ggcf|ifac|visitkorea/.test(value);
 }
 
 export function categoryForFestival(item = {}) {

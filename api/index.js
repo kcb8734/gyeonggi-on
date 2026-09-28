@@ -49,6 +49,7 @@ import {
 import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
 import { mergeFestivalSources } from './festivalMerge.js';
 import { crawlCultureForMetro, cultureToHome } from './regionCultureCrawlers.js';
+import { crawlVisitkoreaCalendar } from './visitkoreaCalendar.js';
 import { festivalBelongsToMetro } from './metroGeo.js';
 import { geminiConfigured, summarizeFestival } from './geminiFestival.js';
 import {
@@ -134,9 +135,24 @@ function corsHeaders(req) {
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
   };
-  if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
-    headers['Access-Control-Allow-Origin'] = origin;
-    headers.Vary = 'Origin';
+  let allowed = '';
+  if (!origin) {
+    allowed = '*';
+  } else if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    allowed = origin;
+  } else {
+    try {
+      const host = new URL(origin).hostname;
+      if (host === 'kdanji.com' || host.endsWith('.kdanji.com') || host === 'localhost') {
+        allowed = origin;
+      }
+    } catch (_err) {
+      allowed = '';
+    }
+  }
+  if (allowed) {
+    headers['Access-Control-Allow-Origin'] = allowed;
+    if (allowed !== '*') headers.Vary = 'Origin';
   }
   return headers;
 }
@@ -144,6 +160,14 @@ function corsHeaders(req) {
 function readBody(req) {
   const raw = req.body;
   if (!raw) return {};
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+    try {
+      const parsed = JSON.parse(raw.toString('utf8'));
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
   if (typeof raw === 'string') {
     try {
       const parsed = JSON.parse(raw);
@@ -304,34 +328,89 @@ function homeFromTour(item, metro, areaCode) {
   }, metro, areaCode);
 }
 
+const COLLECT_CACHE = new Map();
+const COLLECT_CACHE_MS = 8 * 60 * 1000;
+
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 async function collectMetroFestivals(metroKey, query = {}) {
   const now = new Date();
+  const cacheKey = [metroKey, query.month || '', query.year || '', query.category || ''].join('|');
+  if (!query.skipCache) {
+    const hit = COLLECT_CACHE.get(cacheKey);
+    if (hit && (Date.now() - hit.at) < COLLECT_CACHE_MS) return hit.value;
+  }
   const [tourResult, persisted, culture] = await Promise.all([
     searchFestival2({
       metro: metroKey,
       areaCode: query.areaCode || METRO_AREA[metroKey],
-      month: query.month || (now.getMonth() + 1),
+      month: query.month || undefined,
       year: query.year || now.getFullYear(),
       category: query.category,
+      numOfRows: 100,
     }).catch((err) => {
       console.warn('[api] tour search', err && err.message ? err.message : err);
       return { festivals: [], source: 'none', metro: metroKey, areaCode: METRO_AREA[metroKey], regionLabel: REGION_LABEL[metroKey] };
     }),
     listPersistedFestivals(metroKey).catch(() => []),
-    crawlCultureForMetro(metroKey, { timeoutMs: 10000 }).catch(() => []),
+    crawlCultureForMetro(metroKey, { timeoutMs: 12000 }).catch(() => []),
   ]);
-  const tourFestivals = (tourResult.festivals || [])
+  const cultureFestivals = (culture || []).map((item) => cultureToHome(item, metroKey));
+  let kfesFestivals = [];
+  if (cultureFestivals.length < 8) {
+    try {
+      const kfes = await withTimeout(
+        crawlVisitkoreaCalendar({
+          year: Number(query.year) || now.getFullYear(),
+          months: [now.getMonth() + 1],
+          metros: [metroKey],
+          maxDays: 4,
+          maxItems: 40,
+        }),
+        7000,
+        { festivals: [] },
+      );
+      kfesFestivals = (kfes.festivals || []).map((item) => cultureToHome({
+        contentId: item.contentId,
+        contentTypeId: item.contentTypeId || '15',
+        title: item.title,
+        address: item.address || item.location_name,
+        eventStartDate: item.eventStartDate || item.start_date,
+        eventEndDate: item.eventEndDate || item.end_date,
+        firstImage: item.firstImage || item.image_url,
+        mapX: item.mapX || item.longitude,
+        mapY: item.mapY || item.latitude,
+        tel: item.tel,
+        overview: item.overview,
+        source: 'visitkorea',
+        metro: item.metro || metroKey,
+        areaCode: METRO_AREA[item.metro || metroKey],
+      }, metroKey));
+    } catch (err) {
+      console.warn('[api] visitkorea', err && err.message ? err.message : err);
+    }
+  }
+  const tourLive = tourResult.source === 'searchFestival2' || tourResult.source === 'cache';
+  let tourFestivals = (tourResult.festivals || [])
     .map((item) => homeFromTour(item, tourResult.metro || metroKey, tourResult.areaCode || METRO_AREA[metroKey]))
     .filter(Boolean);
-  const cultureFestivals = (culture || []).map((item) => cultureToHome(item, metroKey));
-  const festivals = mergeFestivalSources(persisted, cultureFestivals, tourFestivals)
+  if (!tourLive && (cultureFestivals.length || kfesFestivals.length || persisted.length)) {
+    tourFestivals = [];
+  }
+  const festivals = mergeFestivalSources(persisted, cultureFestivals, kfesFestivals, tourFestivals)
     .filter((item) => festivalBelongsToMetro(item, metroKey));
   const sources = [
     persisted.length ? 'db' : null,
     cultureFestivals.length ? 'culture' : null,
+    kfesFestivals.length ? 'visitkorea' : null,
     tourFestivals.length ? tourResult.source : null,
   ].filter(Boolean);
-  return {
+  const result = {
     metro: tourResult.metro || metroKey,
     areaCode: tourResult.areaCode || METRO_AREA[metroKey],
     regionLabel: tourResult.regionLabel || REGION_LABEL[metroKey],
@@ -341,8 +420,11 @@ async function collectMetroFestivals(metroKey, query = {}) {
     tourSource: tourResult.source,
     persisted,
     culture: cultureFestivals,
+    kfes: kfesFestivals,
     tourFestivals,
   };
+  COLLECT_CACHE.set(cacheKey, { at: Date.now(), value: result });
+  return result;
 }
 
 async function listFestivalsLive(req, res) {
@@ -422,7 +504,7 @@ async function syncFestivalsLive(req, res) {
       })),
     );
     const persistCulture = await persistTourFestivals(
-      (result.culture || []).map((item) => ({
+      [...(result.culture || []), ...(result.kfes || [])].map((item) => ({
         contentId: item.contentId,
         title: item.title,
         eventStartDate: item.start_date,
@@ -966,7 +1048,17 @@ async function handler(req, res) {
           category: body.category || query.category || '',
           overview: body.overview || body.description || query.overview || '',
         });
-        send(res, 200, { success: true, data: result }, corsHeaders(req));
+        send(res, 200, {
+          success: true,
+          data: {
+            overview: result.overview,
+            highlights: result.highlights,
+            tips: result.tips,
+            source: result.source,
+            model: result.model,
+            cached: result.cached,
+          },
+        }, corsHeaders(req));
       } catch (err) {
         send(res, err && err.status === 400 ? 400 : 502, {
           success: false,

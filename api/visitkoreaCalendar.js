@@ -30,7 +30,7 @@ function kfesHeaders() {
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
     Referer: KFES_CALENDAR,
-    'User-Agent': 'kdanji-festival-sync/1.0',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   };
 }
 
@@ -160,12 +160,16 @@ export async function crawlVisitkoreaCalendar(input = {}, fetchImpl = fetch) {
   const festivals = [];
   const days = [];
   const singleDay = input.date ? Number(String(input.date).replace(/\D/g, '').slice(6, 8)) : 0;
+  const maxDays = Number(input.maxDays) > 0 ? Number(input.maxDays) : Infinity;
+  const maxItems = Number(input.maxItems) > 0 ? Number(input.maxItems) : Infinity;
 
   for (const month of months) {
+    if (festivals.length >= maxItems || days.length >= maxDays) break;
     const activeDays = singleDay
       ? [singleDay]
       : await fetchCalendarDays(year, month, fetchImpl);
     for (const day of activeDays) {
+      if (festivals.length >= maxItems || days.length >= maxDays) break;
       days.push({ year, month, day });
       const rows = await fetchCalendarDay(year, month, day, fetchImpl);
       rows.forEach((row) => {
