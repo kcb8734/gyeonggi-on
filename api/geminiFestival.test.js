@@ -13,8 +13,10 @@ import {
 
 test('TourAPI 껍데기 개요는 Gemini 대체 대상으로 본다', () => {
   assert.equal(isGenericFestivalOverview('한국관광공사 TourAPI에서 수집한 행사 개요입니다.'), true);
+  assert.equal(isGenericFestivalOverview('한국관광공사에서 수집한 행사 정보입니다. 상세개요가 확인되는대로 자동 반영됩니다.'), true);
   assert.equal(isGenericFestivalOverview('고양 호수공원에서 야외 전시가 이어집니다.'), false);
   assert.equal(isGenericFestivalOverview(''), true);
+  assert.equal(isGenericFestivalOverview('수원화성문화제 상세 개요'), true);
 });
 
 test('모델 JSON 펜스와 핵심 포인트 3개를 정규화한다', () => {

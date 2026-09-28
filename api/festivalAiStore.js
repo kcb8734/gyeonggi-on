@@ -1,4 +1,5 @@
 import { getPool } from './festivalDbSync.js';
+import { isGenericFestivalOverview } from './genericOverview.js';
 
 let tableReady = false;
 
@@ -101,6 +102,7 @@ export async function loadStoredSummary(input, options = {}) {
 
 export async function saveStoredSummary(input, value, options = {}) {
   if (!value || value.source !== 'gemini' || !String(value.overview || '').trim()) return false;
+  if (isGenericFestivalOverview(value.overview)) return false;
   if (value.stored) return true;
   const ident = normalizeIdentity(input);
   if (!ident.titleNorm) return false;

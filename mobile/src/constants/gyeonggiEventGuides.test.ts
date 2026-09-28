@@ -30,12 +30,16 @@ test('다른 권역은 경기 가이드를 강제하지 않는다', () => {
 test('TourAPI 껍데기 개요는 빈 소개로 본다', () => {
   assert.equal(isGenericFestivalOverview('현장 프로그램과 인근 전통시장·캠핑을 On&On+ 추천코스로 이을 수 있습니다.'), true);
   assert.equal(isGenericFestivalOverview('세미원에서 연꽃이 만개합니다.'), false);
+  assert.equal(isGenericFestivalOverview('한국관광공사에서 수집한 행사 정보입니다. 상세개요가 확인되는대로 자동 반영됩니다.'), true);
+  assert.equal(isGenericFestivalOverview('한국관광공사 TourAPI에서 수집한 행사 정보입니다. 상세 개요가 확인되는 대로 자동 반영됩니다.'), true);
+  assert.equal(isGenericFestivalOverview('파주 장단콩축제 상세 개요'), true);
 });
 
 test('관광공사 껍데기와 경기 템플릿은 공식 개요로 쓰지 않는다', () => {
   const named = resolveGyeonggiEventGuide('양평 세미원 연꽃문화제');
   assert.match(officialFestivalOverview('', named), /세미원/);
   assert.equal(officialFestivalOverview('한국관광공사 TourAPI에서 수집한 행사 개요입니다.'), '');
+  assert.equal(officialFestivalOverview('한국관광공사에서 수집한 행사 정보입니다. 상세개요가 확인되는대로 자동 반영됩니다.'), '');
   const generic = gyeonggiEventCopy('양주 회암사지 축제', undefined, 'GYEONGGI');
   assert.equal(officialFestivalOverview(generic?.overview), '');
 });
