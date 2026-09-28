@@ -164,6 +164,24 @@ test('GET /api/tour/nearby without coordinates returns 400', async () => {
   assert.equal(result.status, 400);
 });
 
+test('GET /api/tour/detail/paju-jangdan does not 502', async () => {
+  const result = await invoke({ method: 'GET', url: '/api/tour/detail/paju-jangdan' });
+  assert.equal(result.status, 200);
+  const body = result.body as { success: boolean; data?: { title?: string; overview?: string } };
+  assert.equal(body.success, true);
+  assert.match(String(body.data?.title), /장단콩/);
+});
+
+test('GET UUID tour detail uses title query instead of TourAPI', async () => {
+  const result = await invoke({
+    method: 'GET',
+    url: '/api/tour/detail/f34fee36-df66-4513-a687-9b3a9f208517?title=%EA%B5%AD%EB%A6%BD%EC%96%91%ED%8F%89%EC%B9%98%EC%9C%A0%EC%9D%98%EC%88%B2&address=%EC%96%91%ED%8F%89&metro=GYEONGGI',
+  });
+  assert.equal(result.status, 200);
+  const body = result.body as { success: boolean; data?: { title?: string } };
+  assert.match(String(body.data?.title), /양평|치유/);
+});
+
 test('GET /api/home is not a 404', async () => {
   const result = await invoke({ method: 'GET', url: '/api/home?metro=GYEONGGI' });
   assert.notEqual(result.status, 404);

@@ -296,6 +296,20 @@ export function fallbackTourFestivals(input = {}) {
   return builtinFestivals(resolveFestivalQuery(input));
 }
 
+export function looksLikeKorTourId(contentId) {
+  return /^\d{5,}$/.test(String(contentId || '').trim());
+}
+
+export function findBuiltinTourById(contentId) {
+  const id = String(contentId || '').trim();
+  if (!id) return null;
+  for (const rows of Object.values(BUILTIN_BY_METRO)) {
+    const hit = (rows || []).find((row) => row.contentId === id);
+    if (hit) return { ...hit };
+  }
+  return null;
+}
+
 async function tourGet(path, query, fetchImpl) {
   const key = tourServiceKey();
   if (!key) throw new Error('TOUR_API_SERVICE_KEY 가 없습니다.');

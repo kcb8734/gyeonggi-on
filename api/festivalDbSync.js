@@ -235,7 +235,33 @@ function rowMatchesMetro(row, metro) {
   return false;
 }
 
-export async function listPersistedFestivals(metro = 'GYEONGGI') {
+export async function findPersistedFestivalByContentId(contentId) {
+  const db = getPool();
+  const id = String(contentId || '').trim();
+  if (!db || !id) return null;
+  try {
+    const result = await db.query(
+      `SELECT
+         f.title, f.location_name, f.latitude, f.longitude,
+         f.start_date, f.end_date, f.description, f.category, f.image_url,
+         f.is_trending, f.tour_content_id, f.tel, f.source,
+         f.metro_region,
+         mu.name AS municipality_name,
+         mu.metro_region AS muni_metro
+       FROM festivals f
+       LEFT JOIN municipalities mu ON mu.id = f.municipality_id
+       WHERE f.tour_content_id = $1
+       LIMIT 1`,
+      [id],
+    );
+    const row = result.rows && result.rows[0];
+    if (!row) return null;
+    return rowToHomeFestival(row, row.metro_region || row.muni_metro || 'GYEONGGI');
+  } catch (err) {
+    console.warn('[festival-db-lookup]', err && err.message ? err.message : err);
+    return null;
+  }
+}
   const db = getPool();
   if (!db) return [];
   const zone = normalizeMetroId(metro);

@@ -105,6 +105,7 @@ export function isGenericFestivalOverview(text?: string | null): boolean {
   const compact = value.replace(/\s+/g, '').toLowerCase();
   if (GENERIC_COMPACT_MARKERS.some((marker) => compact.includes(marker))) return true;
   if (compact.length <= 36 && /상세개요$/.test(compact) && !/[.。!?]/.test(value)) return true;
+  if (compact.length <= 40 && !/[.。!?]/.test(value)) return true;
   return false;
 }
 

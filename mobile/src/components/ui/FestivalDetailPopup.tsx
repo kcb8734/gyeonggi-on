@@ -108,9 +108,6 @@ export default function FestivalDetailPopup({
                 <Text style={styles.meta}>담당자 메일 {festival.managerEmail}</Text>
               ) : null}
               {festival.fee ? <Text style={styles.meta}>이용요금 {festival.fee}</Text> : null}
-              {overview ? (
-                <Text style={styles.overview}>{overview}</Text>
-              ) : null}
               {!isFood ? (
                 <FestivalAiSummaryCard
                   title={festival.title}
@@ -122,7 +119,9 @@ export default function FestivalDetailPopup({
                   officialOverview={officialOverview}
                 />
               ) : (
-                overview ? null : (
+                overview ? (
+                  <Text style={styles.overview}>{overview}</Text>
+                ) : (
                   <Text style={styles.overview}>한국관광공사 TourAPI에서 수집한 행사 개요입니다.</Text>
                 )
               )}

@@ -46,7 +46,8 @@ import {
   toHomeFestival,
   tourServiceKey,
 } from './tourLive.js';
-import { listPersistedFestivals, persistTourFestivals } from './festivalDbSync.js';
+import { attachGeminiOverview, resolveTourDetail } from './tourDetailResolve.js';
+import { listPersistedFestivals, persistTourFestivals, findPersistedFestivalByContentId } from './festivalDbSync.js';
 import { mergeFestivalSources } from './festivalMerge.js';
 import { crawlCultureForMetro, cultureToHome } from './regionCultureCrawlers.js';
 import { crawlVisitkoreaCalendar } from './visitkoreaCalendar.js';
@@ -625,6 +626,17 @@ async function listTourNearby(req, res) {
   }
 }
 
+async function findCachedFestival(contentId) {
+  const id = String(contentId || '').trim();
+  if (!id) return null;
+  for (const hit of COLLECT_CACHE.values()) {
+    const rows = (hit && hit.value && hit.value.festivals) || [];
+    const found = rows.find((row) => String(row.contentId) === id || String(row.id) === `tour-${id}`);
+    if (found) return found;
+  }
+  return findPersistedFestivalByContentId(id);
+}
+
 async function getTourDetail(req, res, contentId) {
   const headers = corsHeaders(req);
   if (String(req.method || '').toUpperCase() === 'OPTIONS') {
@@ -633,10 +645,14 @@ async function getTourDetail(req, res, contentId) {
   }
   const query = readQuery(req);
   try {
-    const detail = await getTourDetail2(contentId, query.contentTypeId);
-    send(res, 200, { success: true, data: detail }, headers);
+    const detail = await resolveTourDetail(contentId, query, {
+      getTourDetail2,
+      findCached: findCachedFestival,
+    });
+    const withAi = await attachGeminiOverview(detail, query);
+    send(res, 200, { success: true, data: withAi }, headers);
   } catch (err) {
-    send(res, 502, {
+    send(res, err && err.status === 404 ? 404 : 502, {
       success: false,
       message: err && err.message ? err.message : '관광 상세 조회에 실패했습니다.',
     }, headers);

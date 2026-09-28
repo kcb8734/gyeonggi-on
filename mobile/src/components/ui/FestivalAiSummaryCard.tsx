@@ -68,34 +68,37 @@ export default function FestivalAiSummaryCard({
   const sourceLabel = data?.source === 'gemini'
     ? ((data.stored || data.cached) ? '저장된 Gemini 요약' : 'Gemini 요약')
     : 'AI 안내 요약';
+  const overviewText = loading
+    ? (replaceOverview ? '' : officialOverview)
+    : (data?.source === 'gemini'
+      ? (data.overview || '')
+      : (!replaceOverview ? officialOverview : ''));
+  const overviewPending = loading && replaceOverview;
+  const overviewFailed = !loading && !overviewText;
 
   return (
     <View style={styles.wrap} accessibilityLabel="축제 AI 요약">
-      {replaceOverview ? (
-        <View style={styles.block}>
-          {embedded ? null : (
-            <View style={styles.head}>
-              <Text style={styles.kicker}>{loading ? '상세 개요' : sourceLabel}</Text>
-              {loading ? <ActivityIndicator size="small" color="#6D28D9" /> : null}
-            </View>
-          )}
-          {embedded && loading ? (
-            <View style={styles.head}>
-              <Text style={styles.kicker}>{sourceLabel}</Text>
-              <ActivityIndicator size="small" color="#6D28D9" />
-            </View>
-          ) : null}
-          {loading ? (
-            <Text style={styles.pending}>한국관광공사 상세 개요가 없어 Gemini 요약을 준비하고 있습니다</Text>
-          ) : (
-            <Text style={styles.body}>
-              {data?.source === 'gemini'
-                ? (data.overview || '상세 개요를 아직 만들지 못했습니다')
-                : (error || 'Gemini 상세 개요를 아직 만들지 못했습니다. 화면을 다시 열면 재시도합니다.')}
-            </Text>
-          )}
-        </View>
-      ) : null}
+      <View style={styles.block}>
+        {embedded ? null : (
+          <View style={styles.head}>
+            <Text style={styles.kicker}>{loading ? '상세 개요' : sourceLabel}</Text>
+            {loading ? <ActivityIndicator size="small" color="#6D28D9" /> : null}
+          </View>
+        )}
+        {embedded && loading ? (
+          <View style={styles.head}>
+            <Text style={styles.kicker}>{sourceLabel}</Text>
+            <ActivityIndicator size="small" color="#6D28D9" />
+          </View>
+        ) : null}
+        {overviewPending ? (
+          <Text style={styles.pending}>한국관광공사 상세 개요가 없어 Gemini 요약을 준비하고 있습니다</Text>
+        ) : overviewFailed ? (
+          <Text style={styles.body}>{error || 'Gemini 상세 개요를 아직 만들지 못했습니다. 화면을 다시 열면 재시도합니다.'}</Text>
+        ) : (
+          <Text style={styles.body}>{overviewText}</Text>
+        )}
+      </View>
 
       <View style={styles.card}>
         <View style={styles.head}>

@@ -173,11 +173,40 @@ export async function fetchTourNearby(params: {
   ];
 }
 
-export async function fetchTourDetail(contentId: string, contentTypeId?: string): Promise<TourDetail> {
+export async function fetchTourDetail(
+  contentId: string,
+  contentTypeId?: string,
+  extra: {
+    title?: string;
+    address?: string;
+    metro?: string;
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    tel?: string;
+    homepage?: string;
+    imageUrl?: string;
+    latitude?: number;
+    longitude?: number;
+  } = {},
+): Promise<TourDetail> {
   try {
     const res = await api.get<TourDetailResponse>(`/api/tour/detail/${contentId}`, {
-      timeout: 15000,
-      params: { contentTypeId },
+      timeout: 20000,
+      params: {
+        contentTypeId,
+        title: extra.title,
+        address: extra.address,
+        metro: extra.metro,
+        startDate: extra.startDate,
+        endDate: extra.endDate,
+        category: extra.category,
+        tel: extra.tel,
+        homepage: extra.homepage,
+        imageUrl: extra.imageUrl,
+        latitude: extra.latitude,
+        longitude: extra.longitude,
+      },
     });
     if (res.data?.data) return res.data.data;
   } catch {
@@ -213,7 +242,7 @@ export async function fetchTourDetail(contentId: string, contentTypeId?: string)
       contentId,
       contentTypeId: contentTypeId ?? '15',
       title: '축제 상세',
-      overview: '한국관광공사에서 수집한 행사 정보입니다. 상세 개요가 확인되는 대로 자동 반영됩니다.',
+      overview: '',
       address: '주소 확인 중',
       tel: undefined,
       mapX: 0,
