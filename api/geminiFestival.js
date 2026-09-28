@@ -3,11 +3,39 @@ import { isGenericFestivalOverview } from './genericOverview.js';
 export { isGenericFestivalOverview } from './genericOverview.js';
 
 /**
- * 신규 Gemini 키는 1.5/2.5 모델 id를 못 쓰는 경우가 많다.
- * 이 프롬프트는 gemini-flash-latest JSON이 가장 안정적이고,
- * gemini-3.6-flash는 출력이 잘리면 파싱에 실패할 수 있다.
+ * flash-latest는 Gemini 3.8로 바뀌면 thinkingBudget·MINIMAL·temperature를 거절한다.
+ * 축제 JSON은 3.6 MINIMAL이 싸고 안정적이라 먼저 쓰고, 3.8 계열은 LOW만 보낸다.
  */
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash'];
+const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-flash-latest'];
+
+/** thinkingBudget과 thinkingLevel을 같이 보내면 Gemini가 400으로 거절한다. */
+export function thinkingConfigFor(model) {
+  const name = String(model || '').toLowerCase();
+  if (/3\.6|3\.5|3-flash-preview/.test(name)) {
+    return { thinkingLevel: 'minimal' };
+  }
+  if (/3\.8|3\.7|3\.1|flash-latest|gemini-3/.test(name)) {
+    return { thinkingLevel: 'low' };
+  }
+  return { thinkingBudget: 0 };
+}
+
+export function generationConfigFor(model, options = {}) {
+  const name = String(model || '').toLowerCase();
+  const is38Family = /3\.8|flash-latest/.test(name);
+  const config = {
+    maxOutputTokens: is38Family ? 8192 : 2048,
+    responseMimeType: 'application/json',
+  };
+  if (!is38Family) config.temperature = 0.4;
+  if (!options.omitThinking) config.thinkingConfig = thinkingConfigFor(model);
+  return config;
+}
+
+export function isThinkingConfigError(err) {
+  const msg = String(err?.message || err || '');
+  return /thinking budget|thinking level|thinkingConfig|thinking_budget|thinking_level|temperature/i.test(msg);
+}
 
 const cache = new Map();
 const inflight = new Map();
@@ -133,7 +161,7 @@ export function buildPrompt(input) {
   ].join('\n');
 }
 
-async function generateWithModel(model, prompt, key, fetchImpl, timeoutMs) {
+async function generateOnce(model, prompt, key, fetchImpl, timeoutMs, generationConfig) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -144,15 +172,7 @@ async function generateWithModel(model, prompt, key, fetchImpl, timeoutMs) {
       signal: controller.signal,
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json',
-          thinkingConfig: {
-            thinkingBudget: 0,
-            thinkingLevel: 'MINIMAL',
-          },
-        },
+        generationConfig,
       }),
     });
     const body = await res.json().catch(() => ({}));
@@ -166,6 +186,15 @@ async function generateWithModel(model, prompt, key, fetchImpl, timeoutMs) {
     return parseModelJson(text);
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function generateWithModel(model, prompt, key, fetchImpl, timeoutMs) {
+  try {
+    return await generateOnce(model, prompt, key, fetchImpl, timeoutMs, generationConfigFor(model));
+  } catch (err) {
+    if (Number(err?.status) === 429 || !isThinkingConfigError(err)) throw err;
+    return generateOnce(model, prompt, key, fetchImpl, timeoutMs, generationConfigFor(model, { omitThinking: true }));
   }
 }
 
