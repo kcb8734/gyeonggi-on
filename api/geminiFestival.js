@@ -91,6 +91,8 @@ export function localFestivalSummary(input) {
 }
 
 function remember(key, value) {
+  if (!value || value.source !== 'gemini') return;
+  if (isGenericFestivalOverview(value.overview)) return;
   cache.set(key, { at: Date.now(), value });
   if (cache.size <= CACHE_LIMIT) return;
   const oldest = cache.keys().next().value;
@@ -146,6 +148,10 @@ async function generateWithModel(model, prompt, key, fetchImpl, timeoutMs) {
           temperature: 0.4,
           maxOutputTokens: 2048,
           responseMimeType: 'application/json',
+          thinkingConfig: {
+            thinkingBudget: 0,
+            thinkingLevel: 'MINIMAL',
+          },
         },
       }),
     });
@@ -167,7 +173,7 @@ async function summarizeFestivalUncached(input, options, key) {
   const store = options.store === undefined ? await getDefaultStore() : options.store;
   if (store && typeof store.load === 'function') {
     const stored = await store.load(input);
-    if (stored && stored.overview) {
+    if (stored && stored.overview && !isGenericFestivalOverview(stored.overview)) {
       const value = { ...stored, source: 'gemini', cached: true, stored: true };
       remember(key, value);
       return value;
@@ -181,12 +187,11 @@ async function summarizeFestivalUncached(input, options, key) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   if (!apiKey || typeof fetchImpl !== 'function') {
     const value = { ...fallback, source: 'fallback' };
-    remember(key, value);
     return { ...value, cached: false };
   }
 
   const prompt = buildPrompt(input);
-  const timeoutMs = Number(options.timeoutMs) || 12000;
+  const timeoutMs = Number(options.timeoutMs) || 20000;
   const models = options.models || GEMINI_MODELS;
   let lastError = null;
   for (const model of models) {
@@ -206,7 +211,6 @@ async function summarizeFestivalUncached(input, options, key) {
   }
 
   const value = { ...fallback, source: 'fallback', error: lastError ? String(lastError.message || lastError) : undefined };
-  remember(key, value);
   return { ...value, cached: false };
 }
 

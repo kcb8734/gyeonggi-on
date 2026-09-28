@@ -129,3 +129,22 @@ test('Gemini 상세만 저장하고 같은 축제는 재사용한다', async () 
   assert.equal(loaded.stored, true);
   assert.equal(loaded.source, 'gemini');
 });
+
+test('저장된 껍데기 개요는 읽지 않고 Gemini를 다시 치게 한다', async () => {
+  resetAiSummaryTableFlag();
+  const pool = fakePool([{
+    cache_key: '양주 회암사지 축제|GYEONGGI',
+    title_norm: '양주 회암사지 축제',
+    metro: 'GYEONGGI',
+    overview: '한국관광공사에서 수집한 행사 정보입니다. 상세개요가 확인되는대로 자동 반영됩니다.',
+    highlights: ['대기'],
+    tips: '대기',
+    model: 'gemini-flash-latest',
+    source: 'gemini',
+  }]);
+  const loaded = await loadStoredSummary({
+    title: '양주 회암사지 축제',
+    metro: 'GYEONGGI',
+  }, { pool });
+  assert.equal(loaded, null);
+});

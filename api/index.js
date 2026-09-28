@@ -1058,6 +1058,7 @@ async function handler(req, res) {
             model: result.model,
             cached: result.cached,
             stored: Boolean(result.stored),
+            error: result.error || undefined,
           },
         }, corsHeaders(req));
       } catch (err) {
