@@ -21,5 +21,7 @@ export function isGenericFestivalOverview(text) {
   const compact = compactOverviewText(value);
   if (GENERIC_COMPACT_MARKERS.some((marker) => compact.includes(marker))) return true;
   if (compact.length <= 36 && /상세개요$/.test(compact) && !/[.。!?]/.test(value)) return true;
+  // 장소명·부스명만 있는 한 줄은 상세 개요가 아니다.
+  if (compact.length <= 40 && !/[.。!?]/.test(value)) return true;
   return false;
 }

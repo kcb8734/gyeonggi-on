@@ -90,7 +90,19 @@ export default function FestivalDetailScreen({
     fetchRecommendedCourse(seed).then((data) => {
       if (!cancelled && data) setCourse(data);
     });
-    fetchTourDetail(contentId, contentTypeId)
+    fetchTourDetail(contentId, contentTypeId, {
+      title: fallbackTitle || known?.title,
+      address: fallbackAddress || known?.location_name,
+      metro: fallbackMetro,
+      startDate: known?.start_date,
+      endDate: known?.end_date,
+      category: known?.category,
+      tel: fallbackTel || known?.tel,
+      homepage: fallbackHomepage || known?.homepage,
+      imageUrl: fallbackImageUrl || known?.image_url,
+      latitude: fallbackLatitude ?? known?.latitude,
+      longitude: fallbackLongitude ?? known?.longitude,
+    })
       .then((data) => {
         if (!cancelled) {
           const genericTitle = !data.title || data.title === '축제 상세';
@@ -236,7 +248,6 @@ export default function FestivalDetailScreen({
 
         <View style={styles.card}>
           <Text style={styles.label}>상세 개요</Text>
-          {overview ? <Text style={styles.overview}>{overview}</Text> : null}
           {!isRestaurant ? (
             <FestivalAiSummaryCard
               title={detail.title || fallbackTitle || '축제'}
@@ -249,7 +260,10 @@ export default function FestivalDetailScreen({
               embedded
             />
           ) : (
-            overview ? null : <Text style={styles.overview}>{EMPTY_COPY.overview}</Text>
+            <>
+              {overview ? <Text style={styles.overview}>{overview}</Text> : null}
+              {overview ? null : <Text style={styles.overview}>{EMPTY_COPY.overview}</Text>}
+            </>
           )}
           {homepageUrl ? (
             <TouchableOpacity style={styles.linkBtn} onPress={() => Linking.openURL(homepageUrl)}>
