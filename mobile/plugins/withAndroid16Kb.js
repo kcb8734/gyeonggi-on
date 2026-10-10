@@ -42,8 +42,8 @@ afterEvaluate {
 
 const PROJECT_HOOK = `
 // ${PROJECT_MARKER}
-subprojects { sub ->
-    sub.afterEvaluate {
+gradle.projectsEvaluated {
+    subprojects.each { sub ->
         def androidExt = sub.extensions.findByName("android")
         if (androidExt == null) return
         if (new File(sub.projectDir, "CMakeLists.txt").exists()) {

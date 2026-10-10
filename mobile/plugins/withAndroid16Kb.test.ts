@@ -38,6 +38,7 @@ test('gradle.properties enables official AGP 8.5-or-lower 16KB packaging fallbac
 test('root build.gradle injects 16KB CMake/ndk-build linker flags', () => {
   const first = plugin.apply16kbProjectBuildGradle('apply plugin: "com.facebook.react.rootproject"\n');
   assert.match(first, new RegExp(plugin.PROJECT_MARKER));
+  assert.match(first, /gradle\.projectsEvaluated/);
   assert.match(first, /max-page-size=16384/);
   assert.match(first, /ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON/);
   assert.equal(plugin.apply16kbProjectBuildGradle(first), first);
