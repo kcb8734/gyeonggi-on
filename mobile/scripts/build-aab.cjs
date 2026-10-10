@@ -29,6 +29,7 @@ const {
   patchExpoModulesCoreForCompileSdk36,
   patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
+const { patchPlayQualityFiles } = require('../plugins/withAndroidPlayQuality');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -191,6 +192,10 @@ function ensureSdk36Gradle() {
   if (patchReactNativeScreensKotlinList(root)) {
     log('[build:aab] react-native-screens ScreenStack.kt removeLast 충돌을 패치했습니다.');
   }
+  const playQuality = patchPlayQualityFiles(root);
+  if (playQuality.length) {
+    log(`[build:aab] Play 품질 패치: ${playQuality.join(', ')} (R8 minify + enableEdgeToEdge)`);
+  }
 }
 
 function ensureSplashColor() {
@@ -225,6 +230,25 @@ function verifyReleaseManifest(versionName, versionCode) {
     fail(`versionName 불일치: 매니페스트=${name ? name[1] : '없음'} app.json=${versionName}`);
   }
   log(`[build:aab] 매니페스트 확인 minSdkVersion=${minSdkValue} versionName=${name[1]} versionCode=${code[1]}`);
+}
+
+function verifyPlayQuality() {
+  const props = fs.readFileSync(path.join(root, 'android', 'gradle.properties'), 'utf8');
+  if (!/android\.enableProguardInReleaseBuilds=true/.test(props)) {
+    fail('android.enableProguardInReleaseBuilds=true 가 필요합니다 (Play DEX 최적화).');
+  }
+  const activity = fs.readFileSync(
+    path.join(root, 'android', 'app', 'src', 'main', 'java', 'kr', 'gyeonggion', 'app', 'MainActivity.kt'),
+    'utf8',
+  );
+  if (!activity.includes('enableEdgeToEdge()')) {
+    fail('MainActivity에 enableEdgeToEdge() 가 필요합니다 (Android 15 넓은 화면).');
+  }
+  const mapping = path.join(root, 'android', 'app', 'build', 'outputs', 'mapping', 'release', 'mapping.txt');
+  if (!fs.existsSync(mapping)) {
+    fail(`R8 mapping.txt 가 없습니다. minifyEnabled가 꺼져 있을 수 있습니다: ${mapping}`);
+  }
+  log('[build:aab] Play 품질 확인 minify=true enableEdgeToEdge=true mapping.txt=ok');
 }
 
 function restoreExpoStartScripts() {
@@ -308,6 +332,7 @@ function main() {
 
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
   verifyReleaseManifest(versionName, versionCode);
+  verifyPlayQuality();
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
   const stat = fs.statSync(copiedAab);
