@@ -65,6 +65,14 @@ function applyPlayProguardRules(source) {
   return `${source.replace(/\s*$/, '')}\n${EXTRA_PROGUARD}`;
 }
 
+function applyActivityKtxDependency(gradle) {
+  if (gradle.includes('androidx.activity:activity-ktx')) return gradle;
+  return gradle.replace(
+    'implementation("com.facebook.react:react-android")',
+    'implementation("com.facebook.react:react-android")\n    implementation("androidx.activity:activity-ktx:1.9.3")',
+  );
+}
+
 function applyEdgeToEdgeStyles(xml) {
   if (xml.includes('windowLayoutInDisplayCutoutMode')) return xml;
   if (!xml.includes('android:statusBarColor')) return xml;
@@ -83,6 +91,7 @@ function patchPlayQualityFiles(projectRoot) {
   const activity = path.join(androidRoot, 'app/src/main/java/kr/gyeonggion/app/MainActivity.kt');
   const proguard = path.join(androidRoot, 'app/proguard-rules.pro');
   const styles = path.join(androidRoot, 'app/src/main/res/values/styles.xml');
+  const appGradle = path.join(androidRoot, 'app/build.gradle');
   const patched = [];
   if (fs.existsSync(propsFile)) {
     const before = fs.readFileSync(propsFile, 'utf8');
@@ -106,6 +115,14 @@ function patchPlayQualityFiles(projectRoot) {
     if (next !== before) {
       fs.writeFileSync(proguard, next);
       patched.push('proguard-rules.pro');
+    }
+  }
+  if (fs.existsSync(appGradle)) {
+    const before = fs.readFileSync(appGradle, 'utf8');
+    const next = applyActivityKtxDependency(before);
+    if (next !== before) {
+      fs.writeFileSync(appGradle, next);
+      patched.push('app/build.gradle');
     }
   }
   if (fs.existsSync(styles)) {
@@ -149,4 +166,5 @@ module.exports.applyPlayQualityGradlePropertiesText = applyPlayQualityGradleProp
 module.exports.applyEdgeToEdgeMainActivity = applyEdgeToEdgeMainActivity;
 module.exports.applyPlayProguardRules = applyPlayProguardRules;
 module.exports.applyEdgeToEdgeStyles = applyEdgeToEdgeStyles;
+module.exports.applyActivityKtxDependency = applyActivityKtxDependency;
 module.exports.patchPlayQualityFiles = patchPlayQualityFiles;

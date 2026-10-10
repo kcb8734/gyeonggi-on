@@ -8,6 +8,7 @@ const plugin = require('./withAndroidPlayQuality.js') as {
   applyEdgeToEdgeMainActivity: (text: string) => string;
   applyPlayProguardRules: (text: string) => string;
   applyEdgeToEdgeStyles: (text: string) => string;
+  applyActivityKtxDependency: (text: string) => string;
 };
 
 test('release minify and shrink flags are turned on', () => {
@@ -40,6 +41,13 @@ test('proguard keeps React Native and app classes', () => {
   assert.match(next, /com\.facebook\.react\.\*\*/);
   assert.match(next, /kr\.gyeonggion\.app\.\*\*/);
   assert.equal(plugin.applyPlayProguardRules(next), next);
+});
+
+test('app build.gradle gets activity-ktx for enableEdgeToEdge', () => {
+  const next = plugin.applyActivityKtxDependency(
+    'dependencies {\n    implementation("com.facebook.react:react-android")\n}\n',
+  );
+  assert.match(next, /androidx\.activity:activity-ktx:1\.9\.3/);
 });
 
 test('styles request display-cutout edge-to-edge', () => {
