@@ -48,7 +48,7 @@ import {
 } from './tourLive.js';
 import { attachGeminiOverview, resolveTourDetail } from './tourDetailResolve.js';
 import { listPersistedFestivals, persistTourFestivals, findPersistedFestivalByContentId } from './festivalDbSync.js';
-import { mergeFestivalSources } from './festivalMerge.js';
+import { assembleCollectedFestivals, mergeFestivalSources } from './festivalMerge.js';
 import { crawlCultureForMetro, cultureToHome } from './regionCultureCrawlers.js';
 import { crawlVisitkoreaCalendar } from './visitkoreaCalendar.js';
 import { festivalBelongsToMetro } from './metroGeo.js';
@@ -346,7 +346,7 @@ async function collectMetroFestivals(metroKey, query = {}) {
     const hit = COLLECT_CACHE.get(cacheKey);
     if (hit && (Date.now() - hit.at) < COLLECT_CACHE_MS) return hit.value;
   }
-  const [tourResult, persisted, culture] = await Promise.all([
+  const [tourResult, persisted, culture, kfes] = await Promise.all([
     searchFestival2({
       metro: metroKey,
       areaCode: query.areaCode || METRO_AREA[metroKey],
@@ -356,73 +356,60 @@ async function collectMetroFestivals(metroKey, query = {}) {
       numOfRows: 100,
     }).catch((err) => {
       console.warn('[api] tour search', err && err.message ? err.message : err);
-      return { festivals: [], source: 'none', metro: metroKey, areaCode: METRO_AREA[metroKey], regionLabel: REGION_LABEL[metroKey] };
+      return { festivals: fallbackTourFestivals({ metro: metroKey }), source: 'fallback', metro: metroKey, areaCode: METRO_AREA[metroKey], regionLabel: REGION_LABEL[metroKey] };
     }),
     listPersistedFestivals(metroKey).catch(() => []),
     crawlCultureForMetro(metroKey, { timeoutMs: 12000 }).catch(() => []),
+    withTimeout(
+      crawlVisitkoreaCalendar({
+        year: Number(query.year) || now.getFullYear(),
+        months: [now.getMonth() + 1],
+        metros: [metroKey],
+        maxDays: 4,
+        maxItems: 40,
+      }),
+      7000,
+      { festivals: [] },
+    ).catch(() => ({ festivals: [] })),
   ]);
   const cultureFestivals = (culture || []).map((item) => cultureToHome(item, metroKey));
-  let kfesFestivals = [];
-  if (cultureFestivals.length < 8) {
-    try {
-      const kfes = await withTimeout(
-        crawlVisitkoreaCalendar({
-          year: Number(query.year) || now.getFullYear(),
-          months: [now.getMonth() + 1],
-          metros: [metroKey],
-          maxDays: 4,
-          maxItems: 40,
-        }),
-        7000,
-        { festivals: [] },
-      );
-      kfesFestivals = (kfes.festivals || []).map((item) => cultureToHome({
-        contentId: item.contentId,
-        contentTypeId: item.contentTypeId || '15',
-        title: item.title,
-        address: item.address || item.location_name,
-        eventStartDate: item.eventStartDate || item.start_date,
-        eventEndDate: item.eventEndDate || item.end_date,
-        firstImage: item.firstImage || item.image_url,
-        mapX: item.mapX || item.longitude,
-        mapY: item.mapY || item.latitude,
-        tel: item.tel,
-        overview: item.overview,
-        source: 'visitkorea',
-        metro: item.metro || metroKey,
-        areaCode: METRO_AREA[item.metro || metroKey],
-      }, metroKey));
-    } catch (err) {
-      console.warn('[api] visitkorea', err && err.message ? err.message : err);
-    }
-  }
-  const tourLive = tourResult.source === 'searchFestival2' || tourResult.source === 'cache';
-  let tourFestivals = (tourResult.festivals || [])
-    .map((item) => homeFromTour(item, tourResult.metro || metroKey, tourResult.areaCode || METRO_AREA[metroKey]))
-    .filter(Boolean);
-  if (!tourLive && (cultureFestivals.length || kfesFestivals.length || persisted.length)) {
-    tourFestivals = [];
-  }
-  const festivals = mergeFestivalSources(persisted, cultureFestivals, kfesFestivals, tourFestivals)
-    .filter((item) => festivalBelongsToMetro(item, metroKey));
-  const sources = [
-    persisted.length ? 'db' : null,
-    cultureFestivals.length ? 'culture' : null,
-    kfesFestivals.length ? 'visitkorea' : null,
-    tourFestivals.length ? tourResult.source : null,
-  ].filter(Boolean);
+  const kfesFestivals = (kfes.festivals || []).map((item) => cultureToHome({
+    contentId: item.contentId,
+    contentTypeId: item.contentTypeId || '15',
+    title: item.title,
+    address: item.address || item.location_name,
+    eventStartDate: item.eventStartDate || item.start_date,
+    eventEndDate: item.eventEndDate || item.end_date,
+    firstImage: item.firstImage || item.image_url,
+    mapX: item.mapX || item.longitude,
+    mapY: item.mapY || item.latitude,
+    tel: item.tel,
+    overview: item.overview,
+    source: 'visitkorea',
+    metro: item.metro || metroKey,
+    areaCode: METRO_AREA[item.metro || metroKey],
+  }, metroKey));
+  const assembled = assembleCollectedFestivals({
+    metroKey,
+    tourResult,
+    persisted,
+    cultureFestivals,
+    kfesFestivals,
+    mapTour: (item) => homeFromTour(item, tourResult.metro || metroKey, tourResult.areaCode || METRO_AREA[metroKey]),
+    belongsToMetro: festivalBelongsToMetro,
+  });
   const result = {
     metro: tourResult.metro || metroKey,
     areaCode: tourResult.areaCode || METRO_AREA[metroKey],
     regionLabel: tourResult.regionLabel || REGION_LABEL[metroKey],
     lDongRegnCd: tourResult.lDongRegnCd,
-    festivals,
-    source: sources.join('+') || 'none',
+    festivals: assembled.festivals,
+    source: assembled.source,
     tourSource: tourResult.source,
     persisted,
     culture: cultureFestivals,
     kfes: kfesFestivals,
-    tourFestivals,
+    tourFestivals: assembled.tourFestivals,
   };
   COLLECT_CACHE.set(cacheKey, { at: Date.now(), value: result });
   return result;
@@ -448,6 +435,7 @@ async function listFestivalsLive(req, res) {
       regionLabel: result.regionLabel,
       count: festivals.length,
       source: result.source,
+      tourSource: result.tourSource,
       festivals: festivals,
       data: festivals,
       message: festivals.length ? '권역 축제 목록' : 'TourAPI 목록이 비어 있습니다.',
@@ -458,7 +446,7 @@ async function listFestivalsLive(req, res) {
     const builtin = fallbackTourFestivals({ metro: metroKey, areaCode: METRO_AREA[metroKey] })
       .map((item) => homeFromTour(item, metroKey, METRO_AREA[metroKey]))
       .filter(Boolean);
-    const festivals = (persisted.length ? persisted : builtin)
+    const festivals = mergeFestivalSources(persisted, builtin)
       .filter((item) => festivalBelongsToMetro(item, metroKey));
     send(res, 200, {
       success: true,
