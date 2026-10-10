@@ -1,0 +1,18 @@
+온앤온+ Play Console 업로드 (1.0.21 / versionCode 21)
+
+파일: onandon_plus_1.0.21_vc21.aab
+패키지: kr.gyeonggion.app
+versionName: 1.0.21
+versionCode: 21
+서명 SHA-1: C6:5A:7E:EA:D7:87:C3:84:B8:B2:5E:E5:D4:DB:2F:F0:C1:B7:C5:D1
+
+업로드
+1. Play Console → 온앤온+ (kr.gyeonggion.app)
+2. 테스트 및 출시 → 프로덕션(또는 내부/비공개 테스트) → 새 버전 만들기
+3. 이 AAB만 업로드 (.jks / PEM / APK 금지)
+4. versionCode가 콘솔의 마지막 버전보다 큰지 확인 (이번 빌드는 21)
+
+서명 키가 다르면
+콘솔 업로드 키 SHA-1이 30:70:7C:14:… 이면, 이전에 요청한 업로드 키 재설정이
+아직 반영되지 않은 것입니다. 재설정 승인 후에 이 파일을 올리세요.
+재설정용 PEM은 기존 PR #97의 upload_certificate.pem 입니다. 새 키를 만들지 마세요.
