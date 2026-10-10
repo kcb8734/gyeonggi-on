@@ -32,7 +32,7 @@ test('app build.gradle gets compressed JNI packaging and a 16KB align hook', () 
 test('gradle.properties enables official AGP 8.5-or-lower 16KB packaging fallback', () => {
   const next = plugin.apply16kbGradlePropertiesText('expo.useLegacyPackaging=false\n');
   assert.match(next, /expo\.useLegacyPackaging=true/);
-  assert.match(next, /android\.bundle\.enableUncompressedNativeLibs=false/);
+  assert.doesNotMatch(next, /android\.bundle\.enableUncompressedNativeLibs/);
 });
 
 test('root build.gradle injects 16KB CMake/ndk-build linker flags', () => {

@@ -14,7 +14,6 @@ const LINKER_FLAGS = '-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384';
 
 const PACKAGING_PROPS = {
   'expo.useLegacyPackaging': 'true',
-  'android.bundle.enableUncompressedNativeLibs': 'false',
 };
 
 const GRADLE_HOOK = `
