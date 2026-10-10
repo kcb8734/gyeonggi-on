@@ -8,21 +8,23 @@ const GRADLE_HOOK = `
 def ${MARKER} = {
     def script = new File(rootDir, "../scripts/align-elf-16kb.py")
     if (!script.exists()) throw new GradleException("16KB aligner missing: \${script}")
-    exec {
-        commandLine "python3", script.absolutePath, "\${project.buildDir}/intermediates"
+    def roots = [
+        new File(project.buildDir, "intermediates/merged_native_libs"),
+        new File(project.buildDir, "intermediates/stripped_native_libs"),
+        new File(project.buildDir, "intermediates/merged_jni_libs"),
+    ].findAll { it.exists() }
+    if (roots) {
+        exec {
+            commandLine(["python3", script.absolutePath] + roots.collect { it.absolutePath })
+        }
     }
 }
-def ${MARKER}Attach = { task ->
-    if (task.name == "mergeReleaseNativeLibs" || task.name == "stripReleaseDebugSymbols") {
-        task.doLast { ${MARKER}() }
-    }
-    if (task.name == "packageReleaseBundle") {
-        task.doFirst { ${MARKER}() }
-    }
-}
-tasks.whenTaskAdded { task -> ${MARKER}Attach(task) }
 afterEvaluate {
-    tasks.each { task -> ${MARKER}Attach(task) }
+    def pkg = tasks.findByName("packageReleaseBundle")
+    if (pkg != null && !pkg.ext.has("${MARKER}")) {
+        pkg.ext.${MARKER} = true
+        pkg.doFirst { ${MARKER}() }
+    }
 }
 `;
 
