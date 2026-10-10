@@ -1,11 +1,11 @@
-온앤온+ Play Console 업로드 (1.0.24 / versionCode 24)
+온앤온+ Play Console 업로드 (1.0.25 / versionCode 25)
 
-파일: onandon_plus_1.0.24_vc24.aab
+파일: onandon_plus_1.0.25_vc25.aab
 패키지: kr.gyeonggion.app
-versionName: 1.0.24
-versionCode: 24
+versionName: 1.0.25
+versionCode: 25
 minSdkVersion: 24
-16KB 페이지: arm64 native .so LOAD align 0x4000
+16KB 페이지: compressed JNI (useLegacyPackaging), arm64/x86_64 LOAD 2**14, GNU_RELRO 16KB
 DEX: R8 minify
 Android 15: enableEdgeToEdge()
 
@@ -16,4 +16,4 @@ Android 15: enableEdgeToEdge()
 2. 테스트 및 출시 → 프로덕션(또는 내부/비공개 테스트) → 새 버전 만들기
 3. 이 AAB만 업로드 (.jks / PEM / APK 금지)
 
-이전 1.0.19 / 1.0.21 / 1.0.22 / 1.0.23 파일은 쓰지 마세요.
+이전 1.0.19 / 1.0.21 / 1.0.22 / 1.0.23 / 1.0.24 파일은 쓰지 마세요.
