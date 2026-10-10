@@ -27,6 +27,8 @@ test('build:aab installs Android SDK 36 instead of 34', () => {
   assert.match(source, /patchPlayQualityFiles/);
   assert.match(source, /patch16kbFiles/);
   assert.match(source, /verify16kbPageSize/);
+  assert.match(source, /align-elf-16kb\.py/);
+  assert.match(source, /jarsigner/);
   assert.match(source, /minSdkVersion=\$\{MIN_SDK\}/);
   assert.doesNotMatch(source, /platforms;android-34/);
   assert.doesNotMatch(source, /build-tools;34\.0\.0/);

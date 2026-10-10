@@ -375,6 +375,17 @@ function main() {
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
   verifyReleaseManifest(versionName, versionCode);
   verifyPlayQuality();
+  const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
+  run('python3', [aligner, '--aab', gradleAab], root);
+  run('jarsigner', [
+    '-sigalg', 'SHA256withRSA',
+    '-digestalg', 'SHA-256',
+    '-keystore', signing.storeFile,
+    '-storepass', signing.storePassword,
+    '-keypass', signing.keyPassword,
+    gradleAab,
+    signing.keyAlias,
+  ]);
   verify16kbPageSize(gradleAab);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);

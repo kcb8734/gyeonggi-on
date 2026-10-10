@@ -141,6 +141,31 @@ def align_file(path: str) -> str:
     return "ok"
 
 
+def align_aab(aab_path: str) -> tuple[int, int]:
+    import zipfile
+    tmp_path = f"{aab_path}.16kb-tmp"
+    aligned = ok = 0
+    with zipfile.ZipFile(aab_path, "r") as src, zipfile.ZipFile(tmp_path, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info.filename)
+            if info.filename.endswith(".so") and data[:4] == b"\x7fELF":
+                buf = bytearray(data)
+                if align_elf(buf):
+                    data = bytes(buf)
+                    aligned += 1
+                    print(f"[16kb] aligned  {info.filename}")
+                else:
+                    ok += 1
+            item = zipfile.ZipInfo(info.filename, info.date_time)
+            item.compress_type = info.compress_type
+            item.external_attr = info.external_attr
+            item.create_system = info.create_system
+            dst.writestr(item, data)
+    os.replace(tmp_path, aab_path)
+    print(f"[16kb] aab rewritten aligned={aligned} already-ok={ok} path={aab_path}")
+    return aligned, ok
+
+
 def walk(root: str) -> tuple[int, int, int]:
     aligned = ok = skipped = 0
     for dirpath, _, files in os.walk(root):
@@ -161,10 +186,22 @@ def walk(root: str) -> tuple[int, int, int]:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("usage: align-elf-16kb.py <file-or-dir> [...]", file=sys.stderr)
+        print("usage: align-elf-16kb.py [--aab] <file-or-dir> [...]", file=sys.stderr)
         return 2
+    args = sys.argv[1:]
+    aab_mode = False
+    if args and args[0] == "--aab":
+        aab_mode = True
+        args = args[1:]
+    if aab_mode:
+        if not args:
+            print("usage: align-elf-16kb.py --aab <bundle.aab>", file=sys.stderr)
+            return 2
+        for target in args:
+            align_aab(target)
+        return 0
     aligned = ok = skipped = 0
-    for target in sys.argv[1:]:
+    for target in args:
         if os.path.isdir(target):
             a, o, s = walk(target)
             aligned += a
