@@ -257,40 +257,14 @@ function verifyPlayQuality() {
 }
 
 function verify16kbPageSize(aabPath) {
-  const result = spawnSync('python3', ['-c', `
-import struct, sys, zipfile
-PAGE = 16384
-bad = 0
-count = 0
-with zipfile.ZipFile(sys.argv[1]) as bundle:
-    for name in bundle.namelist():
-        if not (name.endswith('.so') and 'arm64-v8a' in name):
-            continue
-        data = bundle.read(name)
-        if data[:4] != b'\\x7fELF' or data[4] != 2:
-            continue
-        count += 1
-        e_phoff = struct.unpack_from('<Q', data, 32)[0]
-        e_phentsize, e_phnum = struct.unpack_from('<HH', data, 54)
-        for i in range(e_phnum):
-            off = e_phoff + i * e_phentsize
-            if struct.unpack_from('<I', data, off)[0] != 1:
-                continue
-            p_offset = struct.unpack_from('<Q', data, off + 8)[0]
-            p_vaddr = struct.unpack_from('<Q', data, off + 16)[0]
-            p_align = struct.unpack_from('<Q', data, off + 48)[0]
-            if p_align < PAGE or (p_offset % PAGE) != (p_vaddr % PAGE):
-                print('FAIL', name, hex(p_offset), hex(p_vaddr), hex(p_align), file=sys.stderr)
-                bad += 1
-print(f'arm64-so={count} bad={bad}')
-raise SystemExit(1 if bad or count == 0 else 0)
-`, aabPath], { encoding: 'utf8' });
+  const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
+  const result = spawnSync('python3', [aligner, '--check', aabPath], { encoding: 'utf8' });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.status !== 0) {
     if (result.stderr) process.stderr.write(result.stderr);
-    fail('AAB native libraries are not 16KB page-size aligned (Play 요구사항).');
+    fail('AAB native libraries are not 16KB page-size aligned (Play LOAD/RELRO/packaging).');
   }
-  log(`[build:aab] 16KB 페이지 정렬 확인 ${String(result.stdout || '').trim()}`);
+  log(`[build:aab] 16KB 페이지 정렬 확인 ${String(result.stdout || '').trim().replace(/\n/g, ' ')}`);
 }
 
 function restoreExpoStartScripts() {
