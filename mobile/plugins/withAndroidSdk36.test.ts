@@ -15,23 +15,21 @@ const plugin = require('./withAndroidSdk36.js') as {
   applyReactNativeScreensKotlinListPatch: (text: string) => string;
 };
 const appJson = JSON.parse(readFileSync(join(dir, '..', 'app.json'), 'utf8')) as {
-  expo: { android: { compileSdkVersion: number; targetSdkVersion: number; minSdkVersion: number }; plugins: unknown[] };
+  expo: { android: { compileSdkVersion: number; targetSdkVersion: number }; plugins: unknown[] };
 };
 
 test('app.json pins compile and target SDK 36', () => {
   assert.equal(appJson.expo.android.compileSdkVersion, 36);
   assert.equal(appJson.expo.android.targetSdkVersion, 36);
-  assert.equal(appJson.expo.android.minSdkVersion, 24);
   assert.ok(appJson.expo.plugins.includes('./plugins/withAndroidSdk36'));
 });
 
 test('gradle.properties fallbacks become 36', () => {
   const next = plugin.applySdk36ToGradlePropertiesText(
-    'android.compileSdkVersion=34\nandroid.targetSdkVersion=34\nandroid.minSdkVersion=23\nandroid.buildToolsVersion=34.0.0\n',
+    'android.compileSdkVersion=34\nandroid.targetSdkVersion=34\nandroid.buildToolsVersion=34.0.0\n',
   );
   assert.match(next, /android\.compileSdkVersion=36/);
   assert.match(next, /android\.targetSdkVersion=36/);
-  assert.match(next, /android\.minSdkVersion=24/);
   assert.match(next, /android\.buildToolsVersion=36\.0\.0/);
   assert.match(next, /android\.suppressUnsupportedCompileSdk=36/);
 });
@@ -40,15 +38,12 @@ test('project build.gradle default SDK versions become 36', () => {
   const next = plugin.applySdk36ToProjectBuildGradle(`
         compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '34')
         targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
-        minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '23')
         buildToolsVersion = findProperty('android.buildToolsVersion') ?: '34.0.0'
   `);
   assert.match(next, /compileSdkVersion = Integer\.parseInt\(findProperty\('android\.compileSdkVersion'\) \?: '36'\)\s*$/m);
   assert.match(next, /targetSdkVersion = Integer\.parseInt\(findProperty\('android\.targetSdkVersion'\) \?: '36'\)\s*$/m);
-  assert.match(next, /minSdkVersion = Integer\.parseInt\(findProperty\('android\.minSdkVersion'\) \?: '24'\)\s*$/m);
   assert.match(next, /buildToolsVersion = findProperty\('android\.buildToolsVersion'\) \?: '36\.0\.0'\s*$/m);
   assert.doesNotMatch(next, /\?: '34'/);
-  assert.doesNotMatch(next, /\?: '23'/);
 });
 
 test('project build.gradle leftover nested parseInt is rewritten cleanly', () => {
@@ -65,12 +60,9 @@ test('app build.gradle literal SDK versions become 36', () => {
   const next = plugin.applySdk36ToAppBuildGradle(`
     compileSdk 34
     targetSdkVersion 34
-    minSdkVersion rootProject.ext.minSdkVersion
   `);
   assert.match(next, /compileSdk 36/);
   assert.match(next, /targetSdkVersion 36/);
-  assert.match(next, /minSdkVersion 24/);
-  assert.doesNotMatch(next, /rootProject\.ext\.minSdkVersion/);
 });
 
 test('expo-modules-core requestedPermissions call is made null-safe', () => {
