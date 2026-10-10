@@ -3,7 +3,7 @@
     "name": "온앤온+",
     "slug": "gyeonggi-on",
     "scheme": "onandon",
-    "version": "1.0.23",
+    "version": "1.0.24",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "kr.gyeonggion.app",
-      "versionCode": 23,
+      "versionCode": 24,
       "minSdkVersion": 24,
       "compileSdkVersion": 36,
       "targetSdkVersion": 36,
@@ -44,6 +44,7 @@
     "plugins": [
       "./plugins/withAndroidSdk36",
       "./plugins/withAndroidPlayQuality",
+      "./plugins/withAndroid16Kb",
       "./plugins/withAndroidReleaseSigning",
       [
         "expo-location",
