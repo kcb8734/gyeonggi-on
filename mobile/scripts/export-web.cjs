@@ -57,4 +57,10 @@ if (fs.existsSync(privacySrc)) {
   fs.copyFileSync(privacySrc, path.join(privacyDestDir, 'index.html'));
 }
 
+const downloadsSrc = path.join(root, 'public/downloads');
+const downloadsDest = path.join(root, 'dist/downloads');
+if (fs.existsSync(downloadsSrc)) {
+  fs.cpSync(downloadsSrc, downloadsDest, { recursive: true });
+}
+
 process.exit(result.status ?? 1);

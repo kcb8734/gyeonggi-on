@@ -1,0 +1,31 @@
+온앤온+ Play Console AAB 업로드 안내
+파일: onandon_plus_1.0.6_vc7.aab
+패키지: kr.gyeonggion.app
+versionName: 1.0.6
+versionCode: 7
+서명 SHA-1: 30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
+다운로드: https://www.kdanji.com/downloads/onandon_plus_1.0.6_vc7.aab
+
+1. AAB만 받습니다. 압축을 풀지 않습니다. .jks / PEM / 비밀번호는 올리지 않습니다.
+
+2. 내부 테스트 (먼저)
+   Play Console → 온앤온+ (kr.gyeonggion.app)
+   → 테스트 및 출시 → 테스트 → 내부 테스트
+   → 출시 → 새 버전 만들기
+   → App Bundle에 onandon_plus_1.0.6_vc7.aab 업로드
+   → 서명 SHA-1이 30:70:7C:…:2C:42 인지 확인
+   → 출시 이름 1.0.6 (7)
+   → 다음 → 저장 및 출시 → 내부 테스트 트랙으로 출시 저장
+
+3. 스토어 출시 (내부 테스트 확인 후)
+   테스트 및 출시 → 프로덕션 → 새 버전 만들기
+   → 같은 App Bundle 선택
+   → 저장 및 출시 → 프로덕션 트랙으로 출시 저장
+
+출시 노트 예시
+ko-KR
+온앤온+ 1.0.6
+- Play 업로드 키 재등록 이후 스토어용 앱 번들
+- 축제 상세 소개·핵심 포인트·방문 팁
+
+서명 오류가 나면 키를 새로 만들지 마세요. 이 AAB인지 다시 확인하세요.
