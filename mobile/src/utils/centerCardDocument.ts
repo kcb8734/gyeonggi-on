@@ -114,13 +114,13 @@ function cardCss(dpi: number) {
     .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; position: static; transform: none; }
     .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; position: static; transform: none; }
     .rule {
-      position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)};
-      bottom: ${u(CARD_MM.ruleFromBottom)}; margin: 0; border: 0;
+      position: static; flex-shrink: 0; width: 100%;
+      margin: 0; border: 0;
       border-top: ${u(0.25)} solid #d1d5db;
     }
     .grid {
       flex-shrink: 0;
-      height: ${u(CARD_MM.ruleFromBottom)};
+      height: auto;
       display: grid;
       grid-template-columns: 1fr 1fr;
       column-gap: ${u(2.2)};
@@ -465,7 +465,8 @@ async function drawCardFace(model: CenterCardModel, side: 'front' | 'back', logo
     }
     ctx.restore();
 
-    const ruleY = H - pad - mm(CARD_MM.ruleFromBottom);
+    const contactStackMm = CARD_MM.contactBelowRule + CARD_MM.contactFont * 2 + 0.8;
+    const ruleY = H - pad - mm(contactStackMm);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#111111';
     ctx.font = font('800', 3.53);
