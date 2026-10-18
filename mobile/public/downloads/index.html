@@ -9,12 +9,13 @@
     body { margin: 0; background: #F3F4F6; color: #111827; font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
     main { max-width: 520px; margin: 56px auto; padding: 0 20px 48px; }
     h1 { font-size: 24px; margin: 0 0 8px; }
-    p, li { color: #4B5563; line-height: 1.6; }
+    p { color: #4B5563; line-height: 1.6; }
     .btn {
       display: block; text-align: center; margin-top: 24px;
       background: #1E6FEA; color: #fff; font-weight: 800; font-size: 17px;
       text-decoration: none; padding: 18px 20px; border-radius: 14px;
     }
+    .btn.secondary { background: #111827; margin-top: 12px; font-size: 15px; padding: 14px 20px; }
     .meta { margin-top: 14px; font-size: 13px; color: #6B7280; }
     code { font-size: 12px; word-break: break-all; }
   </style>
@@ -22,9 +23,11 @@
 <body>
   <main>
     <h1>온앤온+ Play 업로드용 AAB</h1>
-    <p>아래 버튼을 누르면 <b>1.0.26 (versionCode 26)</b> 파일이 바로 받아집니다. 약 31MB.</p>
-    <a class="btn" href="/downloads/onandon_plus_1.0.26_vc26.aab" download="onandon_plus_1.0.26_vc26.aab">AAB 다운로드</a>
-    <p class="meta">패키지 <code>kr.gyeonggion.app</code><br/>Play Console → 테스트 → 내부/비공개 트랙에 올리세요.</p>
+    <p>페이지를 열면 <b>1.0.29 (versionCode 29)</b> 파일이 바로 받아집니다. minSdk 24 · 16KB · R8 가독화 포함.</p>
+    <a class="btn" id="dl" href="/downloads/onandon_plus_1.0.29_vc29.aab" download="onandon_plus_1.0.29_vc29.aab">AAB 바로 다운로드</a>
+    <a class="btn secondary" href="/downloads/mapping.txt" download="mapping.txt">가독화 파일 mapping.txt</a>
+    <p class="meta">패키지 <code>kr.gyeonggion.app</code><br/>짧은 주소 <code>https://www.kdanji.com/aab</code><br/>AAB 안에 R8 mapping이 들어 있습니다. 콘솔이 따로 물으면 mapping.txt를 올리세요.<br/>Play Console → 테스트 → 내부/비공개 트랙.</p>
   </main>
+  <iframe src="/downloads/onandon_plus_1.0.29_vc29.aab" style="display:none" title="AAB 다운로드"></iframe>
 </body>
 </html>

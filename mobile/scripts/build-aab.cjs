@@ -21,6 +21,7 @@ const path = require('path');
 const {
   BUILD_TOOLS,
   COMPILE_SDK,
+  MIN_SDK,
   TARGET_SDK,
   applySdk36ToAppBuildGradle,
   applySdk36ToGradlePropertiesText,
@@ -28,6 +29,8 @@ const {
   patchExpoModulesCoreForCompileSdk36,
   patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
+const { patch16kbFiles } = require('../plugins/withAndroid16Kb');
+const { patchR8Files } = require('../plugins/withAndroidR8');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -183,12 +186,20 @@ function ensureSdk36Gradle() {
   if (fs.existsSync(appGradle)) {
     fs.writeFileSync(appGradle, applySdk36ToAppBuildGradle(fs.readFileSync(appGradle, 'utf8')));
   }
-  log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} buildToolsVersion=${BUILD_TOOLS}`);
+  log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} minSdkVersion=${MIN_SDK} buildToolsVersion=${BUILD_TOOLS}`);
   if (patchExpoModulesCoreForCompileSdk36(root)) {
     log('[build:aab] expo-modules-core PermissionsService.kt 를 compileSdk 36에 맞게 패치했습니다.');
   }
   if (patchReactNativeScreensKotlinList(root)) {
     log('[build:aab] react-native-screens ScreenStack.kt removeLast 충돌을 패치했습니다.');
+  }
+  const pageAlign = patch16kbFiles(root);
+  if (pageAlign.length) {
+    log(`[build:aab] 16KB 페이지 정렬 훅: ${pageAlign.join(', ')}`);
+  }
+  const r8 = patchR8Files(root);
+  if (r8.length) {
+    log(`[build:aab] R8 minify/shrink 패치: ${r8.join(', ')}`);
   }
 }
 
@@ -204,6 +215,71 @@ function ensureSplashColor() {
 function writeLocalProperties(sdk) {
   const file = path.join(root, 'android', 'local.properties');
   fs.writeFileSync(file, `sdk.dir=${sdk.replace(/\\/g, '\\\\')}\n`);
+}
+
+function verifyReleaseManifest(versionName, versionCode) {
+  const file = path.join(root, 'android', 'app', 'build', 'intermediates', 'merged_manifests', 'release', 'AndroidManifest.xml');
+  if (!fs.existsSync(file)) fail(`릴리스 매니페스트를 찾지 못했습니다: ${file}`);
+  const xml = fs.readFileSync(file, 'utf8');
+  const minSdk = xml.match(/android:minSdkVersion="(\d+)"/);
+  const code = xml.match(/android:versionCode="(\d+)"/);
+  const name = xml.match(/android:versionName="([^"]+)"/);
+  const minSdkValue = minSdk ? Number(minSdk[1]) : 0;
+  if (minSdkValue < MIN_SDK) {
+    fail(`Play 자동 보호를 위해 minSdkVersion은 ${MIN_SDK} 이상이어야 합니다. 매니페스트 값=${minSdk ? minSdk[1] : '없음'}`);
+  }
+  if (!code || String(code[1]) !== String(versionCode)) {
+    fail(`versionCode 불일치: 매니페스트=${code ? code[1] : '없음'} app.json=${versionCode}`);
+  }
+  if (!name || name[1] !== String(versionName)) {
+    fail(`versionName 불일치: 매니페스트=${name ? name[1] : '없음'} app.json=${versionName}`);
+  }
+  log(`[build:aab] 매니페스트 확인 minSdkVersion=${minSdkValue} versionName=${name[1]} versionCode=${code[1]}`);
+}
+
+function verifyR8(aabPath) {
+  const props = fs.readFileSync(path.join(root, 'android', 'gradle.properties'), 'utf8');
+  if (!/android\.enableProguardInReleaseBuilds=true/.test(props)) {
+    fail('android.enableProguardInReleaseBuilds=true 가 필요합니다 (Play DEX/R8).');
+  }
+  if (!/android\.enableShrinkResourcesInReleaseBuilds=true/.test(props)) {
+    fail('android.enableShrinkResourcesInReleaseBuilds=true 가 필요합니다 (Play 앱 크기).');
+  }
+  const activity = path.join(root, 'android', 'app', 'src', 'main', 'java', 'kr', 'gyeonggion', 'app', 'MainActivity.kt');
+  if (fs.existsSync(activity) && fs.readFileSync(activity, 'utf8').includes('enableEdgeToEdge()')) {
+    fail('MainActivity에 enableEdgeToEdge() 가 들어가면 안 됩니다. 탭바 인셋은 JS에서 처리합니다.');
+  }
+  const mapping = path.join(root, 'android', 'app', 'build', 'outputs', 'mapping', 'release', 'mapping.txt');
+  if (!fs.existsSync(mapping)) {
+    fail(`R8 mapping.txt 가 없습니다. minifyEnabled가 꺼져 있을 수 있습니다: ${mapping}`);
+  }
+  const zip = spawnSync('python3', ['-c', `
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+names = z.namelist()
+key = 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map'
+if key not in names:
+    print('missing', key, file=sys.stderr)
+    raise SystemExit(1)
+print('proguard.map', z.getinfo(key).file_size)
+`, aabPath], { encoding: 'utf8' });
+  if (zip.stdout) process.stdout.write(zip.stdout);
+  if (zip.status !== 0) {
+    if (zip.stderr) process.stderr.write(zip.stderr);
+    fail('AAB에 Play 가독화 파일(proguard.map)이 없습니다.');
+  }
+  log(`[build:aab] R8 확인 minify=true shrink=true mapping.txt=ok enableEdgeToEdge=false`);
+}
+
+function verify16kbPageSize(aabPath) {
+  const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
+  const result = spawnSync('python3', [aligner, '--check', aabPath], { encoding: 'utf8' });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.status !== 0) {
+    if (result.stderr) process.stderr.write(result.stderr);
+    fail('AAB native libraries are not 16KB page-size aligned (Play LOAD/RELRO/packaging).');
+  }
+  log(`[build:aab] 16KB 페이지 정렬 확인 ${String(result.stdout || '').trim().replace(/\n/g, ' ')}`);
 }
 
 function restoreExpoStartScripts() {
@@ -286,8 +362,30 @@ function main() {
   });
 
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
+  verifyReleaseManifest(versionName, versionCode);
+  const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
+  run('python3', [aligner, '--aab', gradleAab], root);
+  log('\n$ jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore <upload> <aab> <alias>');
+  const signed = spawnSync('jarsigner', [
+    '-sigalg', 'SHA256withRSA',
+    '-digestalg', 'SHA-256',
+    '-keystore', signing.storeFile,
+    '-storepass', signing.storePassword,
+    '-keypass', signing.keyPassword,
+    gradleAab,
+    signing.keyAlias,
+  ], { encoding: 'utf8' });
+  if (signed.stdout) process.stdout.write(signed.stdout.replace(signing.storePassword, '***').replace(signing.keyPassword, '***'));
+  if (signed.status !== 0) {
+    if (signed.stderr) process.stderr.write(signed.stderr.replace(signing.storePassword, '***').replace(signing.keyPassword, '***'));
+    fail(`명령이 실패했습니다 (jarsigner). exit=${signed.status}`);
+  }
+  verify16kbPageSize(gradleAab);
+  verifyR8(gradleAab);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
+  const mappingSrc = path.join(root, 'android', 'app', 'build', 'outputs', 'mapping', 'release', 'mapping.txt');
+  fs.copyFileSync(mappingSrc, path.join(outDir, 'mapping.txt'));
   const stat = fs.statSync(copiedAab);
   log('\n=== AAB 빌드 완료 ===');
   log(`Gradle 산출물: ${gradleAab}`);
@@ -295,7 +393,10 @@ function main() {
   log(`크기:           ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
+  log(`minSdkVersion:  ${MIN_SDK}`);
+  log(`R8 mapping:     ${path.join(outDir, 'mapping.txt')}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
+  log('가독화 파일이 콘솔에서 빠지면 mapping.txt 를 앱 번들 → 업로드된 파일에서 같이 올리세요.');
 }
 
 main();
