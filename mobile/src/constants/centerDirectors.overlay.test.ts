@@ -33,6 +33,21 @@ test('admin 지원완료 overlay shows reviewing without card', () => {
   assert.equal(rows[0].director, undefined);
 });
 
+test('API director without photo still uses the seeded jongno portrait', () => {
+  const jongno: CenterLocalityRow = {
+    id: 'SEOUL:종로구',
+    localityId: '종로구',
+    label: '종로구',
+    region: 'SEOUL',
+    regionLabel: '서울온',
+    status: 'selected',
+    applicantCount: 1,
+    director: { name: '김하늘', title: '서울온 종로 센터장', phone: '02-120', email: 'jongno@kdanji.com', intro: '' },
+  };
+  const rows = overlayLocalities([jongno], {});
+  assert.match(rows[0].director?.photoUrl || '', /^data:image\/png/);
+});
+
 test('region summary follows overlay instead of keeping selected max', () => {
   const api: CenterRegionSummary[] = [{
     id: 'GYEONGGI',
