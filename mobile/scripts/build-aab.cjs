@@ -30,6 +30,7 @@ const {
   patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
 const { patch16kbFiles } = require('../plugins/withAndroid16Kb');
+const { patchR8Files } = require('../plugins/withAndroidR8');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -196,6 +197,10 @@ function ensureSdk36Gradle() {
   if (pageAlign.length) {
     log(`[build:aab] 16KB 페이지 정렬 훅: ${pageAlign.join(', ')}`);
   }
+  const r8 = patchR8Files(root);
+  if (r8.length) {
+    log(`[build:aab] R8 minify/shrink 패치: ${r8.join(', ')}`);
+  }
 }
 
 function ensureSplashColor() {
@@ -230,6 +235,40 @@ function verifyReleaseManifest(versionName, versionCode) {
     fail(`versionName 불일치: 매니페스트=${name ? name[1] : '없음'} app.json=${versionName}`);
   }
   log(`[build:aab] 매니페스트 확인 minSdkVersion=${minSdkValue} versionName=${name[1]} versionCode=${code[1]}`);
+}
+
+function verifyR8(aabPath) {
+  const props = fs.readFileSync(path.join(root, 'android', 'gradle.properties'), 'utf8');
+  if (!/android\.enableProguardInReleaseBuilds=true/.test(props)) {
+    fail('android.enableProguardInReleaseBuilds=true 가 필요합니다 (Play DEX/R8).');
+  }
+  if (!/android\.enableShrinkResourcesInReleaseBuilds=true/.test(props)) {
+    fail('android.enableShrinkResourcesInReleaseBuilds=true 가 필요합니다 (Play 앱 크기).');
+  }
+  const activity = path.join(root, 'android', 'app', 'src', 'main', 'java', 'kr', 'gyeonggion', 'app', 'MainActivity.kt');
+  if (fs.existsSync(activity) && fs.readFileSync(activity, 'utf8').includes('enableEdgeToEdge()')) {
+    fail('MainActivity에 enableEdgeToEdge() 가 들어가면 안 됩니다. 탭바 인셋은 JS에서 처리합니다.');
+  }
+  const mapping = path.join(root, 'android', 'app', 'build', 'outputs', 'mapping', 'release', 'mapping.txt');
+  if (!fs.existsSync(mapping)) {
+    fail(`R8 mapping.txt 가 없습니다. minifyEnabled가 꺼져 있을 수 있습니다: ${mapping}`);
+  }
+  const zip = spawnSync('python3', ['-c', `
+import sys, zipfile
+z = zipfile.ZipFile(sys.argv[1])
+names = z.namelist()
+key = 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map'
+if key not in names:
+    print('missing', key, file=sys.stderr)
+    raise SystemExit(1)
+print('proguard.map', z.getinfo(key).file_size)
+`, aabPath], { encoding: 'utf8' });
+  if (zip.stdout) process.stdout.write(zip.stdout);
+  if (zip.status !== 0) {
+    if (zip.stderr) process.stderr.write(zip.stderr);
+    fail('AAB에 Play 가독화 파일(proguard.map)이 없습니다.');
+  }
+  log(`[build:aab] R8 확인 minify=true shrink=true mapping.txt=ok enableEdgeToEdge=false`);
 }
 
 function verify16kbPageSize(aabPath) {
@@ -342,8 +381,11 @@ function main() {
     fail(`명령이 실패했습니다 (jarsigner). exit=${signed.status}`);
   }
   verify16kbPageSize(gradleAab);
+  verifyR8(gradleAab);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
+  const mappingSrc = path.join(root, 'android', 'app', 'build', 'outputs', 'mapping', 'release', 'mapping.txt');
+  fs.copyFileSync(mappingSrc, path.join(outDir, 'mapping.txt'));
   const stat = fs.statSync(copiedAab);
   log('\n=== AAB 빌드 완료 ===');
   log(`Gradle 산출물: ${gradleAab}`);
@@ -352,7 +394,9 @@ function main() {
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
   log(`minSdkVersion:  ${MIN_SDK}`);
+  log(`R8 mapping:     ${path.join(outDir, 'mapping.txt')}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
+  log('가독화 파일이 콘솔에서 빠지면 mapping.txt 를 앱 번들 → 업로드된 파일에서 같이 올리세요.');
 }
 
 main();

@@ -24,6 +24,7 @@ test('app.json pins compile and target SDK 36', () => {
   assert.equal(appJson.expo.android.minSdkVersion, 24);
   assert.ok(appJson.expo.plugins.includes('./plugins/withAndroidSdk36'));
   assert.ok(appJson.expo.plugins.includes('./plugins/withAndroid16Kb'));
+  assert.ok(appJson.expo.plugins.includes('./plugins/withAndroidR8'));
 });
 
 test('gradle.properties fallbacks become 36', () => {
