@@ -72,8 +72,15 @@ function resolveWebOrigin(): string {
 
 export const API_BASE_URL = resolveApi().replace(/\/$/, '');
 export const WEB_ORIGIN = resolveWebOrigin().replace(/\/$/, '');
-export const KAKAO_CLIENT_ID = readPublic('EXPO_PUBLIC_KAKAO_CLIENT_ID');
-export const GOOGLE_CLIENT_ID = readPublic('EXPO_PUBLIC_GOOGLE_CLIENT_ID');
+/** Metro는 process.env.EXPO_PUBLIC_* 멤버 접근만 빌드 시 인라인한다. process.env[name]은 웹 번들에서 빈 값이 된다. */
+export const KAKAO_CLIENT_ID = String(
+  process.env.EXPO_PUBLIC_KAKAO_CLIENT_ID
+  || '04a0c5af1674ef99651907be51141277',
+).trim();
+export const GOOGLE_CLIENT_ID = String(
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID
+  || '770194502672-b7ifu2bqbhs6mp8r0rstmkgnldnioq63.apps.googleusercontent.com',
+).trim();
 
 export const PUBLIC_ENV = {
   EXPO_PUBLIC_API_URL: API_BASE_URL,

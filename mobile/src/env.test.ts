@@ -9,6 +9,12 @@ import {
   rememberFestivalAiClientCache,
 } from './api/festivalAi';
 
+test('social client ids are public constants available to the web bundle', async () => {
+  const { KAKAO_CLIENT_ID, GOOGLE_CLIENT_ID } = await import('./env');
+  assert.match(KAKAO_CLIENT_ID, /^[0-9a-f]{32}$/);
+  assert.match(GOOGLE_CLIENT_ID, /\.apps\.googleusercontent\.com$/);
+});
+
 test('canonicalizeApiOrigin upgrades apex kdanji.com to www', () => {
   assert.equal(canonicalizeApiOrigin('https://kdanji.com'), CANONICAL_ORIGIN);
   assert.equal(canonicalizeApiOrigin('https://kdanji.com/'), CANONICAL_ORIGIN);
