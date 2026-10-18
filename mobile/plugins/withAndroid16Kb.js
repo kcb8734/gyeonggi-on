@@ -14,7 +14,6 @@ const LINKER_FLAGS = '-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384';
 
 const PACKAGING_PROPS = {
   'expo.useLegacyPackaging': 'true',
-  'android.bundle.enableUncompressedNativeLibs': 'false',
 };
 
 const GRADLE_HOOK = `
@@ -87,7 +86,7 @@ function upsertPropertyLine(text, key, value) {
 }
 
 function apply16kbGradlePropertiesText(text) {
-  let next = text;
+  let next = text.replace(/^android\.bundle\.enableUncompressedNativeLibs=.*\n?/m, '');
   for (const [key, value] of Object.entries(PACKAGING_PROPS)) {
     next = upsertPropertyLine(next, key, value);
   }
@@ -193,6 +192,9 @@ function patch16kbFiles(projectRoot) {
 
 function withAndroid16Kb(config) {
   config = withGradleProperties(config, (cfg) => {
+    cfg.modResults = cfg.modResults.filter(
+      (item) => !(item.type === 'property' && item.key === 'android.bundle.enableUncompressedNativeLibs'),
+    );
     for (const [key, value] of Object.entries(PACKAGING_PROPS)) {
       setGradleProperty(cfg.modResults, key, value);
     }

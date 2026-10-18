@@ -39,10 +39,12 @@ test('broken nested-paren leftover from Expo 51 is rewritten to a complete assig
   assert.doesNotMatch(next, /false\)/);
 });
 
-test('gradle.properties enables official AGP 8.5-or-lower 16KB packaging fallback', () => {
-  const next = plugin.apply16kbGradlePropertiesText('expo.useLegacyPackaging=false\n');
+test('gradle.properties enables compressed JNI packaging for 16KB page size', () => {
+  const next = plugin.apply16kbGradlePropertiesText(
+    'expo.useLegacyPackaging=false\nandroid.bundle.enableUncompressedNativeLibs=false\n',
+  );
   assert.match(next, /expo\.useLegacyPackaging=true/);
-  assert.match(next, /android\.bundle\.enableUncompressedNativeLibs=false/);
+  assert.doesNotMatch(next, /enableUncompressedNativeLibs/);
 });
 
 test('root build.gradle injects 16KB CMake/ndk-build linker flags', () => {
