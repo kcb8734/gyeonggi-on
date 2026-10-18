@@ -1,3 +1,4 @@
+import { JONGNO_DIRECTOR_PHOTO_DATA_URI } from '../assets/jongnoDirectorPhotoData';
 import { METRO_LOCALITIES, METRO_REGIONS, REGION_LABEL, normalizeMetroId } from './regions';
 
 export type CenterStatus = 'selected' | 'reviewing' | 'recruiting';
@@ -179,6 +180,7 @@ export const SELECTED_DIRECTORS: Record<string, CenterDirectorProfile> = {
     intro: '광장시장과 종로 거리예술 축제를 잇는 도심 센터입니다.',
     address: '서울특별시 종로구 종로 1',
     website: 'kdanji.com/jongno',
+    photoUrl: JONGNO_DIRECTOR_PHOTO_DATA_URI,
   },
   'SEOUL:강남구': {
     name: '정우성',
@@ -256,6 +258,18 @@ function overlayOf(extra?: string[] | CenterOverlay): CenterOverlay {
   return extra ?? {};
 }
 
+function selectedDirector(
+  id: string,
+  overlayDirector?: CenterDirectorProfile,
+  rowDirector?: CenterDirectorProfile,
+): CenterDirectorProfile | undefined {
+  const seed = SELECTED_DIRECTORS[id];
+  const chosen = overlayDirector || rowDirector || seed;
+  if (!chosen) return undefined;
+  if (chosen.photoUrl || !seed?.photoUrl) return chosen;
+  return { ...chosen, photoUrl: seed.photoUrl };
+}
+
 function statusFor(key: string, overlay: CenterOverlay = {}): CenterStatus {
   const forced = overlay.localityStatus?.[key];
   if (forced === 'recruiting' || forced === 'reviewing' || forced === 'selected') return forced;
@@ -288,7 +302,7 @@ export function listCenterLocalities(region?: string, extra: string[] | CenterOv
         regionLabel: label,
         status,
         applicantCount: applicantCountFor(id, overlay),
-        director: status === 'selected' ? (overlay.directors?.[id] || SELECTED_DIRECTORS[id]) : undefined,
+        director: status === 'selected' ? selectedDirector(id, overlay.directors?.[id]) : undefined,
       };
     });
   });
@@ -317,7 +331,7 @@ export function overlayLocalities(rows: CenterLocalityRow[], extra: CenterOverla
       ...row,
       status,
       applicantCount: count,
-      director: status === 'selected' ? (extra.directors?.[row.id] || row.director || SELECTED_DIRECTORS[row.id]) : undefined,
+      director: status === 'selected' ? selectedDirector(row.id, extra.directors?.[row.id], row.director) : undefined,
     };
   });
 }
