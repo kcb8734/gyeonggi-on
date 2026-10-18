@@ -21,6 +21,7 @@ const path = require('path');
 const {
   BUILD_TOOLS,
   COMPILE_SDK,
+  MIN_SDK,
   TARGET_SDK,
   applySdk36ToAppBuildGradle,
   applySdk36ToGradlePropertiesText,
@@ -183,7 +184,7 @@ function ensureSdk36Gradle() {
   if (fs.existsSync(appGradle)) {
     fs.writeFileSync(appGradle, applySdk36ToAppBuildGradle(fs.readFileSync(appGradle, 'utf8')));
   }
-  log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} buildToolsVersion=${BUILD_TOOLS}`);
+  log(`[build:aab] compileSdkVersion=${COMPILE_SDK} targetSdkVersion=${TARGET_SDK} minSdkVersion=${MIN_SDK} buildToolsVersion=${BUILD_TOOLS}`);
   if (patchExpoModulesCoreForCompileSdk36(root)) {
     log('[build:aab] expo-modules-core PermissionsService.kt 를 compileSdk 36에 맞게 패치했습니다.');
   }
@@ -204,6 +205,26 @@ function ensureSplashColor() {
 function writeLocalProperties(sdk) {
   const file = path.join(root, 'android', 'local.properties');
   fs.writeFileSync(file, `sdk.dir=${sdk.replace(/\\/g, '\\\\')}\n`);
+}
+
+function verifyReleaseManifest(versionName, versionCode) {
+  const file = path.join(root, 'android', 'app', 'build', 'intermediates', 'merged_manifests', 'release', 'AndroidManifest.xml');
+  if (!fs.existsSync(file)) fail(`릴리스 매니페스트를 찾지 못했습니다: ${file}`);
+  const xml = fs.readFileSync(file, 'utf8');
+  const minSdk = xml.match(/android:minSdkVersion="(\d+)"/);
+  const code = xml.match(/android:versionCode="(\d+)"/);
+  const name = xml.match(/android:versionName="([^"]+)"/);
+  const minSdkValue = minSdk ? Number(minSdk[1]) : 0;
+  if (minSdkValue < MIN_SDK) {
+    fail(`Play 자동 보호를 위해 minSdkVersion은 ${MIN_SDK} 이상이어야 합니다. 매니페스트 값=${minSdk ? minSdk[1] : '없음'}`);
+  }
+  if (!code || String(code[1]) !== String(versionCode)) {
+    fail(`versionCode 불일치: 매니페스트=${code ? code[1] : '없음'} app.json=${versionCode}`);
+  }
+  if (!name || name[1] !== String(versionName)) {
+    fail(`versionName 불일치: 매니페스트=${name ? name[1] : '없음'} app.json=${versionName}`);
+  }
+  log(`[build:aab] 매니페스트 확인 minSdkVersion=${minSdkValue} versionName=${name[1]} versionCode=${code[1]}`);
 }
 
 function restoreExpoStartScripts() {
@@ -286,6 +307,7 @@ function main() {
   });
 
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
+  verifyReleaseManifest(versionName, versionCode);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
   const stat = fs.statSync(copiedAab);
@@ -295,6 +317,7 @@ function main() {
   log(`크기:           ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
   log(`versionName:    ${versionName}`);
   log(`versionCode:    ${versionCode}`);
+  log(`minSdkVersion:  ${MIN_SDK}`);
   log('Play Console → 테스트 → 비공개 테스트 트랙에 이 .aab 파일을 업로드하면 됩니다.');
 }
 

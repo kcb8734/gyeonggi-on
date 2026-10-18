@@ -22,6 +22,16 @@
       "has": [{ "type": "host", "value": "kdanji.com" }],
       "destination": "https://www.kdanji.com/:path*",
       "statusCode": 301
+    },
+    {
+      "source": "/aab",
+      "destination": "/downloads/onandon_plus_1.0.27_vc27.aab",
+      "statusCode": 302
+    },
+    {
+      "source": "/aab/",
+      "destination": "/downloads/onandon_plus_1.0.27_vc27.aab",
+      "statusCode": 302
     }
   ],
   "rewrites": [
@@ -33,7 +43,7 @@
     { "source": "/privacy/", "destination": "/privacy/index.html" },
     { "source": "/downloads", "destination": "/downloads/index.html" },
     { "source": "/downloads/", "destination": "/downloads/index.html" },
-    { "source": "/((?!_expo/|assets/|privacy|downloads).*)", "destination": "/index.html" }
+    { "source": "/((?!_expo/|assets/|privacy|downloads|aab).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
@@ -58,7 +68,7 @@
       "source": "/downloads/(.*).aab",
       "headers": [
         { "key": "Content-Type", "value": "application/octet-stream" },
-        { "key": "Content-Disposition", "value": "attachment" }
+        { "key": "Content-Disposition", "value": "attachment; filename=\"onandon_plus_1.0.27_vc27.aab\"" }
       ]
     }
   ],

@@ -9,6 +9,7 @@ const path = require('path');
 
 const COMPILE_SDK = 36;
 const TARGET_SDK = 36;
+const MIN_SDK = 24;
 const BUILD_TOOLS = '36.0.0';
 
 function setGradleProperty(properties, key, value) {
@@ -32,6 +33,7 @@ function applySdk36ToGradlePropertiesText(text) {
   let next = text;
   next = upsertPropertyLine(next, 'android.compileSdkVersion', COMPILE_SDK);
   next = upsertPropertyLine(next, 'android.targetSdkVersion', TARGET_SDK);
+  next = upsertPropertyLine(next, 'android.minSdkVersion', MIN_SDK);
   next = upsertPropertyLine(next, 'android.buildToolsVersion', BUILD_TOOLS);
   next = upsertPropertyLine(next, 'android.suppressUnsupportedCompileSdk', COMPILE_SDK);
   return next;
@@ -48,6 +50,10 @@ function applySdk36ToProjectBuildGradle(contents) {
       `$1targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '${TARGET_SDK}')`
     )
     .replace(
+      /^([ \t]*)minSdkVersion\s*=.*$/m,
+      `$1minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '${MIN_SDK}')`
+    )
+    .replace(
       /^([ \t]*)buildToolsVersion\s*=.*$/m,
       `$1buildToolsVersion = findProperty('android.buildToolsVersion') ?: '${BUILD_TOOLS}'`
     );
@@ -56,7 +62,9 @@ function applySdk36ToProjectBuildGradle(contents) {
 function applySdk36ToAppBuildGradle(contents) {
   return contents
     .replace(/compileSdk(?:Version)?\s+\d+/, `compileSdk ${COMPILE_SDK}`)
-    .replace(/targetSdk(?:Version)?\s+\d+/, `targetSdkVersion ${TARGET_SDK}`);
+    .replace(/targetSdk(?:Version)?\s+\d+/, `targetSdkVersion ${TARGET_SDK}`)
+    .replace(/minSdkVersion\s+rootProject\.ext\.minSdkVersion/, `minSdkVersion ${MIN_SDK}`)
+    .replace(/minSdk(?:Version)?\s+\d+/, `minSdkVersion ${MIN_SDK}`);
 }
 
 function applyExpoModulesCoreSdk36Patch(source) {
@@ -107,10 +115,12 @@ function withAndroidSdk36(config) {
   config.android = config.android || {};
   config.android.compileSdkVersion = COMPILE_SDK;
   config.android.targetSdkVersion = TARGET_SDK;
+  config.android.minSdkVersion = MIN_SDK;
 
   config = withGradleProperties(config, (cfg) => {
     setGradleProperty(cfg.modResults, 'android.compileSdkVersion', COMPILE_SDK);
     setGradleProperty(cfg.modResults, 'android.targetSdkVersion', TARGET_SDK);
+    setGradleProperty(cfg.modResults, 'android.minSdkVersion', MIN_SDK);
     setGradleProperty(cfg.modResults, 'android.buildToolsVersion', BUILD_TOOLS);
     setGradleProperty(cfg.modResults, 'android.suppressUnsupportedCompileSdk', COMPILE_SDK);
     return cfg;
@@ -143,6 +153,7 @@ function withAndroidSdk36(config) {
 module.exports = withAndroidSdk36;
 module.exports.COMPILE_SDK = COMPILE_SDK;
 module.exports.TARGET_SDK = TARGET_SDK;
+module.exports.MIN_SDK = MIN_SDK;
 module.exports.BUILD_TOOLS = BUILD_TOOLS;
 module.exports.applySdk36ToGradlePropertiesText = applySdk36ToGradlePropertiesText;
 module.exports.applySdk36ToProjectBuildGradle = applySdk36ToProjectBuildGradle;
