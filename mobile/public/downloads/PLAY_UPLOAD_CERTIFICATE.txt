@@ -1,0 +1,31 @@
+온앤온+ Play 업로드 키 인증서 (등록 완료)
+
+이 파일이 Play Console 「업로드 키 인증서」와 같은 원본입니다.
+지문이 하나라도 다르면 그 키로 서명하지 말고, 재설정 요청도 다시 하지 마세요.
+
+앱
+  이름: 온앤온+
+  패키지: kr.gyeonggion.app
+  상태: Play Console에 등록됨 (2026-09-20 확인)
+
+인증서
+  주체: CN=OnAndOn Plus, OU=Mobile, O=kdanji, L=Suwon, ST=Gyeonggi, C=KR
+  일련번호: 51192F175E0BED57
+  유효: 2026-09-09 19:13:17 UTC ~ 2054-01-25 19:13:17 UTC
+  알고리즘: RSA 2048
+  alias: upload
+
+Play Console에 보이는 지문 (반드시 일치)
+  MD5:    46:75:CA:CC:9B:12:17:1F:E2:06:87:2F:F3:86:FD:77
+  SHA-1:  30:70:7C:14:A2:AA:1B:AD:06:5C:E7:CC:79:AC:02:BB:9B:D8:2C:42
+  SHA-256: 7C:37:5E:67:B2:0C:E4:0E:8F:95:4E:DB:E8:A3:43:A3:37:08:48:1E:32:3E:31:83:C4:FB:C9:5C:5E:97:86:53
+
+파일
+  공개 인증서: upload_certificate.pem
+  개인키:      mobile/credentials/android/upload-keystore.jks (git 금지)
+  비밀번호:    mobile/credentials/android/keystore.properties (git 금지)
+
+하면 안 되는 일
+  - 새 키스토어를 만들어 또 재설정 신청하기
+  - .jks / 비밀번호를 Play Console에 올리기
+  - 예전 키(E4:CA:DA:…, FA:79:5A:…)로 서명하기
