@@ -91,17 +91,28 @@ function cardCss(dpi: number) {
       overflow: hidden; position: relative;
     }
     .stage { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: ${u(2.4)}; }
-    .front-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .front-copy {
+      flex: 1; min-width: 0; min-height: 0;
+      display: grid; grid-template-rows: auto auto minmax(0, 1fr);
+      align-items: start;
+    }
     .brand-logo { height: ${u(CARD_MM.logoH)}; width: auto; display: block; max-width: ${u(34)}; object-fit: contain; }
     .photo { width: ${u(CARD_MM.photoW)}; height: ${u(CARD_MM.photoH)}; object-fit: cover; border-radius: ${u(3.6)}; background: #d1d5db; flex-shrink: 0; }
     .ph { display: flex; align-items: center; justify-content: center; font-size: ${u(7)}; font-weight: 800; color: #6b7280; }
-    .who { margin-top: ${u(5.2)}; display: flex; align-items: baseline; gap: ${u(1.8)}; flex-wrap: nowrap; }
+    .who {
+      margin-top: ${u(3.4)}; display: flex; align-items: baseline; gap: ${u(1.8)};
+      flex-wrap: nowrap; min-width: 0; position: relative; z-index: 1;
+    }
     .name { font-size: ${u(3.53)}; font-weight: 800; color: #111; letter-spacing: -0.4px; white-space: nowrap; }
     .bar { color: #c5c5c5; font-weight: 400; font-size: ${u(3.2)}; }
     .title { font-size: ${u(2.55)}; color: ${CARD_COLORS.title}; font-weight: 500; white-space: nowrap; overflow: hidden; }
-    .brand-block { margin-top: auto; padding-top: ${u(2.2)}; padding-bottom: ${u(CARD_MM.brandAboveRule)}; }
-    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; }
-    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; }
+    .brand-block {
+      margin-top: 0; align-self: end; justify-self: start;
+      padding-top: ${u(1.4)}; padding-bottom: ${u(CARD_MM.brandAboveRule)};
+      position: relative; z-index: 1;
+    }
+    .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; position: static; transform: none; }
+    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; position: static; transform: none; }
     .rule {
       position: absolute; left: ${u(CARD_MM.pad)}; right: ${u(CARD_MM.pad)};
       bottom: ${u(CARD_MM.ruleFromBottom)}; margin: 0; border: 0;
@@ -203,6 +214,7 @@ export function buildCenterCardFaceDocument(model: CenterCardModel, side: 'front
   <meta charset="utf-8" />
   <meta name="viewport" content="width=${width}, height=${height}" />
   <title>온앤온+ 명함 ${side === 'front' ? '전면' : '후면'}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" />
   <style>${cardCss(dpi)}</style>
 </head>
 <body>${markup}</body>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CARD_MM, cardPixelSize } from '../../utils/centerCardDocument';
+import { CARD_MM } from '../../utils/centerCardDocument';
 
 export default function CenterCardHtmlFrame({
   html,
@@ -10,8 +10,6 @@ export default function CenterCardHtmlFrame({
   width: number;
   height: number;
 }) {
-  const native = cardPixelSize(96);
-  const scale = width / native.width;
   return (
     <div
       style={{
@@ -26,14 +24,13 @@ export default function CenterCardHtmlFrame({
       <iframe
         title={`온앤온+ 명함 ${CARD_MM.width}x${CARD_MM.height}`}
         srcDoc={html}
-        width={native.width}
-        height={native.height}
+        width={width}
+        height={height}
         style={{
           border: 0,
-          width: native.width,
-          height: native.height,
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
+          width,
+          height,
+          display: 'block',
           background: '#fff',
         }}
       />

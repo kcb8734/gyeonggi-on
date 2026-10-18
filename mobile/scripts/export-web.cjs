@@ -41,10 +41,26 @@ const result = spawnSync(
 
 const indexPath = path.join(root, 'dist/index.html');
 if (fs.existsSync(indexPath)) {
-  const html = fs.readFileSync(indexPath, 'utf8')
+  let html = fs.readFileSync(indexPath, 'utf8');
+  if (/name="viewport"/.test(html)) {
+    html = html.replace(
+      /<meta[^>]*name="viewport"[^>]*>/i,
+      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no" />',
+    );
+  } else {
+    html = html.replace(
+      '<head>',
+      '<head>\n    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no" />',
+    );
+  }
+  html = html
     .replace(
       '<head>',
       `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />\n    <link rel="canonical" href="https://www.kdanji.com/" />\n    <script>if(location.hostname==='kdanji.com')location.replace('https://www.kdanji.com'+location.pathname+location.search+location.hash);</script>`,
+    )
+    .replace(
+      '</head>',
+      '<style id="onandon-safe-area">@media (max-width:640px){html,body,#root{height:100svh;min-height:100svh;overflow:hidden;}}</style>\n  </head>',
     )
     .replace('</body>', `<!-- onandon-build ${sha} ${stamp} -->\n  </body>`);
   fs.writeFileSync(indexPath, html);

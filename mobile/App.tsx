@@ -26,6 +26,7 @@ import { installImeGuard } from './src/utils/imeGuard';
 import TabGlyph from './src/components/ui/TabGlyph';
 import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
 import { findLocalityByWebSlug } from './src/constants/centerDirectors';
+import { tabBarStyleForInset } from './src/utils/safeTabBar';
 
 ensureKoreanWebFont();
 disableSystemFontScaling();
@@ -94,6 +95,8 @@ const homeHeaderOptions = {
 };
 
 function Tabs() {
+  const insets = useSafeAreaInsets();
+  const tabBarStyle = tabBarStyleForInset(insets.bottom);
   return (
     <Tab.Navigator
       screenOptions={{
@@ -101,7 +104,7 @@ function Tabs() {
         tabBarActiveTintColor: '#E0392A',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarShowLabel: false,
-        tabBarStyle: { height: 74, paddingBottom: 10, paddingTop: 8 },
+        tabBarStyle,
         tabBarItemStyle: { flex: 1 },
       }}
     >
@@ -308,12 +311,14 @@ const styles = StyleSheet.create({
   webPageLive: {
     flex: 1,
     width: '100%',
+    height: '100%' as unknown as number,
     minHeight: '100%' as unknown as number,
     backgroundColor: '#fff',
   },
   appContainer: {
     width: '100%',
     maxWidth: '100%' as unknown as number,
+    height: '100%' as unknown as number,
     minHeight: '100%' as unknown as number,
     flex: 1,
     margin: 0,
