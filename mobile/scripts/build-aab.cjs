@@ -29,6 +29,7 @@ const {
   patchExpoModulesCoreForCompileSdk36,
   patchReactNativeScreensKotlinList,
 } = require('../plugins/withAndroidSdk36');
+const { patch16kbFiles } = require('../plugins/withAndroid16Kb');
 
 const root = path.resolve(__dirname, '..');
 const repo = path.resolve(root, '..');
@@ -191,6 +192,10 @@ function ensureSdk36Gradle() {
   if (patchReactNativeScreensKotlinList(root)) {
     log('[build:aab] react-native-screens ScreenStack.kt removeLast 충돌을 패치했습니다.');
   }
+  const pageAlign = patch16kbFiles(root);
+  if (pageAlign.length) {
+    log(`[build:aab] 16KB 페이지 정렬 훅: ${pageAlign.join(', ')}`);
+  }
 }
 
 function ensureSplashColor() {
@@ -225,6 +230,17 @@ function verifyReleaseManifest(versionName, versionCode) {
     fail(`versionName 불일치: 매니페스트=${name ? name[1] : '없음'} app.json=${versionName}`);
   }
   log(`[build:aab] 매니페스트 확인 minSdkVersion=${minSdkValue} versionName=${name[1]} versionCode=${code[1]}`);
+}
+
+function verify16kbPageSize(aabPath) {
+  const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
+  const result = spawnSync('python3', [aligner, '--check', aabPath], { encoding: 'utf8' });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.status !== 0) {
+    if (result.stderr) process.stderr.write(result.stderr);
+    fail('AAB native libraries are not 16KB page-size aligned (Play LOAD/RELRO/packaging).');
+  }
+  log(`[build:aab] 16KB 페이지 정렬 확인 ${String(result.stdout || '').trim().replace(/\n/g, ' ')}`);
 }
 
 function restoreExpoStartScripts() {
@@ -308,6 +324,18 @@ function main() {
 
   if (!fs.existsSync(gradleAab)) fail(`AAB를 찾지 못했습니다: ${gradleAab}`);
   verifyReleaseManifest(versionName, versionCode);
+  const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
+  run('python3', [aligner, '--aab', gradleAab], root);
+  run('jarsigner', [
+    '-sigalg', 'SHA256withRSA',
+    '-digestalg', 'SHA-256',
+    '-keystore', signing.storeFile,
+    '-storepass', signing.storePassword,
+    '-keypass', signing.keyPassword,
+    gradleAab,
+    signing.keyAlias,
+  ]);
+  verify16kbPageSize(gradleAab);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
   const stat = fs.statSync(copiedAab);

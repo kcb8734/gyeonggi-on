@@ -25,12 +25,12 @@
     },
     {
       "source": "/aab",
-      "destination": "/downloads/onandon_plus_1.0.27_vc27.aab",
+      "destination": "/downloads/onandon_plus_1.0.28_vc28.aab",
       "statusCode": 302
     },
     {
       "source": "/aab/",
-      "destination": "/downloads/onandon_plus_1.0.27_vc27.aab",
+      "destination": "/downloads/onandon_plus_1.0.28_vc28.aab",
       "statusCode": 302
     }
   ],
@@ -68,7 +68,7 @@
       "source": "/downloads/(.*).aab",
       "headers": [
         { "key": "Content-Type", "value": "application/octet-stream" },
-        { "key": "Content-Disposition", "value": "attachment; filename=\"onandon_plus_1.0.27_vc27.aab\"" }
+        { "key": "Content-Disposition", "value": "attachment; filename=\"onandon_plus_1.0.28_vc28.aab\"" }
       ]
     }
   ],

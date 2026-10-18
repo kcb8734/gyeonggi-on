@@ -23,6 +23,11 @@ test('build:aab installs Android SDK 36 instead of 34', () => {
   assert.match(source, /patchExpoModulesCoreForCompileSdk36/);
   assert.match(source, /patchReactNativeScreensKotlinList/);
   assert.match(source, /verifyReleaseManifest/);
+  assert.match(source, /patch16kbFiles/);
+  assert.match(source, /verify16kbPageSize/);
+  assert.match(source, /align-elf-16kb\.py/);
+  assert.match(source, /--check/);
+  assert.match(source, /jarsigner/);
   assert.match(source, /minSdkVersion=\$\{MIN_SDK\}/);
   assert.doesNotMatch(source, /platforms;android-34/);
   assert.doesNotMatch(source, /build-tools;34\.0\.0/);
@@ -32,9 +37,10 @@ test('build:aab logs versionName and versionCode from app.json', () => {
   assert.match(source, /versionName=\$\{versionName\}/);
   assert.match(source, /versionCode=\$\{versionCode\}/);
   const appJson = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'app.json'), 'utf8'));
-  assert.equal(appJson.expo.version, '1.0.27');
-  assert.equal(appJson.expo.android.versionCode, 27);
+  assert.equal(appJson.expo.version, '1.0.28');
+  assert.equal(appJson.expo.android.versionCode, 28);
   assert.equal(appJson.expo.android.minSdkVersion, 24);
+  assert.ok(appJson.expo.plugins.includes('./plugins/withAndroid16Kb'));
   assert.equal(appJson.expo.icon, './assets/icon.png');
   assert.equal(appJson.expo.android.adaptiveIcon.foregroundImage, './assets/adaptive-icon.png');
   assert.ok(appJson.expo.android.permissions.includes('INTERNET'));
