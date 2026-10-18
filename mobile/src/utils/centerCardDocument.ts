@@ -82,7 +82,7 @@ function cardCss(dpi: number) {
   const u = (mm: number) => `${px(mm, dpi).toFixed(2)}px`;
   return `
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; width: ${u(CARD_MM.width)}; height: ${u(CARD_MM.height)}; background: #fff; }
+    html, body { margin: 0; padding: 0; width: ${u(CARD_MM.width)}; height: ${u(CARD_MM.height)}; background: #fff; overflow: hidden; }
     body { font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", sans-serif; color: #111; }
     .page {
       width: ${u(CARD_MM.width)}; height: ${u(CARD_MM.height)}; background: #fff;

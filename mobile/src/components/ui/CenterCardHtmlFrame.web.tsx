@@ -26,11 +26,13 @@ export default function CenterCardHtmlFrame({
         srcDoc={html}
         width={width}
         height={height}
+        scrolling="no"
         style={{
           border: 0,
           width,
           height,
           display: 'block',
+          overflow: 'hidden',
           background: '#fff',
         }}
       />
