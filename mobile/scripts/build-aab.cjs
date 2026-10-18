@@ -326,7 +326,8 @@ function main() {
   verifyReleaseManifest(versionName, versionCode);
   const aligner = path.join(root, 'scripts', 'align-elf-16kb.py');
   run('python3', [aligner, '--aab', gradleAab], root);
-  run('jarsigner', [
+  log('\n$ jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore <upload> <aab> <alias>');
+  const signed = spawnSync('jarsigner', [
     '-sigalg', 'SHA256withRSA',
     '-digestalg', 'SHA-256',
     '-keystore', signing.storeFile,
@@ -334,7 +335,12 @@ function main() {
     '-keypass', signing.keyPassword,
     gradleAab,
     signing.keyAlias,
-  ]);
+  ], { encoding: 'utf8' });
+  if (signed.stdout) process.stdout.write(signed.stdout.replace(signing.storePassword, '***').replace(signing.keyPassword, '***'));
+  if (signed.status !== 0) {
+    if (signed.stderr) process.stderr.write(signed.stderr.replace(signing.storePassword, '***').replace(signing.keyPassword, '***'));
+    fail(`명령이 실패했습니다 (jarsigner). exit=${signed.status}`);
+  }
   verify16kbPageSize(gradleAab);
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(gradleAab, copiedAab);
