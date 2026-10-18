@@ -21,6 +21,8 @@ test('selected suwon card html matches print spec', () => {
   assert.match(html, /size: 92mm 52mm/);
   assert.match(html, /class="kv"/);
   assert.match(html, /class="brand-block"/);
+  assert.match(html, /grid-template-rows: auto auto minmax/);
+  assert.doesNotMatch(html, /margin-top: auto/);
   assert.match(html, /class="stage"/);
   assert.match(html, /white-space: nowrap/);
   assert.match(html, /grid-template-columns: 1fr 1fr/);
@@ -64,6 +66,8 @@ test('front face document uses flex layout and nowrap contact values', () => {
   assert.match(html, /display: grid/);
   assert.match(html, /white-space: nowrap/);
   assert.match(html, /class="brand-block"/);
+  assert.match(html, /grid-template-rows: auto auto minmax/);
+  assert.doesNotMatch(html, /margin-top: auto/);
   assert.match(html, /class="kv addr"/);
   assert.match(html, />A\.</);
   assert.doesNotMatch(html, />W\.</);

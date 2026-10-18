@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import type { CenterDirectorProfile, CenterLocalityRow } from '../../constants/centerDirectors';
 import { CARD_COLORS, CARD_MM, CARD_PRINT_CM, buildCenterCardFaceDocument, buildCenterCardModel, type CenterCardModel } from '../../utils/centerCardDocument';
@@ -40,16 +41,17 @@ export function CenterCardFaces({
   const type = Math.max(10, Math.round(12 * Math.min(1, s * 1.15)));
   const initial = model.name.slice(0, 1);
   const sizeLabel = `9.2cm × 5.2cm`;
+  const previewDpi = (cardW * 25.4) / CARD_MM.width;
   if (Platform.OS === 'web') {
     return (
       <View style={styles.faces}>
         <View style={styles.sheet}>
           <Text style={styles.sideLabel}>전면 · 9.2cm × 5.2cm</Text>
-          <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'front')} width={cardW} height={cardH} />
+          <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'front', previewDpi)} width={cardW} height={cardH} />
         </View>
         <View style={styles.sheet}>
           <Text style={styles.sideLabel}>후면 · {sizeLabel}</Text>
-          <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'back')} width={cardW} height={cardH} />
+          <CenterCardHtmlFrame html={buildCenterCardFaceDocument(model, 'back', previewDpi)} width={cardW} height={cardH} />
         </View>
       </View>
     );
@@ -65,11 +67,13 @@ export function CenterCardFaces({
         >
           <View style={styles.topRow}>
             <View style={[styles.copyCol, { minHeight: photoH }]}>
-              <OnAndOnPlusLogo height={logoH} />
-              <View style={[styles.who, { marginTop: Math.round(cardH * 0.1) }]}>
-                <Text style={[styles.name, { fontSize: Math.round(cardH * 0.088) }]}>{model.name}</Text>
-                <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.078) }]}>|</Text>
-                <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066), color: CARD_COLORS.title }]} numberOfLines={1}>{model.title}</Text>
+              <View>
+                <OnAndOnPlusLogo height={logoH} />
+                <View style={[styles.who, { marginTop: Math.round(cardH * 0.055) }]}>
+                  <Text style={[styles.name, { fontSize: Math.round(cardH * 0.088) }]}>{model.name}</Text>
+                  <Text style={[styles.bar, { fontSize: Math.round(cardH * 0.078) }]}>|</Text>
+                  <Text style={[styles.title, { fontSize: Math.round(cardH * 0.066), color: CARD_COLORS.title }]} numberOfLines={1}>{model.title}</Text>
+                </View>
               </View>
               <View style={[styles.brandBlock, { paddingBottom: mm(CARD_MM.brandAboveRule) }]}>
                 <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand }]}>온앤온+</Text>
@@ -135,6 +139,7 @@ export default function CenterDirectorCard({
   onClose: () => void;
 }) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const model = row ? buildCenterCardModel(row, director) : null;
   const [busy, setBusy] = React.useState<'front' | 'back' | null>(null);
   const frontRef = React.useRef<View>(null);
@@ -143,7 +148,7 @@ export default function CenterDirectorCard({
   const compact = width < 640;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.overlay, compact && styles.overlayCompact]}>
+      <View style={[styles.overlay, compact && styles.overlayCompact, { paddingBottom: Math.max(12, insets.bottom) }]}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
         <View style={[styles.panel, compact && styles.panelCompact]}>
           <ModalExitButton onPress={onClose} />
@@ -220,7 +225,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flex: 1 },
-  copyCol: { flex: 1, minWidth: 0, paddingRight: 6, justifyContent: 'flex-start' },
+  copyCol: { flex: 1, minWidth: 0, paddingRight: 6, justifyContent: 'space-between' },
   photo: {
     borderRadius: 14,
     backgroundColor: '#D1D5DB',
@@ -232,7 +237,7 @@ const styles = StyleSheet.create({
   name: { fontWeight: '800', color: '#111827' },
   bar: { color: '#D1D5DB', fontWeight: '400' },
   title: { color: CARD_COLORS.title, fontWeight: '500', flexShrink: 1 },
-  brandBlock: { marginTop: 'auto' as const, paddingTop: 8 },
+  brandBlock: { paddingTop: 6 },
   brand: { fontWeight: '800', color: CARD_COLORS.brand },
   dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
   rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 0, marginBottom: 0 },
