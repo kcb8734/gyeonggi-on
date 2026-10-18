@@ -52,6 +52,7 @@ test('root build.gradle injects 16KB CMake/ndk-build linker flags', () => {
   assert.match(first, new RegExp(plugin.PROJECT_MARKER));
   assert.match(first, /max-page-size=16384/);
   assert.match(first, /ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON/);
+  assert.match(first, /sub\.state\.executed/);
   assert.equal(plugin.apply16kbProjectBuildGradle(first), first);
 });
 

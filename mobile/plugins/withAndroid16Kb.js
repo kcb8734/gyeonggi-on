@@ -43,7 +43,7 @@ afterEvaluate {
 const PROJECT_HOOK = `
 // ${PROJECT_MARKER}
 subprojects { sub ->
-    sub.afterEvaluate {
+    def onandonApply16kbNative = {
         def androidExt = sub.extensions.findByName("android")
         if (androidExt == null) return
         if (new File(sub.projectDir, "CMakeLists.txt").exists()) {
@@ -57,6 +57,11 @@ subprojects { sub ->
                 androidExt.defaultConfig.externalNativeBuild.ndkBuild.arguments.add("APP_LDFLAGS+=${LINKER_FLAGS}")
             } catch (Throwable ignored) {}
         }
+    }
+    if (sub.state.executed) {
+        onandonApply16kbNative()
+    } else {
+        sub.afterEvaluate { onandonApply16kbNative() }
     }
 }
 `;
