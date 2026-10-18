@@ -131,10 +131,50 @@ async function profileFromGoogle(accessToken: string): Promise<SocialProfile> {
   };
 }
 
+async function exchangeGoogleCode(code: string, redirectUri: string): Promise<string> {
+  const clientId = String(process.env.GOOGLE_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = String(process.env.GOOGLE_CLIENT_SECRET || '').trim();
+  if (!clientId || !clientSecret) {
+    throw new Error('구글 로그인 서버 설정(GOOGLE_CLIENT_SECRET)이 없습니다.');
+  }
+  const body = new URLSearchParams({
+    code,
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    grant_type: 'authorization_code',
+  });
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const data = await tokenRes.json() as { access_token?: string; error?: string; error_description?: string };
+  if (!tokenRes.ok || !data.access_token) {
+    throw new Error(data.error_description || data.error || '구글 코드를 토큰으로 바꾸지 못했습니다.');
+  }
+  return String(data.access_token);
+}
+
 async function socialLogin(provider: Provider, req: Request, res: Response) {
-  const accessToken = String(req.body?.access_token ?? req.body?.accessToken ?? '').trim();
+  let accessToken = String(req.body?.access_token ?? req.body?.accessToken ?? '').trim();
+  const code = String(req.body?.code ?? '').trim();
+  const redirectUri = String(req.body?.redirect_uri ?? req.body?.redirectUri ?? 'https://www.kdanji.com/auth').trim();
+  try {
+    if (provider === 'google' && !accessToken && code) {
+      accessToken = await exchangeGoogleCode(code, redirectUri);
+    }
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      message: err instanceof Error ? err.message : '소셜 로그인에 실패했습니다.',
+    });
+  }
   if (!accessToken) {
-    return res.status(400).json({ success: false, message: 'access_token이 필요합니다.' });
+    return res.status(400).json({
+      success: false,
+      message: provider === 'google' ? '구글 code 또는 access_token이 필요합니다.' : 'access_token이 필요합니다.',
+    });
   }
   try {
     const profile = provider === 'kakao'

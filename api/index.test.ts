@@ -383,3 +383,31 @@ test('POST /api/centers/courses/:id/review stores rejected and hides from public
   assert.equal(((publicList.body as { data: Array<{ id: string }> }).data || []).some((item) => item.id === id), false);
 });
 
+test('POST /api/auth/kakao without token is 400', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/auth/kakao', body: {} });
+  assert.equal(result.status, 400);
+  assert.equal((result.body as { success: boolean }).success, false);
+});
+
+test('POST /api/auth/kakao demo token issues a session', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/auth/kakao', body: { access_token: 'demo' } });
+  assert.equal(result.status, 200);
+  const body = result.body as { success: boolean; data?: { user?: { provider?: string; nickname?: string }; accessToken?: string } };
+  assert.equal(body.success, true);
+  assert.equal(body.data?.user?.provider, 'kakao');
+  assert.ok(body.data?.accessToken);
+});
+
+test('POST /api/auth/google demo token issues a session', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/auth/google', body: { access_token: 'demo' } });
+  assert.equal(result.status, 200);
+  const body = result.body as { success: boolean; data?: { user?: { provider?: string } } };
+  assert.equal(body.success, true);
+  assert.equal(body.data?.user?.provider, 'google');
+});
+
+test('POST /api/auth/google without code is 400', async () => {
+  const result = await invoke({ method: 'POST', url: '/api/auth/google', body: {} });
+  assert.equal(result.status, 400);
+});
+

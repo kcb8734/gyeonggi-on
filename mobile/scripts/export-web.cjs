@@ -56,7 +56,7 @@ if (fs.existsSync(indexPath)) {
   html = html
     .replace(
       '<head>',
-      `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />\n    <link rel="canonical" href="https://www.kdanji.com/" />\n    <script>if(location.hostname==='kdanji.com')location.replace('https://www.kdanji.com'+location.pathname+location.search+location.hash);</script>`,
+      `<head>\n    <meta name="onandon-build" content="${sha} ${label}" />\n    <link rel="canonical" href="https://www.kdanji.com/" />\n    <script>if(location.hostname==='kdanji.com')location.replace('https://www.kdanji.com'+location.pathname+location.search+location.hash);</script>\n    <script>(function(){try{var p=(location.pathname||'').replace(/\\/+$/,'')||'/';if(p!=='/auth')return;var h=localStorage.getItem('ExpoWebBrowserRedirectHandle');if(!h)return;var parent=window.opener||window.parent;if(!parent||parent===window)return;parent.postMessage({url:location.href,expoSender:h},parent.location.toString());}catch(e){}})();</script>`,
     )
     .replace(
       '</head>',
