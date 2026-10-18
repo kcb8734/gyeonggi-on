@@ -107,3 +107,13 @@ export function festivalBelongsToMetro(item: HomeFestival, metro: string): boole
 export function festivalsForMetro(items: HomeFestival[] | undefined, metro: string): HomeFestival[] {
   return (items || []).filter((item) => festivalBelongsToMetro(item, metro));
 }
+
+/** 홈 미리보기 지도에는 선택 광역에 속하는 좌표만 남긴다. */
+export function mapPinsForMetro<T extends { latitude?: number; longitude?: number }>(
+  items: T[] | undefined,
+  metro: string,
+): T[] {
+  return (items || []).filter((item) =>
+    validLatLng(item.latitude, item.longitude) && festivalBelongsToMetro(item as HomeFestival, metro),
+  );
+}

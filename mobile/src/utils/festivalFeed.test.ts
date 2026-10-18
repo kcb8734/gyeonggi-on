@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { firstNonEmptyFestivals, festivalBelongsToMetro, festivalsForMetro, mergeFestivalSources, matchesFestivalCategory } from './festivalFeed';
+import { firstNonEmptyFestivals, festivalBelongsToMetro, festivalsForMetro, mapPinsForMetro, mergeFestivalSources, matchesFestivalCategory } from './festivalFeed';
 import { REGION_FESTIVAL_FALLBACKS } from '../constants/regionTour';
 import type { HomeFestival } from '../types/home';
 
@@ -71,4 +71,17 @@ test('태그만 제주온으로 덮어쓴 경기 축제도 걸러낸다', () => 
   };
   assert.equal(festivalBelongsToMetro(leaked, 'JEJU'), false);
   assert.equal(festivalBelongsToMetro(leaked, 'GYEONGGI'), true);
+});
+
+test('경기온 지도 핀에 제주·부산 좌표가 섞이지 않는다', () => {
+  const mixed = [
+    { id: 'suwon', title: '수원화성문화제', location_name: '경기도 수원시', latitude: 37.287, longitude: 127.013, metro: 'GYEONGGI' },
+    { id: 'jeju', title: '들불축제', location_name: '제주특별자치도 제주시', latitude: 33.459, longitude: 126.517, metro: 'GYEONGGI' },
+    { id: 'busan', title: '해운대모래축제', location_name: '부산광역시 해운대구', latitude: 35.158, longitude: 129.160, metro: 'GYEONGGI' },
+    { id: 'tagged-jeju', title: '올레걷기', latitude: 33.250, longitude: 126.560, metro: 'GYEONGGI' },
+  ];
+  const pins = mapPinsForMetro(mixed, 'GYEONGGI');
+  assert.equal(pins.length, 1);
+  assert.equal(pins[0].id, 'suwon');
+  assert.equal(festivalBelongsToMetro(mixed[3], 'GYEONGGI'), false);
 });

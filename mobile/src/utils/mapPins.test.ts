@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { haversineKm, spreadOverlappingPins, withinKm } from './mapPins';
+import { haversineKm, shouldUnstackMapMarkers, spreadOverlappingPins, withinKm } from './mapPins';
 
 test('같은 좌표 핀을 서로 떨어뜨린다', () => {
   const stacked = [
@@ -23,6 +23,13 @@ test('서로 다른 좌표는 그대로 둔다', () => {
   const spread = spreadOverlappingPins(pins);
   assert.equal(spread[0].latitude, 37.287);
   assert.equal(spread[1].longitude, 127.117);
+});
+
+test('광역 줌에서는 화면 픽셀 언스택을 하지 않는다', () => {
+  assert.equal(shouldUnstackMapMarkers(8), false);
+  assert.equal(shouldUnstackMapMarkers(10), false);
+  assert.equal(shouldUnstackMapMarkers(11), true);
+  assert.equal(shouldUnstackMapMarkers(14), true);
 });
 
 test('반경 안의 지점만 남긴다', () => {
