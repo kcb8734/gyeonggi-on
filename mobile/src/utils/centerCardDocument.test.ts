@@ -24,6 +24,9 @@ test('selected suwon card html matches print spec', () => {
   assert.match(html, /grid-template-rows: auto auto minmax/);
   assert.doesNotMatch(html, /margin-top: auto/);
   assert.match(html, /class="stage"/);
+  assert.match(html, /\.rule \{\s*position: static/);
+  assert.match(html, /\.grid \{\s*flex-shrink: 0;\s*height: auto/);
+  assert.doesNotMatch(html, /\.rule \{[^}]*position: absolute/);
   assert.match(html, /white-space: nowrap/);
   assert.match(html, /grid-template-columns: 1fr 1fr/);
   assert.match(html, /kdanji.com\/suwon/);
@@ -71,7 +74,10 @@ test('front face document uses flex layout and nowrap contact values', () => {
   assert.match(html, /class="kv addr"/);
   assert.match(html, />A\.</);
   assert.doesNotMatch(html, />W\.</);
-  assert.match(html, /position: absolute/);
+  assert.match(html, /\.rule \{\s*position: static/);
+  assert.match(html, /\.grid \{\s*flex-shrink: 0;\s*height: auto/);
+  assert.doesNotMatch(html, /\.rule \{[^}]*position: absolute/);
+  assert.match(html, /class="brand-block"[\s\S]*<hr class="rule" \/>[\s\S]*class="grid"/);
   assert.doesNotMatch(html, /max-width: 640px/);
 });
 
