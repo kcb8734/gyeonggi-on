@@ -11,15 +11,24 @@ interface AuthResponse {
   };
 }
 
-async function complete(provider: 'kakao' | 'google', accessToken: string): Promise<AuthUser> {
+async function complete(
+  provider: 'kakao' | 'google',
+  payload: Record<string, string>,
+): Promise<AuthUser> {
+  const isDemo = payload.access_token === 'demo';
   try {
-    const res = await api.post<AuthResponse>(`/api/auth/${provider}`, { access_token: accessToken });
-    if (res.data?.data) {
+    const res = await api.post<AuthResponse>(`/api/auth/${provider}`, payload);
+    if (res.data?.data?.user) {
       setAuthSession(res.data.data);
       return res.data.data.user;
     }
-  } catch {
-    // 백엔드 미연결 시 미리보기 세션
+    if (!isDemo) {
+      throw new Error(res.data?.message || '로그인에 실패했습니다.');
+    }
+  } catch (err: any) {
+    if (!isDemo) {
+      throw new Error(err?.response?.data?.message || err?.message || '로그인에 실패했습니다.');
+    }
   }
   const user: AuthUser = {
     id: `preview-${provider}`,
@@ -38,9 +47,13 @@ async function complete(provider: 'kakao' | 'google', accessToken: string): Prom
 }
 
 export function loginWithKakaoToken(accessToken: string) {
-  return complete('kakao', accessToken);
+  return complete('kakao', { access_token: accessToken });
 }
 
 export function loginWithGoogleToken(accessToken: string) {
-  return complete('google', accessToken);
+  return complete('google', { access_token: accessToken });
+}
+
+export function loginWithGoogleCode(code: string, redirectUri: string) {
+  return complete('google', { code, redirect_uri: redirectUri });
 }

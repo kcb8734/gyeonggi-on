@@ -8,6 +8,7 @@ import {
   issueEmailChallenge,
   normalizeEmail,
 } from './emailChallenge.js';
+import { socialLogin } from './socialAuth.js';
 import {
   dashboard,
   preview,
@@ -1025,6 +1026,25 @@ async function handler(req, res) {
       return;
     }
 
+    if (/auth\/kakao/i.test(path) || /auth\/google/i.test(path)) {
+      if (method === 'OPTIONS') { send(res, 204, {}, corsHeaders(req)); return; }
+      const provider = /auth\/kakao/i.test(path) ? 'kakao' : 'google';
+      try {
+        const data = await socialLogin(provider, body);
+        send(res, 200, {
+          success: true,
+          message: provider + ' 로그인에 성공했습니다.',
+          data,
+        }, corsHeaders(req));
+      } catch (err) {
+        const status = Number(err && err.status) || 401;
+        send(res, status, {
+          success: false,
+          message: err && err.message ? err.message : '소셜 로그인에 실패했습니다.',
+        }, corsHeaders(req));
+      }
+      return;
+    }
     if (/auth\/send-email-code/i.test(path)) {
       await sendEmailCode(req, res);
       return;

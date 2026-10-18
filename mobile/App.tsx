@@ -27,6 +27,7 @@ import TabGlyph from './src/components/ui/TabGlyph';
 import HomeHeaderBar from './src/components/ui/HomeHeaderBar';
 import { findLocalityByWebSlug } from './src/constants/centerDirectors';
 import { tabBarStyleForInset } from './src/utils/safeTabBar';
+import './src/utils/oauth';
 
 ensureKoreanWebFont();
 disableSystemFontScaling();
@@ -65,6 +66,7 @@ export type RootStackParamList = {
   FeedUpload: undefined;
   FeedView: { postId: string };
   Login: undefined;
+  AuthCallback: undefined;
   Admin: undefined;
   CenterDirectors: { tab?: 'purpose' | 'status'; region?: string; locality?: string; openCard?: boolean } | undefined;
 };
@@ -169,6 +171,22 @@ function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function startsOnAuth() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  return window.location.pathname.replace(/\/+$/, '') === '/auth';
+}
+
+function AuthCallbackScreen() {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F7F8FA' }}>
+      <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>로그인을 확인하고 있습니다</Text>
+      <Text style={{ marginTop: 8, color: '#6B7280', textAlign: 'center', lineHeight: 21 }}>
+        이 창은 자동으로 닫힙니다. 닫히지 않으면 직접 닫아 주세요.
+      </Text>
+    </View>
+  );
+}
+
 function startsOnPrivacy() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
   return window.location.pathname.replace(/\/+$/, '') === '/privacy';
@@ -194,7 +212,7 @@ function centerLaunch(): RootStackParamList['CenterDirectors'] {
   if (path === '/centers') return { tab: 'status' };
   const slug = path.replace(/^\//, '');
   if (!slug || slug.includes('/')) return undefined;
-  const reserved = new Set(['admin', 'merchant', 'api', 'health', 'centers', 'index.html', 'privacy', 'support']);
+  const reserved = new Set(['admin', 'merchant', 'api', 'health', 'centers', 'index.html', 'privacy', 'support', 'auth', 'login']);
   if (reserved.has(slug)) return undefined;
   const row = findLocalityByWebSlug(slug);
   if (!row) return undefined;
@@ -207,7 +225,7 @@ export default function App() {
       <StatusBar style="dark" />
       <AppShell>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName={startsOnPrivacy() ? 'Support' : startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : startsOnCenters() ? 'CenterDirectors' : 'Tabs'}>
+          <Stack.Navigator initialRouteName={startsOnAuth() ? 'AuthCallback' : startsOnPrivacy() ? 'Support' : startsOnSettlement() ? 'MerchantSettlement' : startsOnAdmin() ? 'Admin' : startsOnCenters() ? 'CenterDirectors' : 'Tabs'}>
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="PromotionRegister"
@@ -263,6 +281,7 @@ export default function App() {
               {({ route }) => <FeedViewScreen postId={route.params.postId} />}
             </Stack.Screen>
             <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인', headerBackVisible: false, headerLeft: () => <StackBack /> }} />
+            <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Admin" component={AdminScreen} options={{ title: '관리자', headerBackVisible: false, headerLeft: () => <StackBack /> }} />
             <Stack.Screen
               name="CenterDirectors"

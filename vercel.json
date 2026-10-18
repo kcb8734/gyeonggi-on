@@ -76,6 +76,9 @@
     "EXPO_PUBLIC_API_URL": "https://www.kdanji.com",
     "EXPO_PUBLIC_API_BASE_URL": "https://www.kdanji.com",
     "EXPO_PUBLIC_WEB_ORIGIN": "https://www.kdanji.com",
+    "EXPO_PUBLIC_KAKAO_CLIENT_ID": "04a0c5af1674ef99651907be51141277",
+    "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "770194502672-b7ifu2bqbhs6mp8r0rstmkgnldnioq63.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_ID": "770194502672-b7ifu2bqbhs6mp8r0rstmkgnldnioq63.apps.googleusercontent.com",
     "NTS_SERVICE_KEY": "ef117e7bebbcea7586234f85acd8292dba6a6d95230131aec62a10b5b2610885"
   }
 }

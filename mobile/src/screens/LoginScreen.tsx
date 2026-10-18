@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { loginWithGoogleToken, loginWithKakaoToken } from '../api/auth';
+import { loginWithGoogleCode, loginWithGoogleToken, loginWithKakaoToken } from '../api/auth';
 import { GOOGLE_CLIENT_ID, KAKAO_CLIENT_ID } from '../config';
 import { makeRedirect, startOAuth } from '../utils/oauth';
 
@@ -52,9 +52,24 @@ export default function LoginScreen() {
     const redirectUri = makeRedirect();
     const result = await startOAuth(
       `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}`
-      + `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=profile%20email`,
+      + `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
+      + `&scope=${encodeURIComponent('openid email profile')}&prompt=select_account&access_type=online`,
     );
+    const code = result.type === 'success' ? String(result.params?.code ?? '') : '';
     const token = result.type === 'success' ? String(result.params?.access_token ?? '') : '';
+    if (code) {
+      setBusy('google');
+      try {
+        const user = await loginWithGoogleCode(code, redirectUri);
+        Alert.alert('로그인 완료', `${user.nickname}님, 온앤온+에 오신 것을 환영합니다.`);
+        navigation.goBack();
+      } catch (err: any) {
+        Alert.alert('로그인 실패', err?.message ?? '다시 시도해주세요.');
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
     if (!token) {
       Alert.alert('알림', '구글 로그인이 취소되었습니다.');
       return;
@@ -74,7 +89,7 @@ export default function LoginScreen() {
       <TouchableOpacity style={styles.google} onPress={google} disabled={!!busy}>
         {busy === 'google' ? <ActivityIndicator color="#111827" /> : <Text style={styles.googleText}>Google로 시작하기</Text>}
       </TouchableOpacity>
-      <Text style={styles.hint}>클라이언트 ID가 없으면 미리보기 계정으로 들어갑니다.</Text>
+      <Text style={styles.hint}>카카오 또는 Google 계정으로 바로 가입됩니다. 팝업이 뜨면 허용해 주세요.</Text>
     </View>
   );
 }

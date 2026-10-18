@@ -3,6 +3,8 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { WEB_ORIGIN } from '../config';
 
+WebBrowser.maybeCompleteAuthSession();
+
 type OAuthResult = { type: 'success'; params: Record<string, string> } | { type: 'cancel' };
 
 function paramsFromUrl(url: string): Record<string, string> {
@@ -15,6 +17,9 @@ function paramsFromUrl(url: string): Record<string, string> {
 }
 
 export function makeRedirect(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname === 'kdanji.com') {
+    return 'https://www.kdanji.com/auth';
+  }
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}/auth`;
   }
