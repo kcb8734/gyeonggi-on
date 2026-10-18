@@ -11,6 +11,7 @@ import React, {
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import type { MapRegion } from '../../types/map';
 import { validLatLng } from '../../utils/mapCamera';
+import { shouldUnstackMapMarkers } from '../../utils/mapPins';
 
 export type Region = MapRegion;
 export const PROVIDER_GOOGLE = 'google';
@@ -66,6 +67,7 @@ interface MapViewProps {
   showsMyLocationButton?: boolean;
   showsCompass?: boolean;
   provider?: string;
+  spreadOverlaps?: boolean;
 }
 
 function regionToZoom(region: MapRegion): number {
@@ -81,6 +83,7 @@ function regionToZoom(region: MapRegion): number {
 
 function unstackMarkers(map: L.Map | null, layer: L.LayerGroup | null) {
   if (!map || !layer) return;
+  if (!shouldUnstackMapMarkers(map.getZoom())) return;
   const size = map.getSize();
   if (size.x < 40 || size.y < 40) return;
   const groups = new Map<string, L.Marker[]>();
@@ -179,7 +182,7 @@ function fitPadding(options?: {
 }
 
 export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
-  { style, initialRegion, region, children, onRegionChangeComplete, pointerEvents },
+  { style, initialRegion, region, children, onRegionChangeComplete, pointerEvents, spreadOverlaps = true },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -254,7 +257,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       }
       pin.addTo(layer);
     });
-    unstackMarkers(mapRef.current, layer);
+    if (spreadOverlaps) unstackMarkers(mapRef.current, layer);
   };
 
   const fly = (next: MapRegion) => {

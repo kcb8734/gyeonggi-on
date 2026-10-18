@@ -67,6 +67,7 @@ interface MapViewProps {
   showsMyLocationButton?: boolean;
   showsCompass?: boolean;
   provider?: string;
+  spreadOverlaps?: boolean;
 }
 
 function isMarkerChild(child: { type: unknown }) {

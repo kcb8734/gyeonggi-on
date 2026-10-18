@@ -19,6 +19,13 @@ export function withinKm(point: LatLng, center: LatLng, km: number) {
   return haversineKm(point, center) <= km;
 }
 
+/** Leaflet pixel-unstack at country zoom moves a Gyeonggi cluster across the peninsula. */
+export const MARKER_UNSTACK_MIN_ZOOM = 11;
+
+export function shouldUnstackMapMarkers(zoom: number) {
+  return Number.isFinite(zoom) && zoom >= MARKER_UNSTACK_MIN_ZOOM;
+}
+
 /** 같은 건물·같은 좌표에 쌓인 핀을 원형으로 벌려 각각 누를 수 있게 한다. */
 export function spreadOverlappingPins<T extends LatLng>(pins: T[], minDeg = 0.0022): T[] {
   const groups = new Map<string, number[]>();
