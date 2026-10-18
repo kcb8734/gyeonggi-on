@@ -95,15 +95,7 @@ function apply16kbGradlePropertiesText(text) {
 }
 
 function applyLegacyPackagingAppBuildGradle(contents) {
-  return contents
-    .replace(
-      /useLegacyPackaging\s*\([^)]*\)/,
-      'useLegacyPackaging true',
-    )
-    .replace(
-      /useLegacyPackaging\s*=\s*(?:findProperty\([^)]*\)[^\n]*|false)/,
-      'useLegacyPackaging true',
-    );
+  return contents.replace(/^[ \t]*useLegacyPackaging[^\n]*/m, '            useLegacyPackaging true');
 }
 
 function applyAlign16kbAppBuildGradle(contents) {

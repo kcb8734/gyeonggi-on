@@ -23,10 +23,20 @@ test('app build.gradle gets compressed JNI packaging and a 16KB align hook', () 
   const first = plugin.applyAlign16kbAppBuildGradle(
     'android {\n    packagingOptions {\n        jniLibs {\n            useLegacyPackaging (findProperty(\'expo.useLegacyPackaging\')?.toBoolean() ?: false)\n        }\n    }\n}\n',
   );
-  assert.match(first, /useLegacyPackaging true/);
+  assert.match(first, /useLegacyPackaging true$/m);
+  assert.doesNotMatch(first, /toBoolean\(\)/);
   assert.match(first, /align-elf-16kb\.py/);
   assert.match(first, new RegExp(plugin.MARKER));
   assert.equal(plugin.applyAlign16kbAppBuildGradle(first), first);
+});
+
+test('broken nested-paren leftover from Expo 51 is rewritten to a complete assignment', () => {
+  const next = plugin.applyAlign16kbAppBuildGradle(
+    '        jniLibs {\n            useLegacyPackaging true?.toBoolean() ?: false)\n        }\n',
+  );
+  assert.match(next, /useLegacyPackaging true$/m);
+  assert.doesNotMatch(next, /toBoolean\(\)/);
+  assert.doesNotMatch(next, /false\)/);
 });
 
 test('gradle.properties enables official AGP 8.5-or-lower 16KB packaging fallback', () => {
