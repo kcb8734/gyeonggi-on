@@ -77,7 +77,7 @@ export function CenterCardFaces({
               </View>
               <View style={[styles.brandBlock, { paddingBottom: mm(CARD_MM.brandAboveRule) }]}>
                 <Text style={[styles.brand, { fontSize: Math.round(cardH * 0.078), color: CARD_COLORS.brand }]}>온앤온+</Text>
-                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), color: CARD_COLORS.brand }]} numberOfLines={1}>{model.dedicatedCenter}</Text>
+                <Text style={[styles.dedicated, { fontSize: Math.round(cardH * 0.068), lineHeight: Math.round(cardH * 0.1), color: CARD_COLORS.brand }]}>{model.dedicatedCenter}</Text>
               </View>
             </View>
             {model.photoUrl ? (
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   title: { color: CARD_COLORS.title, fontWeight: '500', flexShrink: 1 },
   brandBlock: { paddingTop: 6 },
   brand: { fontWeight: '800', color: CARD_COLORS.brand },
-  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand },
+  dedicated: { marginTop: 2, fontStyle: 'italic', fontWeight: '700', color: CARD_COLORS.brand, paddingRight: 8, paddingBottom: 2 },
   rule: { height: 1, backgroundColor: '#D1D5DB', marginTop: 0, marginBottom: 0 },
   grid: { gap: 4 },
   contactRow: { flexDirection: 'row', gap: 8 },

@@ -173,7 +173,7 @@ const SELECTED_SEED: Record<string, CenterDirectorProfile> = {
   'SEOUL:종로구': {
     name: '김하늘',
     title: '서울온 종로 센터장',
-    phone: '02-120',
+    phone: '010-1234-5678',
     email: 'jongno@kdanji.com',
     intro: '광장시장과 종로 거리예술 축제를 잇는 도심 센터입니다.',
     address: '서울특별시 종로구 종로 1',
