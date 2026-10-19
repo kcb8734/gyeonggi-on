@@ -95,6 +95,7 @@ function cardCss(dpi: number) {
       flex: 1; min-width: 0; min-height: 0;
       display: grid; grid-template-rows: auto auto minmax(0, 1fr);
       align-items: start;
+      overflow: visible;
     }
     .brand-logo { height: ${u(CARD_MM.logoH)}; width: auto; display: block; max-width: ${u(34)}; object-fit: contain; }
     .photo { width: ${u(CARD_MM.photoW)}; height: ${u(CARD_MM.photoH)}; object-fit: cover; border-radius: ${u(3.6)}; background: #d1d5db; flex-shrink: 0; }
@@ -110,9 +111,15 @@ function cardCss(dpi: number) {
       margin-top: 0; align-self: end; justify-self: start;
       padding-top: ${u(1.4)}; padding-bottom: ${u(CARD_MM.brandAboveRule)};
       position: relative; z-index: 1;
+      overflow: visible; max-width: 100%;
     }
     .brand { font-size: ${u(3.2)}; font-weight: 800; color: ${CARD_COLORS.brand}; line-height: 1.15; position: static; transform: none; }
-    .center { margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700; color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: hidden; position: static; transform: none; }
+    .center {
+      margin-top: ${u(0.35)}; font-size: ${u(2.75)}; font-style: italic; font-weight: 700;
+      color: ${CARD_COLORS.brand}; white-space: nowrap; overflow: visible;
+      padding-right: ${u(1.6)}; padding-bottom: ${u(0.45)}; line-height: 1.45;
+      position: static; transform: none;
+    }
     .rule {
       position: static; flex-shrink: 0; width: 100%;
       margin: 0; border: 0;

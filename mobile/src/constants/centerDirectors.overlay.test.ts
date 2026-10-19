@@ -42,7 +42,7 @@ test('API director without photo still uses the seeded jongno portrait', () => {
     regionLabel: '서울온',
     status: 'selected',
     applicantCount: 1,
-    director: { name: '김하늘', title: '서울온 종로 센터장', phone: '02-120', email: 'jongno@kdanji.com', intro: '' },
+    director: { name: '김하늘', title: '서울온 종로 센터장', phone: '010-1234-5678', email: 'jongno@kdanji.com', intro: '' },
   };
   const rows = overlayLocalities([jongno], {});
   assert.match(rows[0].director?.photoUrl || '', /^data:image\/png/);

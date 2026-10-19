@@ -91,6 +91,19 @@ test('jongno front card embeds the director photo', () => {
   assert.doesNotMatch(html, /class="photo ph"/);
 });
 
+test('jongno card shows mobile number and does not clip italic 전담센터', () => {
+  const jongno = listCenterLocalities('SEOUL').find((row) => row.label === '종로구');
+  const model = buildCenterCardModel(jongno!);
+  assert.equal(model?.phone, '010-1234-5678');
+  assert.equal(model?.dedicatedCenter, '서울특별시 종로 전담센터');
+  const html = buildCenterCardFaceDocument(model!, 'front', 400);
+  assert.match(html, /010-1234-5678/);
+  assert.match(html, /서울특별시 종로 전담센터/);
+  assert.match(html, /\.center \{[^}]*overflow: visible/);
+  assert.match(html, /\.center \{[^}]*padding-right/);
+  assert.doesNotMatch(html, /\.center \{[^}]*overflow: hidden/);
+});
+
 test('back face keeps website QR while print size stays 92x52mm', () => {
   const suwon = listCenterLocalities('GYEONGGI').find((row) => row.label === '수원시');
   const model = buildCenterCardModel(suwon!);

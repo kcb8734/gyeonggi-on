@@ -58,7 +58,7 @@ const SELECTED_SEED = {
   'GYEONGGI:수원시': { name: '박서연', title: '경기온 수원 센터장', phone: '031-120', email: 'suwon@kdanji.com', intro: '수원화성 축제와 영동시장 상가를 잇는 현장 센터를 운영합니다.', address: '경기도 수원시 팔달구 정조로 825', website: 'kdanji.com/suwon' },
   'GYEONGGI:성남시': { name: '이준호', title: '경기온 성남 센터장', phone: '031-120', email: 'seongnam@kdanji.com', intro: '성남 모란시장과 지역 축제를 상생 쿠폰으로 연결합니다.', address: '경기도 성남시 수정구 산성대로 277', website: 'kdanji.com/seongnam' },
   'GYEONGGI:파주시': { name: '최민정', title: '경기온 파주 센터장', phone: '031-120', email: 'paju@kdanji.com', intro: '임진각·장단콩 축제와 문산·금촌 시장을 함께 안내합니다.', address: '경기도 파주시 시청로 50', website: 'kdanji.com/paju' },
-  'SEOUL:종로구': { name: '김하늘', title: '서울온 종로 센터장', phone: '02-120', email: 'jongno@kdanji.com', intro: '광장시장과 종로 거리예술 축제를 잇는 도심 센터입니다.', address: '서울특별시 종로구 종로 1', website: 'kdanji.com/jongno' },
+  'SEOUL:종로구': { name: '김하늘', title: '서울온 종로 센터장', phone: '010-1234-5678', email: 'jongno@kdanji.com', intro: '광장시장과 종로 거리예술 축제를 잇는 도심 센터입니다.', address: '서울특별시 종로구 종로 1', website: 'kdanji.com/jongno' },
   'SEOUL:강남구': { name: '정우성', title: '서울온 강남 센터장', phone: '02-120', email: 'gangnam@kdanji.com', intro: '강남 축제 현장과 인근 소상공인 할인을 매칭합니다.', address: '서울특별시 강남구 강남대로 396', website: 'kdanji.com/gangnam' },
   'BUSAN:부산-해운대구': { name: '한지민', title: '부산온 해운대 센터장', phone: '051-120', email: 'haeundae@kdanji.com', intro: '해운대 축제와 자갈치·구남로 상권을 연결합니다.', address: '부산광역시 해운대구 해운대로 620', website: 'kdanji.com/haeundae' },
   'INCHEON:인천-연수구': { name: '오세린', title: '인천온 연수 센터장', phone: '032-120', email: 'yeonsu@kdanji.com', intro: '송도 축제와 신포시장 먹거리를 안내합니다.', address: '인천광역시 연수구 원인재로 115', website: 'kdanji.com/yeonsu' },
